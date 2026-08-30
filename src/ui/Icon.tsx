@@ -1,0 +1,103 @@
+/**
+ * The icon set.
+ *
+ * Drawn on one 16px grid with one stroke weight, so they sit together instead
+ * of looking borrowed from three different libraries. Adding one means drawing
+ * it here, not adding a dependency.
+ */
+
+export type IconName =
+  | "servers"
+  | "play"
+  | "stop"
+  | "restart"
+  | "moon"
+  | "folder"
+  | "file"
+  | "archive"
+  | "users"
+  | "puzzle"
+  | "sliders"
+  | "terminal"
+  | "globe"
+  | "plus"
+  | "search"
+  | "refresh"
+  | "warning"
+  | "check"
+  | "close"
+  | "minimize"
+  | "maximize"
+  | "chevron-right"
+  | "chevron-down"
+  | "chevron-left"
+  | "trash"
+  | "external"
+  | "cpu"
+  | "clock";
+
+const PATHS: Record<IconName, string> = {
+  servers: "M2.5 3.5h11v4h-11zM2.5 8.5h11v4h-11zM4.6 5.5h.01M4.6 10.5h.01",
+  play: "M5 3.4 12.6 8 5 12.6z",
+  stop: "M4.5 4.5h7v7h-7z",
+  restart: "M13 8a5 5 0 1 1-1.6-3.7M13 2.2V5h-2.8",
+  moon: "M13 9.4A5.3 5.3 0 0 1 6.6 3 5.4 5.4 0 1 0 13 9.4z",
+  folder: "M2.5 12.5v-9h4l1.4 2h5.6v7z",
+  file: "M4 2.5h5l3 3v8H4zM9 2.5v3h3",
+  archive: "M2.5 4.2h11v2.6h-11zM3.6 6.8h8.8v6.4H3.6zM6.4 9.2h3.2",
+  users: "M6 8.2a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6zM1.8 13.2c0-2.2 1.9-3.4 4.2-3.4s4.2 1.2 4.2 3.4M11 4a2.2 2.2 0 0 1 0 4.3M12.2 9.9c1.3.4 2 1.4 2 3.3",
+  puzzle:
+    "M6.2 2.5h3.6v1.7a1.2 1.2 0 1 0 2.4 0v-.2h1.3v3.6h-1.7a1.2 1.2 0 1 0 0 2.4h1.7v3.5H9.8v-1.7a1.2 1.2 0 1 0-2.4 0v1.7H3.9V10h1.7a1.2 1.2 0 1 0 0-2.4H3.9V4h2.3z",
+  sliders: "M2.5 5h7M11.5 5h2M2.5 11h2M6.5 11h7M10.5 3.4v3.2M5.5 9.4v3.2",
+  terminal: "M3.4 4.4 6.6 8l-3.2 3.6M8 11.6h4.6",
+  globe: "M8 2.2a5.8 5.8 0 1 0 0 11.6A5.8 5.8 0 0 0 8 2.2zM2.4 8h11.2M8 2.2c1.5 1.6 2.3 3.6 2.3 5.8S9.5 12.2 8 13.8C6.5 12.2 5.7 10.2 5.7 8S6.5 3.8 8 2.2z",
+  plus: "M8 3.5v9M3.5 8h9",
+  search: "M7.2 11.4a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4zM10.4 10.4 13.5 13.5",
+  refresh: "M13.2 7.2A5.2 5.2 0 0 0 4 4.6M2.8 8.8A5.2 5.2 0 0 0 12 11.4M2.6 3.6v3h3M13.4 12.4v-3h-3",
+  warning: "M8 2.8 14 13H2zM8 6.6v3.1M8 11.4h.01",
+  check: "M3.2 8.4 6.4 11.6l6.4-7.2",
+  close: "M4 4l8 8M12 4l-8 8",
+  minimize: "M3.5 8h9",
+  maximize: "M3.5 3.5h9v9h-9z",
+  "chevron-right": "M6 3.5 10.5 8 6 12.5",
+  "chevron-down": "M3.5 6 8 10.5 12.5 6",
+  "chevron-left": "M10 3.5 5.5 8 10 12.5",
+  trash: "M3 4.4h10M6.4 4.4V3h3.2v1.4M4.4 4.4l.6 8.2h6l.6-8.2M6.6 6.8v3.6M9.4 6.8v3.6",
+  external: "M9 3.5h3.5V7M12.5 3.5 7.5 8.5M11.5 9.5v3h-8v-8h3",
+  cpu: "M5 5h6v6H5zM6.4 2.6v2.4M9.6 2.6v2.4M6.4 11v2.4M9.6 11v2.4M2.6 6.4H5M2.6 9.6H5M11 6.4h2.4M11 9.6h2.4",
+  clock: "M8 2.6a5.4 5.4 0 1 0 0 10.8A5.4 5.4 0 0 0 8 2.6zM8 5.2V8l2.2 1.6",
+};
+
+/** Icons that read better as a filled shape than as an outline. */
+const FILLED: ReadonlySet<IconName> = new Set<IconName>(["play", "stop"]);
+
+export interface IconProps {
+  name: IconName;
+  size?: number;
+  className?: string;
+  /** Give an icon a label only when it is the sole content of a control. */
+  label?: string;
+}
+
+export function Icon({ name, size = 16, className, label }: IconProps) {
+  const filled = FILLED.has(name);
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      className={className}
+      fill={filled ? "currentColor" : "none"}
+      stroke={filled ? "none" : "currentColor"}
+      strokeWidth={1.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role={label ? "img" : "presentation"}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
+      focusable="false"
+    >
+      <path d={PATHS[name]} />
+    </svg>
+  );
+}

@@ -1,0 +1,174 @@
+/*
+ * Design tokens.
+ *
+ * Everything visual resolves to a variable declared here, which is what makes
+ * swapping the whole look a one-file change rather than a sweep through the
+ * components.
+ *
+ * The ground is ink: a near-black blue-grey, hairline borders, and one accent
+ * used sparingly enough to still mean something. The accent is the user's
+ * choice — every accent-derived value is computed from a single base colour,
+ * so adding one is one line.
+ *
+ * Status colours are their own scale. They carry meaning, so they never double
+ * as decoration and never follow the accent.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* -- ground ----------------------------------------------------------- */
+  --ink-900: #07090e;
+  --ink-850: #0a0d14;
+  --ink-800: #0e121a;
+  --ink-750: #131822;
+  --ink-700: #1a202c;
+  --ink-600: #232a38;
+
+  --surface: var(--ink-800);
+  --surface-raised: var(--ink-750);
+  --surface-sunken: var(--ink-850);
+  --canvas: var(--ink-900);
+
+  /* Hairlines, not boxes. Borders carry the structure so shadows do not
+     have to, which keeps ten cards on screen from turning into soup. */
+  --line: rgb(255 255 255 / 7%);
+  --line-strong: rgb(255 255 255 / 13%);
+
+  /* -- type ------------------------------------------------------------- */
+  --text: #e6e8ec;
+  --text-muted: #9aa1ad;
+  --text-faint: #6b7280;
+  /* 4.6:1 on --surface: the faintest text allowed to carry meaning. */
+
+  --font-sans: "Inter var", Inter, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Cascadia Mono", "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.75rem;
+  --text-display: 2.25rem;
+
+  --tracking-label: 0.08em;
+
+  /* -- accent ----------------------------------------------------------- */
+  /* One base colour per theme; everything else is derived from it, so a new
+     accent is a single declaration in the block below. */
+  --accent-base: #22d3ee;
+  --accent: var(--accent-base);
+  --accent-bright: color-mix(in oklab, var(--accent-base) 72%, white);
+  --accent-dim: color-mix(in srgb, var(--accent-base) 14%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent-base) 34%, transparent);
+  /* The wash that gives a panel a lit edge instead of a flat fill. Kept under
+     5%: the previous app's version of this was a neon halo, and that is the
+     single loudest thing separating "designed" from "generated". */
+  --accent-wash: color-mix(in srgb, var(--accent-base) 4%, transparent);
+  /* Ink laid on top of a filled accent. Every accent here is light enough at
+     400-level that one dark neutral clears AA on all of them. */
+  --text-on-accent: #071016;
+
+  /* -- status ----------------------------------------------------------- */
+  --status-offline: #6b7280;
+  --status-sleeping: #7c8ec7;
+  --status-starting: #d99b3f;
+  --status-online: #5fbf8f;
+  --status-stopping: #a1846b;
+  --status-crashed: #d9614f;
+
+  --status-offline-dim: rgb(107 114 128 / 16%);
+  --status-sleeping-dim: rgb(124 142 199 / 16%);
+  --status-starting-dim: rgb(217 155 63 / 16%);
+  --status-online-dim: rgb(95 191 143 / 16%);
+  --status-stopping-dim: rgb(161 132 107 / 16%);
+  --status-crashed-dim: rgb(217 97 79 / 16%);
+
+  /* -- shape ------------------------------------------------------------ */
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-lg: 12px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --shadow-panel: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-pop: 0 12px 32px -8px rgb(0 0 0 / 60%);
+  /* Sunken surfaces (the console) get depth from an inset, not a border. */
+  --shadow-inset: inset 0 2px 10px rgb(0 0 0 / 45%);
+
+  /* -- motion ----------------------------------------------------------- */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --duration-fast: 120ms;
+  --duration: 200ms;
+
+  /* -- layout ----------------------------------------------------------- */
+  --titlebar-height: 38px;
+  --sidebar-width: 232px;
+}
+
+/* -- accents ------------------------------------------------------------ */
+/* Stamped on <html> by the app, and on individual swatches by the settings
+   picker — hence `[data-accent]` rather than `:root[data-accent]`, so a
+   preview swatch can carry its own accent without theming the whole page. */
+[data-accent="cyan"] { --accent-base: #22d3ee; }
+[data-accent="amber"] { --accent-base: #e8b44a; }
+[data-accent="emerald"] { --accent-base: #34d399; }
+[data-accent="violet"] { --accent-base: #a78bfa; }
+[data-accent="blue"] { --accent-base: #60a5fa; }
+[data-accent="rose"] { --accent-base: #fb7185; }
+
+/* A light theme exists because a machine in a bright room is a real place to
+   run a server from. Only the tokens change. */
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --ink-900: #f5f4f1;
+  --ink-850: #efeeea;
+  --ink-800: #ffffff;
+  --ink-750: #faf9f7;
+  --ink-700: #e9e7e2;
+  --ink-600: #dedbd4;
+
+  --surface: var(--ink-800);
+  --surface-raised: var(--ink-750);
+  --surface-sunken: var(--ink-850);
+  --canvas: var(--ink-900);
+
+  --line: rgb(20 20 20 / 10%);
+  --line-strong: rgb(20 20 20 / 18%);
+
+  --text: #16181d;
+  --text-muted: #545a66;
+  --text-faint: #767d8a;
+
+  /* The same base, darkened until it holds its own against white. */
+  --accent: color-mix(in oklab, var(--accent-base) 58%, #0b0b0b);
+  --accent-bright: color-mix(in oklab, var(--accent-base) 42%, #0b0b0b);
+  --accent-dim: color-mix(in srgb, var(--accent-base) 16%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent-base) 45%, transparent);
+  --accent-wash: color-mix(in srgb, var(--accent-base) 6%, transparent);
+  --text-on-accent: #ffffff;
+
+  --status-sleeping: #4f63a8;
+  --status-starting: #96660f;
+  --status-online: #26794f;
+  --status-stopping: #7a5a3c;
+  --status-crashed: #b2382a;
+
+  --shadow-inset: inset 0 2px 10px rgb(20 20 20 / 10%);
+}
+
+/* Motion is decoration here; meaning never depends on it. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration: 0ms;
+  }
+}

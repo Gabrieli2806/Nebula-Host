@@ -1,0 +1,251 @@
+{
+  "id": "minecraft",
+  "name": "Minecraft: Java Edition",
+  "accent": "#5FBF8F",
+  "icon": "minecraft",
+  "distributions": [
+    {
+      "id": "vanilla",
+      "name": "Vanilla",
+      "summary_key": "game.minecraft.dist.vanilla",
+      "has_loader_version": false
+    },
+    {
+      "id": "paper",
+      "name": "Paper",
+      "summary_key": "game.minecraft.dist.paper",
+      "has_loader_version": false,
+      "addon_loaders": ["paper", "spigot", "bukkit"],
+      "addon_dir": "plugins",
+      "tick_rate_command": "tps"
+    },
+    {
+      "id": "purpur",
+      "name": "Purpur",
+      "summary_key": "game.minecraft.dist.purpur",
+      "has_loader_version": false,
+      "addon_loaders": ["purpur", "paper", "spigot", "bukkit"],
+      "addon_dir": "plugins",
+      "tick_rate_command": "tps"
+    },
+    {
+      "id": "spigot",
+      "name": "Spigot",
+      "summary_key": "game.minecraft.dist.spigot",
+      "has_loader_version": false,
+      "addon_loaders": ["spigot", "bukkit"],
+      "addon_dir": "plugins",
+      "tick_rate_command": "tps"
+    },
+    {
+      "id": "fabric",
+      "name": "Fabric",
+      "summary_key": "game.minecraft.dist.fabric",
+      "has_loader_version": true,
+      "addon_loaders": ["fabric"],
+      "addon_dir": "mods"
+    },
+    {
+      "id": "forge",
+      "name": "Forge",
+      "summary_key": "game.minecraft.dist.forge",
+      "has_loader_version": true,
+      "addon_loaders": ["forge"],
+      "addon_dir": "mods",
+      "tick_rate_command": "forge tps"
+    },
+    {
+      "id": "neoforge",
+      "name": "NeoForge",
+      "summary_key": "game.minecraft.dist.neoforge",
+      "has_loader_version": true,
+      "addon_loaders": ["neoforge"],
+      "addon_dir": "mods",
+      "tick_rate_command": "neoforge tps"
+    }
+  ],
+  "runtime": { "kind": "java", "min_major": 8 },
+  "ports": [{ "key": "server-port", "default": 25565, "protocol": "tcp", "primary": true }],
+  "console": {
+    "ready_pattern": "Done \\([^)]*\\)!",
+    "join_pattern": "(?P<name>[A-Za-z0-9_]{1,16}) joined the game",
+    "leave_pattern": "(?P<name>[A-Za-z0-9_]{1,16}) left the game",
+    "tick_rate_patterns": [
+      "TPS from last 1m, 5m, 15m: \\*?(?P<value>\\d+(?:\\.\\d+)?)",
+      "Overall:\\s+(?P<value>\\d+(?:\\.\\d+)?) TPS",
+      "Mean TPS:\\s*(?P<value>\\d+(?:\\.\\d+)?)"
+    ],
+    "suppress_patterns": [
+      "TPS from last 1m",
+      "[A-Za-z][A-Za-z ]*: \\d+(?:\\.\\d+)? TPS \\(",
+      "Mean tick time:"
+    ],
+    "stop_command": "stop",
+    "strip_colour_codes": true
+  },
+  "players": {
+    "kind": "files",
+    "lists": {
+      "allowed": "whitelist.json",
+      "operators": "ops.json",
+      "banned": "banned-players.json"
+    }
+  },
+  "settings": [
+    {
+      "key": "motd",
+      "label_key": "setting.minecraft.motd",
+      "help_key": "setting.minecraft.motd.help",
+      "type": "text",
+      "default": "A Minecraft Server",
+      "max_len": 59,
+      "group": "identity"
+    },
+    {
+      "key": "max-players",
+      "label_key": "setting.minecraft.max_players",
+      "type": "int",
+      "default": 20,
+      "min": 1,
+      "max": 200,
+      "group": "players"
+    },
+    {
+      "key": "white-list",
+      "label_key": "setting.minecraft.whitelist",
+      "help_key": "setting.minecraft.whitelist.help",
+      "type": "bool",
+      "default": false,
+      "group": "players"
+    },
+    {
+      "key": "online-mode",
+      "label_key": "setting.minecraft.online_mode",
+      "help_key": "setting.minecraft.online_mode.help",
+      "type": "bool",
+      "default": true,
+      "group": "players",
+      "restart_required": true
+    },
+    {
+      "key": "pvp",
+      "label_key": "setting.minecraft.pvp",
+      "type": "bool",
+      "default": true,
+      "group": "world"
+    },
+    {
+      "key": "difficulty",
+      "label_key": "setting.minecraft.difficulty",
+      "type": "choice",
+      "default": "easy",
+      "options": [
+        { "value": "peaceful", "label_key": "setting.minecraft.difficulty.peaceful" },
+        { "value": "easy", "label_key": "setting.minecraft.difficulty.easy" },
+        { "value": "normal", "label_key": "setting.minecraft.difficulty.normal" },
+        { "value": "hard", "label_key": "setting.minecraft.difficulty.hard" }
+      ],
+      "group": "world"
+    },
+    {
+      "key": "gamemode",
+      "label_key": "setting.minecraft.gamemode",
+      "type": "choice",
+      "default": "survival",
+      "options": [
+        { "value": "survival", "label_key": "setting.minecraft.gamemode.survival" },
+        { "value": "creative", "label_key": "setting.minecraft.gamemode.creative" },
+        { "value": "adventure", "label_key": "setting.minecraft.gamemode.adventure" },
+        { "value": "spectator", "label_key": "setting.minecraft.gamemode.spectator" }
+      ],
+      "group": "world"
+    },
+    {
+      "key": "hardcore",
+      "label_key": "setting.minecraft.hardcore",
+      "help_key": "setting.minecraft.hardcore.help",
+      "type": "bool",
+      "default": false,
+      "group": "world",
+      "restart_required": true
+    },
+    {
+      "key": "level-seed",
+      "label_key": "setting.minecraft.seed",
+      "help_key": "setting.minecraft.seed.help",
+      "type": "text",
+      "default": "",
+      "group": "world",
+      "restart_required": true
+    },
+    {
+      "key": "view-distance",
+      "label_key": "setting.minecraft.view_distance",
+      "help_key": "setting.minecraft.view_distance.help",
+      "type": "int",
+      "default": 10,
+      "min": 3,
+      "max": 32,
+      "unit": "chunks",
+      "group": "performance"
+    },
+    {
+      "key": "simulation-distance",
+      "label_key": "setting.minecraft.simulation_distance",
+      "help_key": "setting.minecraft.simulation_distance.help",
+      "type": "int",
+      "default": 10,
+      "min": 3,
+      "max": 32,
+      "unit": "chunks",
+      "group": "performance"
+    },
+    {
+      "key": "spawn-protection",
+      "label_key": "setting.minecraft.spawn_protection",
+      "type": "int",
+      "default": 16,
+      "min": 0,
+      "max": 256,
+      "unit": "blocks",
+      "group": "world"
+    },
+    {
+      "key": "enable-command-block",
+      "label_key": "setting.minecraft.command_blocks",
+      "type": "bool",
+      "default": false,
+      "group": "world"
+    },
+    {
+      "key": "allow-flight",
+      "label_key": "setting.minecraft.allow_flight",
+      "help_key": "setting.minecraft.allow_flight.help",
+      "type": "bool",
+      "default": false,
+      "group": "players"
+    }
+  ],
+  "backup": {
+    "include": [
+      "world",
+      "world_nether",
+      "world_the_end",
+      "server.properties",
+      "ops.json",
+      "whitelist.json",
+      "banned-players.json",
+      "banned-ips.json",
+      "mods",
+      "plugins",
+      "config"
+    ],
+    "exclude": ["**/logs/**", "**/crash-reports/**", "**/cache/**", "**/*.log.gz"],
+    "requires_stop": false,
+    "flush_command": "save-all flush"
+  },
+  "wake": {
+    "protocol": "minecraft_java",
+    "sleeping_motd": "{name} is asleep — join to wake it"
+  }
+}

@@ -1,0 +1,195 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #63b3a4; text-decoration: none; }
+    a:hover { color: #7fd0c0; }
+  </style>
+</helmet>
+
+<!-- Direction C — Operator. The console is not a tab you go and find; it is
+     half the screen, always. Servers are a compact left rail, live output is
+     the right two-thirds, and the accent is signal-green rather than warm. -->
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: #0b0f0e; color: #d8ded9; font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; overflow: hidden;">
+
+  <!-- Title bar doubles as the node readout -->
+  <div style="height: 40px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 0 0 16px; background: #0e1413; border-bottom: 1px solid rgba(255,255,255,0.08);">
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <svg width="18" height="18" viewBox="0 0 26 26" fill="none">
+        <circle cx="13" cy="13" r="3.2" fill="#63b3a4"/>
+        <ellipse cx="13" cy="13" rx="11.2" ry="5" stroke="#63b3a4" stroke-opacity="0.55" stroke-width="1.1" transform="rotate(-22 13 13)"/>
+        <ellipse cx="13" cy="13" rx="7.4" ry="10.8" stroke="#63b3a4" stroke-opacity="0.28" stroke-width="1.1" transform="rotate(14 13 13)"/>
+      </svg>
+      <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px; font-weight: 600; letter-spacing: 0.02em;">MSI-PULSAR</span>
+      <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #6f7a76;">192.168.1.42</span>
+      <span style="width: 1px; height: 16px; background: rgba(255,255,255,0.12);"></span>
+      <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #6f7a76;">cpu <span style="color: #d8ded9;">34%</span></span>
+      <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #6f7a76;">mem <span style="color: #d8ded9;">11.2/32.0G</span></span>
+      <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #6f7a76;">disk <span style="color: #d8ded9;">420/930G</span></span>
+      <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #6f7a76;">up <span style="color: #d8ded9;">2</span></span>
+    </div>
+    <div style="display: flex;">
+      <div style="width: 46px; height: 40px; display: flex; align-items: center; justify-content: center; color: #8b958f;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 8h9"/></svg>
+      </div>
+      <div style="width: 46px; height: 40px; display: flex; align-items: center; justify-content: center; color: #8b958f;">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 3.5h9v9h-9z"/></svg>
+      </div>
+      <div style="width: 46px; height: 40px; display: flex; align-items: center; justify-content: center; color: #8b958f;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex: 1; display: flex; min-height: 0;">
+
+    <!-- Left: every server, compact, with a per-game colour stripe -->
+    <div style="width: 380px; flex: none; display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.08); background: #0e1413;">
+
+      <div style="flex: none; display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+        <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #6f7a76;">Servers · 5</span>
+        <div style="height: 26px; padding: 0 10px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(99,179,164,0.4); border-radius: 4px; color: #63b3a4; font-size: 12px; font-weight: 500;">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3.5v9M3.5 8h9"/></svg>
+          New
+        </div>
+      </div>
+
+      <!-- Selected -->
+      <div style="display: flex; gap: 12px; padding: 12px 14px; background: #131a18; border-bottom: 1px solid rgba(255,255,255,0.08); border-left: 2px solid #63b3a4;">
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="width: 7px; height: 7px; border-radius: 999px; background: #5fbf8f;"></span>
+            <span style="font-weight: 600;">Friday night survival</span>
+          </div>
+          <div style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11px; color: #6f7a76;">paper 1.21.4 · 4/20 · 20.0 tps · 4h12m</div>
+        </div>
+        <div style="width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.14); border-radius: 4px;">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 4.5h7v7h-7z"/></svg>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); border-left: 2px solid transparent;">
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="width: 7px; height: 7px; border-radius: 999px; background: #d99b3f;"></span>
+            <span style="font-weight: 600;">All the Mods 10</span>
+          </div>
+          <div style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11px; color: #d99b3f;">loading mods 214/380</div>
+          <div style="height: 2px; border-radius: 999px; background: rgba(255,255,255,0.12);"><div style="width: 56%; height: 100%; border-radius: 999px; background: #d99b3f;"></div></div>
+        </div>
+        <div style="width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.14); border-radius: 4px;">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 4.5h7v7h-7z"/></svg>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); border-left: 2px solid transparent;">
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="width: 7px; height: 7px; border-radius: 999px; background: #7c8ec7;"></span>
+            <span style="font-weight: 600;">Creative build</span>
+          </div>
+          <div style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11px; color: #7c8ec7;">sleeping · joining wakes it</div>
+        </div>
+        <div style="width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(99,179,164,0.4); border-radius: 4px; color: #63b3a4;">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.4 12.6 8 5 12.6z"/></svg>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); border-left: 2px solid transparent;">
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="width: 7px; height: 7px; border-radius: 999px; background: #d9614f;"></span>
+            <span style="font-weight: 600;">Old world 1.16</span>
+          </div>
+          <div style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11px; color: #d9614f;">java not found</div>
+        </div>
+        <div style="width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.14); border-radius: 4px;">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.4 12.6 8 5 12.6z"/></svg>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); border-left: 2px solid transparent;">
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="width: 7px; height: 7px; border-radius: 999px; background: #6b7280;"></span>
+            <span style="font-weight: 600; color: #a8b1ab;">Vanilla test</span>
+          </div>
+          <div style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11px; color: #6f7a76;">offline · last played 12 Aug</div>
+        </div>
+        <div style="width: 28px; height: 28px; flex: none; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.14); border-radius: 4px;">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.4 12.6 8 5 12.6z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: the selected server, console first -->
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+
+      <div style="flex: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+        <div style="display: flex; align-items: baseline; gap: 14px;">
+          <span style="font-size: 20px; font-weight: 600;">Friday night survival</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #6f7a76;">192.168.1.42:25565</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 20px;">
+          <div style="display: flex; flex-direction: column; align-items: flex-end;">
+            <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 16px; color: #5fbf8f;">20.0</span>
+            <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #6f7a76;">tps</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end;">
+            <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 16px;">3.1G</span>
+            <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #6f7a76;">mem</span>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-end;">
+            <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 16px;">4</span>
+            <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #6f7a76;">players</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex: none; display: flex; align-items: center; gap: 4px; padding: 8px 20px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+        <div style="height: 26px; padding: 0 10px; display: flex; align-items: center; border-radius: 4px; background: rgba(99,179,164,0.14); color: #63b3a4; font-size: 12px; font-weight: 600;">Console</div>
+        <div style="height: 26px; padding: 0 10px; display: flex; align-items: center; color: #8b958f; font-size: 12px;">Files</div>
+        <div style="height: 26px; padding: 0 10px; display: flex; align-items: center; color: #8b958f; font-size: 12px;">Backups</div>
+        <div style="height: 26px; padding: 0 10px; display: flex; align-items: center; color: #8b958f; font-size: 12px;">Players</div>
+        <div style="height: 26px; padding: 0 10px; display: flex; align-items: center; color: #8b958f; font-size: 12px;">Mods</div>
+        <div style="height: 26px; padding: 0 10px; display: flex; align-items: center; color: #8b958f; font-size: 12px;">Settings</div>
+      </div>
+
+      <!-- The console itself, given the room it deserves -->
+      <div style="flex: 1; min-height: 0; padding: 10px 0; background: #080b0a; font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px; line-height: 1.65; display: flex; flex-direction: column;">
+        <div style="display: flex; gap: 12px; padding: 1px 20px;"><span style="color: #4c5450;">21:04:12</span><span style="color: #63b3a4;">Starting Friday night survival…</span></div>
+        <div style="display: flex; gap: 12px; padding: 1px 20px;"><span style="color: #4c5450;">21:04:18</span><span>[Server thread/INFO]: Starting minecraft server version 1.21.4</span></div>
+        <div style="display: flex; gap: 12px; padding: 1px 20px;"><span style="color: #4c5450;">21:04:19</span><span>[Server thread/INFO]: Loading properties</span></div>
+        <div style="display: flex; gap: 12px; padding: 1px 20px;"><span style="color: #4c5450;">21:04:21</span><span>[Server thread/INFO]: Preparing level "world"</span></div>
+        <div style="display: flex; gap: 12px; padding: 1px 20px;"><span style="color: #4c5450;">21:04:27</span><span>[Server thread/INFO]: Preparing spawn area: 84%</span></div>
+        <div style="display: flex; gap: 12px; padding: 1px 20px;"><span style="color: #4c5450;">21:04:31</span><span>[Server thread/INFO]: Done (12.345s)! For help, type "help"</span></div>
+        <div style="display: flex; gap: 12px; padding: 1px 20px;"><span style="color: #4c5450;">21:11:03</span><span>[Server thread/INFO]: Gabrieli2806 joined the game</span></div>
+        <div style="display: flex; gap: 12px; padding: 1px 20px;"><span style="color: #4c5450;">21:11:44</span><span>[Server thread/INFO]: mareu_ joined the game</span></div>
+        <div style="display: flex; gap: 12px; padding: 1px 20px;"><span style="color: #4c5450;">21:14:02</span><span style="color: #d99b3f;">[Server thread/WARN]: Can't keep up! Is the server overloaded? Running 2103ms behind</span></div>
+        <div style="display: flex; gap: 12px; padding: 1px 20px;"><span style="color: #4c5450;">21:15:20</span><span>[Server thread/INFO]: dani_pv joined the game</span></div>
+        <div style="display: flex; gap: 12px; padding: 1px 20px;"><span style="color: #4c5450;">21:22:41</span><span>[Server thread/INFO]: &lt;Gabrieli2806&gt; anyone got spare iron</span></div>
+        <div style="display: flex; gap: 12px; padding: 1px 20px;"><span style="color: #4c5450;">21:23:07</span><span>[Server thread/INFO]: &lt;mareu_&gt; coming with a stack</span></div>
+        <div style="display: flex; gap: 12px; padding: 1px 20px;"><span style="color: #4c5450;">21:28:55</span><span>[Server thread/INFO]: ferran42 joined the game</span></div>
+        <div style="display: flex; gap: 12px; padding: 1px 20px;"><span style="color: #4c5450;">21:31:12</span><span>[Server thread/INFO]: Saved the game</span></div>
+        <div style="display: flex; gap: 12px; padding: 1px 20px;"><span style="color: #4c5450;">21:35:40</span><span style="color: #63b3a4;">Backup taken — 1.8 GB</span></div>
+      </div>
+
+      <div style="flex: none; display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-top: 1px solid rgba(255,255,255,0.08); background: #0e1413;">
+        <span style="font-family: 'IBM Plex Mono', Consolas, monospace; color: #63b3a4;">&gt;</span>
+        <span style="flex: 1; font-family: 'IBM Plex Mono', Consolas, monospace; color: #4c5450;">say the world saves in 5 minutes</span>
+        <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 11px; color: #4c5450;">↑ history</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

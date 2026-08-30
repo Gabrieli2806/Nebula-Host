@@ -1,0 +1,31 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "A — Ink & Sand (built)" },
+    { "file": "DirectionB.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 900, "title": "B — Workbench" },
+    { "file": "DirectionC.dc.html", "x": 3120, "y": 0, "w": 1440, "h": 900, "title": "C — Operator" }
+  ],
+  "annotations": [
+    {
+      "id": "note-a",
+      "x": 0,
+      "y": -190,
+      "w": 420,
+      "text": "A — Ink & Sand\nDark, hairline borders, one warm accent. Cards answer the three questions people open the app for: is it up, who is on, what address do I send.\nTradeoff: cards cost vertical space — about six servers per screen."
+    },
+    {
+      "id": "note-b",
+      "x": 1560,
+      "y": -190,
+      "w": 420,
+      "text": "B — Workbench\nLight and paper-toned, serif headings, one row per server, node stats as a header strip. Fifteen servers fit without scrolling.\nTradeoff: reads as a tool, not a game thing; less at-a-glance for a single server."
+    },
+    {
+      "id": "note-c",
+      "x": 3120,
+      "y": -190,
+      "w": 420,
+      "text": "C — Operator\nConsole-forward: server rail on the left, live output filling the right. Monospace throughout, signal-green accent.\nTradeoff: opinionated and technical — great for one main server, heavier for a casual user."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

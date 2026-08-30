@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+# Build output
+dist/
+dist-ssr/
+*.local
+# Rust
+target/
+**/target/
+# Packaging output — never commit installers or signing material
+src-tauri/msix/out/
+src-tauri/msix/staging/
+*.msix
+*.msixbundle
+*.appx
+*.pfx
+*.cer
+*.p12
+# Editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+# Reference copy of the previous implementation, kept only during the rebuild
+.legacy/

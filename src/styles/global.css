@@ -1,0 +1,427 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/*
+ * Everything that is not a utility lives in `@layer components`.
+ *
+ * Tailwind 4 puts its utilities in `@layer utilities`, and an *unlayered*
+ * rule beats every layered utility no matter how specific the utility is. A
+ * stray unlayered `.status-dot { position: relative }` once silently defeated
+ * `absolute` on a status dot; `:where()` does not help, because the problem is
+ * layer order rather than specificity. So: no unlayered rules in this file.
+ */
+
+@theme {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--text);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-accent-bright: var(--accent-bright);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-sm: var(--radius-sm);
+  --radius-DEFAULT: var(--radius);
+  --radius-lg: var(--radius-lg);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    /* A 40px grid at ~1.5% opacity, faded out downward. You should not be able
+       to see it, only miss it if it goes: it stops a full-screen dark app from
+       reading as a void. */
+    background-color: var(--canvas);
+    background-image:
+      linear-gradient(rgb(255 255 255 / 1.6%) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(255 255 255 / 1.6%) 1px, transparent 1px);
+    background-size: 40px 40px;
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    /* The app is a window, not a document: nothing here scrolls the shell. */
+    overflow: hidden;
+    /* Text selection belongs to content, not to chrome. */
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable],
+  .selectable {
+    user-select: text;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-faint);
+    background-clip: content-box;
+  }
+}
+
+@layer components {
+  /* -- surfaces --------------------------------------------------------- */
+  /* Surfaces catch a little of the accent from the top-left, the way a panel
+     catches light. 4% — enough to give the card an edge and a direction,
+     nowhere near the coloured glow that reads as generated. */
+  .panel,
+  .panel-flush {
+    background:
+      linear-gradient(150deg, var(--accent-wash), transparent 55%),
+      var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-panel);
+  }
+
+  .panel-flush {
+    overflow: hidden;
+  }
+
+  /* Panels arrive rather than appear. One short fade-up, no stagger, no
+     bounce; reduced-motion turns it off entirely. */
+  .panel,
+  .panel-flush {
+    animation: nebula-rise var(--duration) var(--ease) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .panel,
+    .panel-flush {
+      animation: none;
+    }
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .label {
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 600;
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* -- buttons ---------------------------------------------------------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    height: 34px;
+    padding: 0 var(--space-4);
+    border-radius: var(--radius);
+    border: 1px solid var(--line-strong);
+    background: var(--surface-raised);
+    color: var(--text);
+    font: inherit;
+    font-weight: 550;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background var(--duration-fast) var(--ease),
+      border-color var(--duration-fast) var(--ease);
+  }
+
+  .btn:hover:not(:disabled) {
+    background: var(--ink-700);
+    border-color: var(--text-faint);
+  }
+
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--text-on-accent);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-bright);
+    border-color: var(--accent-bright);
+  }
+
+  .btn-quiet {
+    background: transparent;
+    border-color: transparent;
+    color: var(--text-muted);
+  }
+
+  .btn-quiet:hover:not(:disabled) {
+    background: var(--surface-raised);
+    border-color: var(--line);
+    color: var(--text);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: var(--status-crashed-dim);
+    border-color: var(--status-crashed);
+    color: var(--status-crashed);
+  }
+
+  .btn-sm {
+    height: 28px;
+    padding: 0 var(--space-3);
+    font-size: var(--text-sm);
+  }
+
+  .btn-icon {
+    width: 34px;
+    padding: 0;
+  }
+
+  /* -- fields ----------------------------------------------------------- */
+  .field {
+    width: 100%;
+    height: 34px;
+    padding: 0 var(--space-3);
+    background: var(--surface-sunken);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    color: var(--text);
+    font: inherit;
+  }
+
+  .field:hover:not(:disabled) {
+    border-color: var(--text-faint);
+  }
+
+  .field::placeholder {
+    color: var(--text-faint);
+  }
+
+  .field-invalid {
+    border-color: var(--status-crashed);
+  }
+
+  textarea.field {
+    height: auto;
+    padding: var(--space-3);
+    line-height: 1.6;
+    resize: vertical;
+  }
+
+  /* -- status ----------------------------------------------------------- */
+  /* One component owns these six states; nothing else re-derives them. */
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 24px;
+    padding: 0 var(--space-3) 0 var(--space-2);
+    border-radius: 999px;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    background: var(--chip-bg);
+    color: var(--chip-fg);
+    border: 1px solid transparent;
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--chip-fg);
+    flex: none;
+  }
+
+  .status-dot-pulse::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+    border-radius: 999px;
+    border: 1px solid var(--chip-fg);
+    opacity: 0.5;
+    animation: nebula-pulse 1.8s var(--ease) infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .status-dot-pulse::after {
+      animation: none;
+    }
+  }
+
+  /* -- console ---------------------------------------------------------- */
+  /* The console is a hole in the panel, not another panel: darker than the
+     surface around it, with an inset shadow doing the work a border would
+     otherwise do badly. */
+  .console {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    line-height: 1.65;
+    background: var(--ink-900);
+    box-shadow: var(--shadow-inset);
+    color: #c9ced8;
+  }
+
+  .console-line {
+    display: flex;
+    gap: var(--space-3);
+    padding: 1px var(--space-4);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .console-line:hover {
+    background: rgb(255 255 255 / 3%);
+  }
+
+  .console-warn {
+    color: var(--status-starting);
+  }
+
+  .console-error {
+    color: var(--status-crashed);
+  }
+
+  .console-system {
+    color: var(--accent);
+  }
+
+  /* -- misc ------------------------------------------------------------- */
+  .divider {
+    height: 1px;
+    background: var(--line);
+  }
+
+  .meter {
+    height: 3px;
+    border-radius: 999px;
+    background: var(--line-strong);
+    overflow: hidden;
+  }
+
+  .meter-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--accent);
+    transition: width var(--duration) var(--ease);
+  }
+
+  .drag-region {
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+  }
+
+  /* A dial reads a proportion faster than a bar at this size, and gives the
+     node panel something with craft in it. */
+  .ring-track {
+    fill: none;
+    stroke: var(--line-strong);
+  }
+
+  .ring-value {
+    fill: none;
+    stroke: var(--accent);
+    stroke-linecap: round;
+    transition: stroke-dashoffset var(--duration) var(--ease);
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--surface-raised) 25%,
+      var(--ink-700) 37%,
+      var(--surface-raised) 63%
+    );
+    background-size: 400% 100%;
+    animation: nebula-shimmer 1.4s ease infinite;
+    border-radius: var(--radius-sm);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton {
+      animation: none;
+    }
+  }
+}
+
+@keyframes nebula-pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+  70% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes nebula-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes nebula-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}

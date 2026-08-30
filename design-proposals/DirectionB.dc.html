@@ -1,0 +1,236 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #7d5608; text-decoration: none; }
+    a:hover { color: #5c3f06; }
+  </style>
+</helmet>
+
+<!-- Direction B — Workbench. Light, paper-toned, density first: one table row
+     per server, a serif for headings, and the node as a strip across the top
+     rather than a sidebar panel. Built for someone running fifteen servers. -->
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: #f5f4f1; color: #16181d; font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; font-size: 14px; overflow: hidden;">
+
+  <!-- Title bar -->
+  <div style="height: 38px; flex: none; display: flex; align-items: center; justify-content: space-between; padding-left: 16px; background: #efeeea; border-bottom: 1px solid rgba(20,20,20,0.10);">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <svg width="18" height="18" viewBox="0 0 26 26" fill="none">
+        <circle cx="13" cy="13" r="3.2" fill="#9a6b12"/>
+        <ellipse cx="13" cy="13" rx="11.2" ry="5" stroke="#9a6b12" stroke-opacity="0.6" stroke-width="1.1" transform="rotate(-22 13 13)"/>
+        <ellipse cx="13" cy="13" rx="7.4" ry="10.8" stroke="#9a6b12" stroke-opacity="0.3" stroke-width="1.1" transform="rotate(14 13 13)"/>
+      </svg>
+      <span style="font-size: 13px; font-weight: 600;">Nebula Host</span>
+    </div>
+    <div style="display: flex;">
+      <div style="width: 46px; height: 38px; display: flex; align-items: center; justify-content: center; color: #545a66;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3.5 8h9"/></svg>
+      </div>
+      <div style="width: 46px; height: 38px; display: flex; align-items: center; justify-content: center; color: #545a66;">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.5 3.5h9v9h-9z"/></svg>
+      </div>
+      <div style="width: 46px; height: 38px; display: flex; align-items: center; justify-content: center; color: #545a66;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- The node is a strip, not a panel: it is a header fact, always in view -->
+  <div style="flex: none; display: flex; align-items: center; gap: 32px; padding: 14px 28px; background: #ffffff; border-bottom: 1px solid rgba(20,20,20,0.10);">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="width: 7px; height: 7px; border-radius: 999px; background: #26794f;"></span>
+      <span style="font-family: 'Source Serif 4', Georgia, serif; font-size: 20px;">MSI-PULSAR</span>
+      <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #545a66;">192.168.1.42</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 28px; margin-left: auto;">
+      <div style="display: flex; flex-direction: column; gap: 5px; width: 150px;">
+        <div style="display: flex; justify-content: space-between; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #767d8a;">
+          <span>CPU</span><span style="font-family: 'IBM Plex Mono', Consolas, monospace;">34%</span>
+        </div>
+        <div style="height: 3px; border-radius: 999px; background: rgba(20,20,20,0.10);"><div style="width: 34%; height: 100%; border-radius: 999px; background: #9a6b12;"></div></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 5px; width: 190px;">
+        <div style="display: flex; justify-content: space-between; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #767d8a;">
+          <span>Memory</span><span style="font-family: 'IBM Plex Mono', Consolas, monospace;">11.2 / 32.0 GB</span>
+        </div>
+        <div style="height: 3px; border-radius: 999px; background: rgba(20,20,20,0.10);"><div style="width: 35%; height: 100%; border-radius: 999px; background: #9a6b12;"></div></div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 5px; width: 170px;">
+        <div style="display: flex; justify-content: space-between; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #767d8a;">
+          <span>Disk</span><span style="font-family: 'IBM Plex Mono', Consolas, monospace;">420 / 930 GB</span>
+        </div>
+        <div style="height: 3px; border-radius: 999px; background: rgba(20,20,20,0.10);"><div style="width: 45%; height: 100%; border-radius: 999px; background: rgba(154,107,18,0.4);"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex: 1; display: flex; min-height: 0;">
+
+    <!-- Narrow rail: icons only, because the list wants the width -->
+    <div style="width: 60px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 0; background: #efeeea; border-right: 1px solid rgba(20,20,20,0.10);">
+      <div style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: rgba(154,107,18,0.12); color: #9a6b12;">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M2.5 3.5h11v4h-11zM2.5 8.5h11v4h-11z"/></svg>
+      </div>
+      <div style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; color: #767d8a;">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="2.2"/><path d="M8 1.6v2M8 12.4v2M14.4 8h-2M3.6 8h-2M12.5 3.5l-1.4 1.4M4.9 11.1l-1.4 1.4M12.5 12.5l-1.4-1.4M4.9 4.9L3.5 3.5"/></svg>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div style="flex: 1; min-width: 0; padding: 24px 28px; display: flex; flex-direction: column; gap: 18px;">
+
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 16px;">
+        <div style="display: flex; align-items: baseline; gap: 14px;">
+          <span style="font-family: 'Source Serif 4', Georgia, serif; font-size: 30px;">Servers</span>
+          <span style="color: #545a66;">2 of 5 running</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="height: 32px; padding: 0 12px; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(20,20,20,0.18); border-radius: 6px; background: #ffffff; color: #545a66; font-size: 13px;">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="7.2" cy="7.2" r="4.2"/><path d="M10.4 10.4 13.5 13.5"/></svg>
+            Search
+          </div>
+          <div style="height: 32px; padding: 0 14px; display: flex; align-items: center; gap: 8px; border-radius: 6px; background: #16181d; color: #f5f4f1; font-size: 13px; font-weight: 500;">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3.5v9M3.5 8h9"/></svg>
+            New server
+          </div>
+        </div>
+      </div>
+
+      <div style="background: #ffffff; border: 1px solid rgba(20,20,20,0.10); border-radius: 10px; overflow: hidden;">
+
+        <!-- Header row -->
+        <div style="display: grid; grid-template-columns: 22px 2.2fr 1.3fr 0.8fr 0.9fr 0.9fr 1.4fr 96px; gap: 16px; align-items: center; padding: 10px 18px; border-bottom: 1px solid rgba(20,20,20,0.10); background: #faf9f7; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #767d8a; font-weight: 600;">
+          <span></span><span>Server</span><span>Build</span><span>Players</span><span>Memory</span><span>Uptime</span><span>Address</span><span></span>
+        </div>
+
+        <!-- Online -->
+        <div style="display: grid; grid-template-columns: 22px 2.2fr 1.3fr 0.8fr 0.9fr 0.9fr 1.4fr 96px; gap: 16px; align-items: center; padding: 12px 18px; border-bottom: 1px solid rgba(20,20,20,0.10);">
+          <span style="width: 8px; height: 8px; border-radius: 999px; background: #26794f;"></span>
+          <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+            <span style="font-weight: 600;">Friday night survival</span>
+            <span style="font-size: 12px; color: #26794f;">Online</span>
+          </div>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #545a66;">paper 1.21.4</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px;">4 / 20</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px;">3.1 GB</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px;">4h 12m</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #545a66;">…1.42:25565</span>
+          <div style="display: flex; justify-content: flex-end; gap: 6px;">
+            <div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(20,20,20,0.18); border-radius: 6px;">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 4.5h7v7h-7z"/></svg>
+            </div>
+            <div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(20,20,20,0.18); border-radius: 6px; color: #545a66;">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 4.4 6.6 8l-3.2 3.6M8 11.6h4.6"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Starting, with the phase said out loud in the row itself -->
+        <div style="display: grid; grid-template-columns: 22px 2.2fr 1.3fr 0.8fr 0.9fr 0.9fr 1.4fr 96px; gap: 16px; align-items: center; padding: 12px 18px; border-bottom: 1px solid rgba(20,20,20,0.10); background: #faf9f7;">
+          <span style="width: 8px; height: 8px; border-radius: 999px; background: #96660f;"></span>
+          <div style="display: flex; flex-direction: column; gap: 3px; min-width: 0;">
+            <span style="font-weight: 600;">All the Mods 10</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 90px; height: 3px; border-radius: 999px; background: rgba(20,20,20,0.10);"><div style="width: 56%; height: 100%; border-radius: 999px; background: #96660f;"></div></div>
+              <span style="font-size: 12px; color: #96660f;">Loading mods 214/380</span>
+            </div>
+          </div>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #545a66;">neoforge 1.21.1</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px; color: #767d8a;">—</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px;">6.4 GB</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px;">38s</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #545a66;">…1.42:25567</span>
+          <div style="display: flex; justify-content: flex-end; gap: 6px;">
+            <div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(20,20,20,0.18); border-radius: 6px;">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4.5 4.5h7v7h-7z"/></svg>
+            </div>
+            <div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(20,20,20,0.18); border-radius: 6px; color: #545a66;">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 4.4 6.6 8l-3.2 3.6M8 11.6h4.6"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sleeping -->
+        <div style="display: grid; grid-template-columns: 22px 2.2fr 1.3fr 0.8fr 0.9fr 0.9fr 1.4fr 96px; gap: 16px; align-items: center; padding: 12px 18px; border-bottom: 1px solid rgba(20,20,20,0.10);">
+          <span style="width: 8px; height: 8px; border-radius: 999px; background: #4f63a8;"></span>
+          <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+            <span style="font-weight: 600;">Creative build</span>
+            <span style="font-size: 12px; color: #4f63a8;">Sleeping — joining wakes it</span>
+          </div>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #545a66;">fabric 1.21.1</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px; color: #767d8a;">—</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px; color: #767d8a;">—</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px; color: #767d8a;">—</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #545a66;">…1.42:25566</span>
+          <div style="display: flex; justify-content: flex-end; gap: 6px;">
+            <div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: #16181d; color: #f5f4f1;">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.4 12.6 8 5 12.6z"/></svg>
+            </div>
+            <div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(20,20,20,0.18); border-radius: 6px; color: #545a66;">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 4.4 6.6 8l-3.2 3.6M8 11.6h4.6"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Crashed -->
+        <div style="display: grid; grid-template-columns: 22px 2.2fr 1.3fr 0.8fr 0.9fr 0.9fr 1.4fr 96px; gap: 16px; align-items: center; padding: 12px 18px; border-bottom: 1px solid rgba(20,20,20,0.10); background: #faf9f7;">
+          <span style="width: 8px; height: 8px; border-radius: 999px; background: #b2382a;"></span>
+          <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+            <span style="font-weight: 600;">Old world 1.16</span>
+            <span style="font-size: 12px; color: #b2382a;">Java not found — set it in Settings</span>
+          </div>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #545a66;">forge 1.16.5</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px; color: #767d8a;">—</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px; color: #767d8a;">—</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px; color: #767d8a;">—</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #545a66;">…1.42:25568</span>
+          <div style="display: flex; justify-content: flex-end; gap: 6px;">
+            <div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(20,20,20,0.18); border-radius: 6px;">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.4 12.6 8 5 12.6z"/></svg>
+            </div>
+            <div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(20,20,20,0.18); border-radius: 6px; color: #545a66;">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 4.4 6.6 8l-3.2 3.6M8 11.6h4.6"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Offline -->
+        <div style="display: grid; grid-template-columns: 22px 2.2fr 1.3fr 0.8fr 0.9fr 0.9fr 1.4fr 96px; gap: 16px; align-items: center; padding: 12px 18px;">
+          <span style="width: 8px; height: 8px; border-radius: 999px; background: #6b7280;"></span>
+          <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+            <span style="font-weight: 600;">Vanilla test</span>
+            <span style="font-size: 12px; color: #767d8a;">Offline — last played 12 Aug</span>
+          </div>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #545a66;">vanilla 1.21.4</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px; color: #767d8a;">—</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px; color: #767d8a;">—</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 13px; color: #767d8a;">—</span>
+          <span style="font-family: 'IBM Plex Mono', Consolas, monospace; font-size: 12px; color: #545a66;">…1.42:25569</span>
+          <div style="display: flex; justify-content: flex-end; gap: 6px;">
+            <div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(20,20,20,0.18); border-radius: 6px;">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5 3.4 12.6 8 5 12.6z"/></svg>
+            </div>
+            <div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(20,20,20,0.18); border-radius: 6px; color: #545a66;">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3.4 4.4 6.6 8l-3.2 3.6M8 11.6h4.6"/></svg>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="font-size: 12px; color: #767d8a;">Double-click a row to open it. Fifteen servers fit on this screen without scrolling.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
