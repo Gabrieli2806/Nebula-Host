@@ -76,3 +76,21 @@ pub async fn java_runtimes(
 pub async fn java_download(state: State<'_>, major: u32) -> AppResult<JavaInstallation> {
     state.java_download(major).await
 }
+
+/// Settings › Java: the four Java slots and every JVM found.
+#[tauri::command]
+pub async fn java_overview(refresh: Option<bool>) -> AppResult<crate::service::java::JavaOverview> {
+    crate::service::java::java_overview(refresh.unwrap_or(false)).await
+}
+
+/// Settings › Diagnostics: the tail of the app's own log.
+#[tauri::command]
+pub async fn app_log(lines: Option<usize>) -> AppResult<crate::logging::AppLog> {
+    Ok(crate::logging::tail(lines.unwrap_or(400).min(5000)))
+}
+
+/// The logs folder on this PC.
+#[tauri::command]
+pub async fn app_log_folder() -> AppResult<String> {
+    crate::logging::folder()
+}

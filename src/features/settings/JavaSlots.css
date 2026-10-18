@@ -1,0 +1,124 @@
+/* Settings › Java slots. */
+
+@layer components {
+  .java-intro {
+    margin: 0;
+    padding: 14px 20px 4px;
+    max-width: 72ch;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .java-slots {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3) 20px 20px;
+  }
+
+  .java-slot {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface-sunken);
+  }
+
+  .java-slot[data-missing] {
+    border-style: dashed;
+  }
+
+  .java-slot-head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+  }
+
+  .java-slot-major {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--text-heading, var(--text));
+  }
+
+  .java-slot-for {
+    color: var(--text-faint);
+    font-size: var(--text-xs);
+  }
+
+  .java-slot-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .java-slot-path {
+    display: flex;
+    flex: 1 1 320px;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .java-slot-path code {
+    overflow: hidden;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .java-slot-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+  }
+
+  .java-tag {
+    padding: 1px 7px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .java-tag[data-kind="auto"] {
+    border-color: var(--accent-line);
+    color: var(--accent-ink, var(--accent));
+  }
+
+  .java-slot-none {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--status-starting);
+    font-size: var(--text-sm);
+  }
+
+  .java-slot-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .java-slot-actions select {
+    max-width: 260px;
+    height: 30px;
+    font-size: var(--text-xs);
+  }
+
+  .java-slot-ok {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    color: var(--status-online);
+    font-size: var(--text-xs);
+  }
+}

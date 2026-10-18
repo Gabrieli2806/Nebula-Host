@@ -246,11 +246,19 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             let refresh: Option<bool> = opt(args, "refresh")?;
             ok(service.java_runtimes(&id()?, refresh.unwrap_or(false)).await?)
         }
+        "java_overview" => {
+            let refresh: Option<bool> = opt(args, "refresh")?;
+            ok(crate::service::java::java_overview(refresh.unwrap_or(false)).await?)
+        }
+        "app_log" => {
+            let lines: Option<usize> = opt(args, "lines")?;
+            ok(crate::logging::tail(lines.unwrap_or(400).min(5000)))
+        }
         "java_download" => ok(service.java_download(arg(args, "major")?).await?),
         "upnp_check" => ok(crate::net::upnp::check().await),
 
         // Commands that act on the local machine's files or desktop.
-        "instance_reveal" | "files_import" | "files_import_check" | "mcp_status" | "mcp_configure"
+        "instance_reveal" | "app_log_folder" | "files_import" | "files_import_check" | "mcp_status" | "mcp_configure"
         | "mcp_regenerate_token" | "addons_search" | "addons_installed" | "addon_install" => {
             Err(local_only(command))
         }

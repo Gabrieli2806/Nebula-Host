@@ -40,6 +40,8 @@ import type {
   Backup,
   ConsoleLine,
   McpStatus,
+  JavaOverview,
+  AppLog,
   RemoteStatus,
   UpnpCheck,
   FileEntry,
@@ -301,6 +303,15 @@ export const api = {
       call<JavaRuntimes>("java_runtimes", { instanceId, refresh }),
     /** Download Eclipse Temurin; progress arrives as `javaDownload` events. */
     download: (major: number) => call<JavaInstallation>("java_download", { major }),
+    /** Settings › Java: the four slots (25/21/17/8) and every JVM found. */
+    overview: (refresh = false) => call<JavaOverview>("java_overview", { refresh }),
+  },
+
+  app: {
+    /** Tail of the app's own log (the managed machine's, when remote). */
+    log: (lines = 400) => call<AppLog>("app_log", { lines }),
+    /** The logs folder on this PC. */
+    logFolder: () => call<string>("app_log_folder"),
   },
 
   mcp: {

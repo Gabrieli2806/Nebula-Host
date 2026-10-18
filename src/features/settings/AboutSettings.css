@@ -1,0 +1,125 @@
+/* Settings › Diagnostics and About. */
+
+@layer components {
+  .about-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .about-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+    color: var(--accent-ink, var(--accent));
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .about-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface-card, var(--surface));
+    box-shadow: var(--shadow-card);
+  }
+
+  .about-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4) 20px;
+  }
+
+  .about-row-icon {
+    display: inline-flex;
+    flex: none;
+    color: var(--text-muted);
+  }
+
+  .about-row-text {
+    display: flex;
+    flex: 1 1 260px;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .about-row-title {
+    font-weight: 650;
+    color: var(--text-heading, var(--text));
+  }
+
+  .about-row-help {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .about-row-actions {
+    display: flex;
+    flex: none;
+    gap: var(--space-2);
+  }
+
+  .about-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-7) 20px var(--space-6);
+    text-align: center;
+  }
+
+  .about-name {
+    margin-top: var(--space-2);
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--text-heading, var(--text));
+  }
+
+  .about-tagline {
+    color: var(--text-muted);
+  }
+
+  .about-version {
+    color: var(--text-faint);
+    font-size: var(--text-sm);
+  }
+
+  .about-sep {
+    width: min(320px, 70%);
+    height: 1px;
+    margin: var(--space-3) 0;
+    background: var(--line);
+  }
+
+  .about-author {
+    color: var(--accent-ink, var(--accent));
+    font-weight: 650;
+  }
+
+  .about-log-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin: 0 0 var(--space-2);
+    color: var(--text-faint);
+    font-size: var(--text-xs);
+  }
+
+  .about-log {
+    max-height: 52vh;
+    margin: 0;
+    overflow: auto;
+    padding: var(--space-3);
+    border-radius: var(--radius);
+    background: var(--screen-bg, #04070d);
+    color: var(--screen-text, #d8dee9);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}

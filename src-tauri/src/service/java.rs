@@ -86,6 +86,58 @@ impl InstanceService {
     }
 }
 
+/// The Java majors games are built for, newest first — the slots App
+/// Settings shows (as Modrinth does): Minecraft 26.1+ → 25, 1.20.5+ → 21,
+/// 1.17–1.20.4 → 17, older → 8.
+pub const JAVA_SLOTS: [u32; 4] = [25, 21, 17, 8];
+
+/// One slot in Settings › Java.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JavaSlot {
+    pub major: u32,
+    /// The path the user pinned for this major, if any.
+    pub configured: Option<String>,
+    /// What servers needing this major will actually run on right now.
+    pub effective: Option<JavaInstallation>,
+    /// True when `effective` was found automatically (nothing pinned).
+    pub automatic: bool,
+}
+
+/// App-level Java overview: every JVM on the machine and what each slot uses.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JavaOverview {
+    pub slots: Vec<JavaSlot>,
+    pub installations: Vec<JavaInstallation>,
+    pub can_download: bool,
+}
+
+pub async fn java_overview(refresh: bool) -> AppResult<JavaOverview> {
+    tokio::task::spawn_blocking(move || {
+        let installations = java::detect_installations(refresh);
+        let configured = crate::store::settings::load().map(|s| s.java_paths).unwrap_or_default();
+        let slots = JAVA_SLOTS
+            .iter()
+            .map(|&major| {
+                let pinned = configured.get(&major.to_string()).map(|p| p.trim().to_string()).filter(|p| !p.is_empty());
+                let effective = match &pinned {
+                    Some(path) => installations
+                        .iter()
+                        .find(|i| i.path.eq_ignore_ascii_case(path))
+                        .cloned()
+                        .or_else(|| java::probe(std::path::Path::new(path)).ok()),
+                    None => java::pick_for_major(&installations, major),
+                };
+                JavaSlot { major, automatic: pinned.is_none(), configured: pinned, effective }
+            })
+            .collect();
+        Ok(JavaOverview { slots, installations, can_download: java::adoptium_platform().is_some() })
+    })
+    .await
+    .map_err(AppError::unexpected)?
+}
+
 fn in_flight() -> &'static Mutex<HashSet<u32>> {
     static SET: OnceLock<Mutex<HashSet<u32>>> = OnceLock::new();
     SET.get_or_init(|| Mutex::new(HashSet::new()))

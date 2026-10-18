@@ -13,7 +13,6 @@ use nebula_host_lib::error::AppResult;
 use nebula_host_lib::model::Node;
 use nebula_host_lib::service::{self, InstanceService};
 use nebula_host_lib::{remote, store};
-use tracing_subscriber::EnvFilter;
 
 struct Args {
     command: String,
@@ -80,9 +79,7 @@ async fn pair(port: u16) -> AppResult<()> {
 }
 
 async fn serve(args: Args) -> AppResult<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_env("NEBULA_LOG").unwrap_or_else(|_| EnvFilter::new("info")))
-        .init();
+    nebula_host_lib::logging::init("node");
 
     let mut node = match store::nodes::load()? {
         Some(node) => node,

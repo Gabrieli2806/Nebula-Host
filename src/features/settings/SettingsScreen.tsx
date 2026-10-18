@@ -19,6 +19,8 @@ import { useI18n, type Language } from "@/i18n";
 import { api } from "@/lib/ipc";
 import type { AppSettings } from "@/types/api";
 import { isRemote } from "@/lib/connection";
+import { AboutSettings, DiagnosticsSettings } from "./AboutSettings";
+import { JavaSlots } from "./JavaSlots";
 import { McpSettings } from "./McpSettings";
 import { RemoteSettings, UpnpTest } from "./RemoteSettings";
 import {
@@ -316,13 +318,11 @@ export function SettingsScreen() {
 
       {remote ? null : <McpSettings />}
 
-      <JavaSettings
-        paths={settings.javaPaths}
-        saved={saved === "java"}
-        error={failure("java")}
-        emptyText={t("settings.javaNone")}
-        onChange={(javaPaths) => update("java", { javaPaths })}
-      />
+      <JavaSlots paths={settings.javaPaths} onChange={(javaPaths) => update("java", { javaPaths })} />
+
+      <DiagnosticsSettings />
+
+      <AboutSettings />
     </div>
   );
 }
@@ -428,107 +428,6 @@ function SavedTick({ visible }: { visible: boolean }) {
         {visible ? t("common.saved") : ""}
       </span>
     </>
-  );
-}
-
-// -- java -------------------------------------------------------------------
-
-function JavaSettings({
-  paths,
-  saved,
-  error,
-  emptyText,
-  onChange,
-}: {
-  paths: Record<string, string>;
-  saved: boolean;
-  error?: ReactNode;
-  emptyText: string;
-  onChange: (paths: Record<string, string>) => void;
-}) {
-  const { t } = useI18n();
-  const [probed, setProbed] = useState<Record<string, string>>({});
-
-  const probe = useMutation({
-    mutationFn: (path: string) => api.settings.probeJava(path),
-    onSuccess: (installation) => {
-      setProbed((current) => ({ ...current, [installation.path]: installation.version }));
-      onChange({ ...paths, [String(installation.major)]: installation.path });
-    },
-  });
-
-  const entries = Object.entries(paths);
-
-  return (
-    <Panel
-      title={t("settings.javaPaths")}
-      actions={
-        <>
-          <SavedTick visible={saved} />
-          <Button
-            size="sm"
-            icon="plus"
-            disabled={probe.isPending || isRemote()}
-            title={isRemote() ? t("remote.localOnly") : undefined}
-            onClick={async () => {
-              const { open } = await import("@tauri-apps/plugin-dialog");
-              const picked = await open({
-                multiple: false,
-                filters: [{ name: "java", extensions: ["exe", ""] }],
-              });
-              if (typeof picked === "string") probe.mutate(picked);
-            }}
-          >
-            {t("settings.addJava")}
-          </Button>
-        </>
-      }
-    >
-      <p className="settings-java-help">{t("settings.javaPathsHelp")}</p>
-
-      {entries.length ? (
-        <ul className="settings-java-list">
-          {entries.map(([major, path]) => (
-            <li key={major} className="settings-java-row">
-              <span className="tag mono flex-none tabular-nums">Java {major}</span>
-              <span
-                className="mono selectable min-w-0 flex-1 truncate text-[length:var(--text-xs)] text-[color:var(--text-muted)]"
-                title={path}
-              >
-                {path}
-              </span>
-              {probed[path] ? (
-                <span className="settings-java-found">
-                  <Icon name="check" size={12} />
-                  <span className="mono">{probed[path]}</span>
-                </span>
-              ) : null}
-              <Button
-                size="sm"
-                variant="quiet"
-                icon="close"
-                iconOnly
-                onClick={() => {
-                  const next = { ...paths };
-                  delete next[major];
-                  onChange(next);
-                }}
-              >
-                {t("actions.remove")}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="settings-java-empty">{emptyText}</p>
-      )}
-
-      {probe.error || error ? (
-        <div className="settings-java-error">
-          {probe.error ? <ErrorNotice error={probe.error} /> : error}
-        </div>
-      ) : null}
-    </Panel>
   );
 }
 

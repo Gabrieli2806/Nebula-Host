@@ -653,3 +653,25 @@ export interface UpnpCheck {
   failedStep?: string | null;
   detail?: string | null;
 }
+
+// -- Settings › Java and Diagnostics -----------------------------------------
+
+export interface JavaSlot {
+  major: number;
+  configured?: string | null;
+  effective?: JavaInstallation | null;
+  automatic: boolean;
+}
+
+export interface JavaOverview {
+  slots: JavaSlot[];
+  installations: JavaInstallation[];
+  canDownload: boolean;
+}
+
+export interface AppLog {
+  path?: string | null;
+  text: string;
+  version: string;
+  platform: string;
+}

@@ -18,6 +18,7 @@ pub mod error;
 pub mod game;
 #[cfg(feature = "desktop")]
 pub mod ipc;
+pub mod logging;
 pub mod mcp;
 pub mod model;
 pub mod net;
@@ -33,8 +34,6 @@ use std::sync::Arc;
 
 #[cfg(feature = "desktop")]
 use tauri::{Emitter, Manager};
-#[cfg(feature = "desktop")]
-use tracing_subscriber::EnvFilter;
 
 #[cfg(feature = "desktop")]
 use crate::model::Node;
@@ -47,11 +46,7 @@ const EVENT_NAME: &str = "nebula:event";
 #[cfg(feature = "desktop")]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_env("NEBULA_LOG").unwrap_or_else(|_| EnvFilter::new("info")),
-        )
-        .init();
+    logging::init("desktop");
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
