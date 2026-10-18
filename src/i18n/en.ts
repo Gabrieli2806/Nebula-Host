@@ -216,6 +216,7 @@ export const en = {
   },
 
   menu: {
+    copyPublicAddress: "Copy internet address",
     open: "Open",
     console: "Console",
     files: "Files",
@@ -395,6 +396,8 @@ export const en = {
   },
 
   overview: {
+    publicAddress: "Internet address",
+    publicAddressHint: "Friends outside your network join with this one (UPnP opened the port on your router).",
     title: "Overview",
     address: "Address for players",
     copyHint: "Click to copy",

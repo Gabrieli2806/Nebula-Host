@@ -53,6 +53,10 @@ export function useServerMenu(instances: InstanceView[], onCreate: () => void) {
       const address = instance.address;
       items.push({ kind: "separator" }, { label: t("menu.copyAddress"), icon: "copy", onSelect: () => void navigator.clipboard.writeText(address) });
     }
+    if (instance.public_address) {
+      const publicAddress = instance.public_address;
+      items.push({ label: t("menu.copyPublicAddress"), icon: "copy", onSelect: () => void navigator.clipboard.writeText(publicAddress) });
+    }
     if (!isRemote()) {
       items.push({
         label: t("actions.openFolder"),

@@ -96,6 +96,8 @@ export interface InstanceView extends Instance {
   tick_rate?: number | null;
   last_player_seen_at?: string | null;
   address?: string | null;
+  /** Internet address while UPnP forwards the port. */
+  public_address?: string | null;
   /** The game's server-list icon as a `data:` URL, when the server has one. */
   icon_url?: string | null;
 }

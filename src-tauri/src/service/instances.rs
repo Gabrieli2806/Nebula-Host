@@ -255,10 +255,20 @@ impl InstanceService {
         let instances = self.store.list().await;
         let states = self.states.read().await;
         let address = crate::net::lan::primary_address().map(|ip| ip.to_string());
+        let external = crate::net::upnp::cached_external_address();
+        let mut forwarded = HashMap::new();
+        for instance in &instances {
+            if let Some(port) = self.forwarder.forwarded_port(&instance.id).await {
+                forwarded.insert(instance.id.clone(), port);
+            }
+        }
 
         Ok(instances
             .into_iter()
             .map(|instance| {
+                let public_address = external
+                    .zip(forwarded.get(&instance.id))
+                    .map(|(ip, port)| format!("{ip}:{port}"));
                 let state = states.get(&instance.id).cloned().unwrap_or_default();
                 let address = address.as_ref().map(|ip| {
                     let port = self
@@ -270,7 +280,7 @@ impl InstanceService {
                 });
                 let icon_spec = self.registry.manifest(&instance.game).ok().and_then(|m| m.server_icon);
                 let icon_url = crate::service::icon::icon_data_url(&instance.path, icon_spec.as_ref());
-                InstanceView { instance, state, address, icon_url }
+                InstanceView { instance, state, address, public_address, icon_url }
             })
             .collect())
     }
@@ -280,7 +290,7 @@ impl InstanceService {
         let state = self.state_of(instance_id).await;
         let icon_spec = self.registry.manifest(&instance.game).ok().and_then(|m| m.server_icon);
         let icon_url = crate::service::icon::icon_data_url(&instance.path, icon_spec.as_ref());
-        Ok(InstanceView { instance, state, address: None, icon_url })
+        Ok(InstanceView { instance, state, address: None, public_address: None, icon_url })
     }
 
     pub async fn state_of(&self, instance_id: &str) -> InstanceState {
@@ -613,7 +623,32 @@ impl InstanceService {
             })
             .await?;
 
+        self.auto_forward(&instance, instance.primary_port(&manifest));
         Ok(())
+    }
+
+    /// Open the game port on the router (UPnP) when the user allowed it, so
+    /// players outside the LAN can join. Runs in the background: a router
+    /// that does not answer must not hold up the start.
+    fn auto_forward(self: &Arc<Self>, instance: &Instance, port: u16) {
+        if !settings::load().map(|settings| settings.allow_upnp).unwrap_or(false) {
+            return;
+        }
+        let service = self.clone();
+        let id = instance.id.clone();
+        let description = format!("Nebula Host - {}", instance.name);
+        tokio::spawn(async move {
+            if service.forwarder.forwarded_port(&id).await == Some(port) {
+                return;
+            }
+            match service.forwarder.forward(&id, port, &description).await {
+                Ok(()) => {
+                    let external = crate::net::upnp::external_address().await.ok();
+                    info!(instance_id = %id, port, ?external, "port forwarded with UPnP");
+                }
+                Err(error) => warn!(instance_id = %id, port, %error, "UPnP port forwarding failed"),
+            }
+        });
     }
 
     pub async fn stop(&self, instance_id: &str) -> AppResult<()> {
@@ -708,6 +743,7 @@ impl InstanceService {
             .await;
 
         self.set_status(instance_id, InstanceStatus::Sleeping).await;
+        self.auto_forward(&instance, instance.primary_port(&manifest));
         Ok(())
     }
 
@@ -840,6 +876,10 @@ impl InstanceService {
             ConsoleLine::new(ConsoleLevel::System, "Server stopped.".to_string()),
         )
         .await;
+
+        if !instance.automation.wake_on_join {
+            self.forwarder.release(instance_id).await;
+        }
 
         // A clean stop is exactly when wake-on-join takes over.
         if instance.automation.wake_on_join {

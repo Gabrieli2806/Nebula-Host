@@ -385,6 +385,9 @@ pub struct InstanceView {
     /// Address to hand to players, when the node knows one.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub address: Option<String>,
+    /// Internet address (router's public IP + port) while UPnP forwards it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_address: Option<String>,
     /// The server's `server-icon.png` as a `data:` URL, when it has one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icon_url: Option<String>,

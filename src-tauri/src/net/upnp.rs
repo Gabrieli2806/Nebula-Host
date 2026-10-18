@@ -43,6 +43,11 @@ impl PortForwarder {
         Self::default()
     }
 
+    /// The port currently forwarded for `instance_id`, if any.
+    pub async fn forwarded_port(&self, instance_id: &str) -> Option<u16> {
+        self.active.read().await.get(instance_id).map(|forwarding| forwarding.port)
+    }
+
     /// Forward `port` to this machine and keep the lease renewed.
     pub async fn forward(&self, instance_id: &str, port: u16, description: &str) -> AppResult<()> {
         let local = lan::primary_address()
@@ -201,13 +206,25 @@ pub async fn check() -> UpnpCheck {
     result
 }
 
-/// The router's external address, when it will tell us.
+static EXTERNAL: std::sync::RwLock<Option<std::net::IpAddr>> = std::sync::RwLock::new(None);
+
+/// The router's external address, when it will tell us. Remembered for
+/// `cached_external_address`.
 pub async fn external_address() -> AppResult<std::net::IpAddr> {
-    gateway()
+    let ip = gateway()
         .await?
         .get_external_ip()
         .await
-        .map_err(|error| AppError::new(ErrorCode::PortForwardFailed).detail(error))
+        .map_err(|error| AppError::new(ErrorCode::PortForwardFailed).detail(error))?;
+    if let Ok(mut cached) = EXTERNAL.write() {
+        *cached = Some(ip);
+    }
+    Ok(ip)
+}
+
+/// The last external address the router reported, without asking again.
+pub fn cached_external_address() -> Option<std::net::IpAddr> {
+    EXTERNAL.read().ok().and_then(|cached| *cached)
 }
 
 async fn add_mapping(local: Ipv4Addr, port: u16, description: &str) -> AppResult<()> {
@@ -268,5 +285,16 @@ mod tests {
         let forwarder = PortForwarder::new();
         forwarder.release("never-forwarded").await;
         assert!(!forwarder.is_forwarded("never-forwarded").await);
+    }
+}
+
+#[cfg(test)]
+mod live {
+    /// Real-router self-test, for diagnosing a user's network by hand:
+    /// `cargo test upnp_live -- --ignored --nocapture`.
+    #[tokio::test]
+    #[ignore]
+    async fn upnp_live() {
+        println!("{:#?}", super::check().await);
     }
 }

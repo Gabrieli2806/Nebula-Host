@@ -375,6 +375,7 @@ async fn local_pairing_code(
 
 fn router(ctx: Ctx) -> Router {
     Router::new()
+        .route("/", get(landing))
         .route("/info", get(info))
         .route("/pair", post(pair))
         .route("/rpc", post(rpc))
@@ -493,4 +494,22 @@ mod tests {
         assert!(!origin_allowed("https://evil.example"));
         assert!(!origin_allowed("http://localhost.evil.example"));
     }
+}
+
+/// What a browser sees at the root: this port is the app's remote API, not
+/// a website, so say so instead of an empty 404.
+async fn landing() -> axum::response::Html<&'static str> {
+    axum::response::Html(concat!(
+        "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\">",
+        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
+        "<title>Nebula Host</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;",
+        "background:#0b1220;color:#dbe4f3;font:16px/1.5 system-ui,sans-serif}main{max-width:520px;padding:24px}",
+        "h1{color:#5fd4f4;font-size:22px}code{color:#5fd4f4}</style></head><body><main>",
+        "<h1>Nebula Host &mdash; acceso remoto activo</h1>",
+        "<p>Este puerto es para la app Nebula Host, no para el navegador. Abre Nebula Host en otro equipo, ",
+        "elige <b>Conectar a otro equipo</b> y escribe la direcci&oacute;n de este (IP:47400) y el c&oacute;digo de emparejamiento.</p>",
+        "<p lang=\"en\">This port is for the Nebula Host app, not a browser. In Nebula Host on another computer choose ",
+        "<b>Connect to another computer</b> and enter this one's address (IP:47400) and the pairing code.</p>",
+        "</main></body></html>"
+    ))
 }

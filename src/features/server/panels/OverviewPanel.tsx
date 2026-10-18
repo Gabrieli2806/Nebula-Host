@@ -205,6 +205,13 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
             emptyText={t("overview.noAddress")}
           />
         )}
+        {!olderCopy && instance.public_address ? (
+          <CopyAddress
+            value={instance.public_address}
+            label={t("overview.publicAddress")}
+            hint={t("overview.publicAddressHint")}
+          />
+        ) : null}
       </header>
 
       <Resources instance={instance} />

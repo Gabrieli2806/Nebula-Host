@@ -216,6 +216,7 @@ export const es: Copy = {
   },
 
   menu: {
+    copyPublicAddress: "Copiar dirección por internet",
     open: "Abrir",
     console: "Consola",
     files: "Archivos",
@@ -395,6 +396,8 @@ export const es: Copy = {
   },
 
   overview: {
+    publicAddress: "Dirección por internet",
+    publicAddressHint: "Tus amigos fuera de tu red entran con esta (UPnP abrió el puerto en tu router).",
     title: "Resumen",
     address: "Dirección para los jugadores",
     copyHint: "Clic para copiar",
