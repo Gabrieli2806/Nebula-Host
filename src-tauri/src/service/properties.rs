@@ -45,6 +45,35 @@ pub fn read(root: &Path, manifest: &GameManifest) -> AppResult<Vec<SettingValue>
 /// Apply edits. Only keys the manifest declares can be written — the file
 /// editor is where arbitrary changes belong, with the warnings that come with
 /// it.
+/// Set one key the app owns (the port), whether or not it is a user-visible
+/// setting. `write` only touches declared settings, so using it for the port
+/// silently did nothing: the record said 25566 while the server kept 25565.
+pub fn set_internal(root: &Path, key: &str, value: &str) -> AppResult<()> {
+    let path = resolve_inside(root, PROPERTIES_FILE)?;
+    let existing = std::fs::read_to_string(&path).unwrap_or_default();
+    let mut found = false;
+    let mut out = String::with_capacity(existing.len() + 32);
+    for line in existing.lines() {
+        let trimmed = line.trim_start();
+        let is_key = !trimmed.starts_with('#')
+            && trimmed.split_once('=').is_some_and(|(k, _)| k.trim() == key);
+        if is_key {
+            out.push_str(&format!("{key}={value}\n"));
+            found = true;
+        } else {
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+    if !found {
+        out.push_str(&format!("{key}={value}\n"));
+    }
+    let temp = path.with_extension("nebula-tmp");
+    std::fs::write(&temp, out)?;
+    std::fs::rename(&temp, &path)?;
+    Ok(())
+}
+
 pub fn write(root: &Path, manifest: &GameManifest, edits: &BTreeMap<String, String>) -> AppResult<()> {
     let path = resolve_inside(root, PROPERTIES_FILE)?;
     let existing = std::fs::read_to_string(&path).unwrap_or_default();
@@ -189,5 +218,22 @@ mod tests {
 
         assert_eq!(get(&root, "pvp").expect("read").as_deref(), Some("false"));
         let _ = std::fs::remove_dir_all(&root);
+    }
+}
+
+#[cfg(test)]
+mod set_internal_tests {
+    use super::*;
+
+    #[test]
+    fn the_port_is_rewritten_even_though_it_is_not_a_visible_setting() {
+        let root = std::env::temp_dir().join(format!("nebula-port-{}", uuid::Uuid::new_v4().simple()));
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join(PROPERTIES_FILE), "motd=hi\nserver-port=25565\n").unwrap();
+        set_internal(&root, "server-port", "25566").unwrap();
+        let text = std::fs::read_to_string(root.join(PROPERTIES_FILE)).unwrap();
+        assert!(text.contains("server-port=25566"));
+        assert!(!text.contains("25565"));
+        assert!(text.contains("motd=hi"));
     }
 }

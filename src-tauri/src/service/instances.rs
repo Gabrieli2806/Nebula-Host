@@ -536,6 +536,19 @@ impl InstanceService {
         let adapter = self.registry.get(&instance.game)?;
         let install = instance.install.clone().unwrap_or_default();
 
+        // The record is the source of truth for the port (the sleep proxy and
+        // the UI use it); make sure the game's own config says the same before
+        // it starts, so a port changed elsewhere can never silently diverge.
+        if let Some(spec) = manifest.primary_port() {
+            let port = instance.primary_port(&manifest).to_string();
+            let current = crate::service::properties::get(&instance.path, &spec.key).ok().flatten();
+            if current.as_deref().map(str::trim) != Some(port.as_str()) {
+                if let Err(error) = crate::service::properties::set_internal(&instance.path, &spec.key, &port) {
+                    tracing::warn!(%instance_id, %error, "could not sync the port into the game config");
+                }
+            }
+        }
+
         let plan = adapter.launch_plan(LaunchContext {
             root: &instance.path,
             build: &instance.build,

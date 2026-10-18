@@ -28,7 +28,6 @@
 //! Backups stay with the machine that made them; they are not part of the
 //! archive.
 
-use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -1010,8 +1009,7 @@ impl InstanceService {
             let port = pick_port(wanted, &claimed, ports::is_free);
             if port != wanted {
                 record.ports.insert(spec.key.clone(), port);
-                let edit = BTreeMap::from([(spec.key.clone(), port.to_string())]);
-                if let Err(error) = crate::service::properties::write(&destination, &game_manifest, &edit) {
+                if let Err(error) = crate::service::properties::set_internal(&destination, &spec.key, &port.to_string()) {
                     warn!(%error, "port not written to the game's settings after transfer");
                 }
                 port_changed = Some(PortChange { from: wanted, to: port });
