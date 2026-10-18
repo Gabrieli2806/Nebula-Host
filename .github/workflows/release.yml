@@ -16,8 +16,10 @@ on:
         description: "Tag to build (e.g. v0.5.0). Must already exist."
         required: true
 
+# Read-only by default; only the jobs that create or upload to the release
+# get write access.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -30,11 +32,13 @@ env:
 jobs:
   create-release:
     name: Create draft release
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ env.TAG }}
 
@@ -59,6 +63,8 @@ jobs:
 
   desktop:
     name: Desktop (${{ matrix.name }})
+    permissions:
+      contents: write
     needs: create-release
     strategy:
       fail-fast: false
@@ -72,7 +78,7 @@ jobs:
             bundles: deb,rpm,appimage
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ env.TAG }}
 
@@ -82,21 +88,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf rpm
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           key: desktop-${{ matrix.name }}
 
       - run: npm ci
 
       - name: Build and upload installers
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
@@ -107,6 +115,8 @@ jobs:
 
   node:
     name: Headless node (${{ matrix.arch }})
+    permissions:
+      contents: write
     needs: create-release
     strategy:
       fail-fast: false
@@ -118,13 +128,15 @@ jobs:
             os: ubuntu-22.04-arm
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ env.TAG }}
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           key: node-${{ matrix.arch }}
 
