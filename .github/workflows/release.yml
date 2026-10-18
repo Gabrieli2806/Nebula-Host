@@ -1,6 +1,7 @@
 # Builds every artifact of a Nebula Host release and attaches it to a draft
-# GitHub release. Push a tag like `v0.5.0` (it must match the version in
-# src-tauri/tauri.conf.json), review the draft, then publish it.
+# GitHub release, published once every build succeeded. Raising the version
+# in src-tauri/tauri.conf.json on main starts it (Auto release workflow);
+# pushing a tag like `v0.5.0` that matches that version does too.
 #
 #   Windows desktop : .msi and NSIS .exe          (windows-latest)
 #   Linux desktop   : .deb, .rpm, .AppImage       (ubuntu-22.04, x86_64)
@@ -140,6 +141,14 @@ jobs:
         with:
           key: node-${{ matrix.arch }}
 
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # The node serves the web panel, compiled in from ../dist.
+      - run: npm ci && npm run build
+
       - name: Build nebula-node (no desktop, no webview)
         run: cargo build --release --locked -p nebula-host --no-default-features --bin nebula-node
 
@@ -147,15 +156,28 @@ jobs:
         id: package
         run: |
           name="nebula-node-${TAG}-linux-${{ matrix.arch }}"
-          mkdir -p "dist/$name"
-          cp target/release/nebula-node "dist/$name/"
-          cp packaging/linux/install-node.sh packaging/linux/nebula-node.service "dist/$name/"
-          chmod +x "dist/$name/install-node.sh" "dist/$name/nebula-node"
-          tar -C dist -czf "dist/$name.tar.gz" "$name"
-          (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")
-          echo "file=dist/$name.tar.gz" >> "$GITHUB_OUTPUT"
+          mkdir -p "out/$name"
+          cp target/release/nebula-node "out/$name/"
+          cp packaging/linux/install-node.sh packaging/linux/nebula-node.service "out/$name/"
+          chmod +x "out/$name/install-node.sh" "out/$name/nebula-node"
+          tar -C out -czf "out/$name.tar.gz" "$name"
+          (cd out && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")
+          echo "file=out/$name.tar.gz" >> "$GITHUB_OUTPUT"
 
       - name: Upload to release
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "$TAG" "${{ steps.package.outputs.file }}" "${{ steps.package.outputs.file }}.sha256" --clobber
+
+  publish:
+    name: Publish release
+    permissions:
+      contents: write
+    needs: [desktop, node]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release edit "$TAG" --draft=false --latest

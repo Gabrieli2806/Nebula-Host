@@ -1,0 +1,46 @@
+# Starts a release whenever the app version changes on main: when
+# src-tauri/tauri.conf.json carries a version with no `v<version>` tag yet,
+# this tags the commit and runs the Release workflow for it.
+#
+# (A tag pushed with the workflow token does not trigger other workflows, so
+# the Release workflow is started explicitly with workflow_dispatch.)
+name: Auto release
+
+on:
+  push:
+    branches: [main]
+    paths: ["src-tauri/tauri.conf.json"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    permissions:
+      contents: write
+      actions: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Tag a new version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          tag="v$version"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "$tag already exists; nothing to release."
+            exit 0
+          fi
+          git tag "$tag" "$GITHUB_SHA"
+          git push origin "$tag"
+          gh workflow run release.yml --ref main -f tag="$tag"
+          echo "::notice::Started the release of $tag"
