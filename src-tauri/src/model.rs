@@ -149,6 +149,17 @@ pub struct AutomationConfig {
     pub restart_attempts_remaining: u8,
     #[serde(default)]
     pub schedules: Vec<ScheduleRule>,
+    /// Take an automatic backup every this many hours (0 = off).
+    #[serde(default)]
+    pub auto_backup_hours: u32,
+    /// How many automatic backups to keep; the oldest goes when a new one is
+    /// made. Manual backups are never counted or removed.
+    #[serde(default = "default_auto_backup_keep")]
+    pub auto_backup_keep: u32,
+}
+
+fn default_auto_backup_keep() -> u32 {
+    3
 }
 
 impl Default for AutomationConfig {
@@ -160,6 +171,8 @@ impl Default for AutomationConfig {
             restart_after_crash: false,
             restart_attempts_remaining: 0,
             schedules: Vec::new(),
+            auto_backup_hours: 0,
+            auto_backup_keep: default_auto_backup_keep(),
         }
     }
 }

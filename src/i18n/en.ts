@@ -515,6 +515,7 @@ export const en = {
   },
 
   backups: {
+    auto: "Automatic backup",
     title: "Backups",
     empty: "No restore points yet",
     emptyHint: "Take one before you install mods or change the world.",
@@ -779,6 +780,13 @@ export const en = {
     wakeOnJoinHelp:
       "While asleep, the server still shows up in the list. Someone trying to join starts it back up.",
     restartAfterCrash: "Start again if it stops unexpectedly",
+    autoBackup: "Automatic backups",
+    autoBackupHelp: "Backs the server up on a schedule and keeps only the newest ones; the oldest automatic backup is removed when a new one is made. Manual backups are never removed. A stopped server that has not run since the last one is skipped.",
+    autoBackupEvery: "Every",
+    autoBackupHours: "{count} h",
+    autoBackupDays: "{count} d",
+    autoBackupKeep: "Keep",
+    autoBackupKeepUnit: "backups",
     schedules: "Scheduled actions",
     language: "Language",
     accent: "Accent colour",

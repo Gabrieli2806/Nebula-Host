@@ -43,6 +43,7 @@ pub fn spawn(service: Arc<InstanceService>) {
             if last_schedule_minute != Some(minute) {
                 last_schedule_minute = Some(minute);
                 run_due_schedules(&service).await;
+                run_auto_backups(&service).await;
             }
         }
     });
@@ -147,6 +148,63 @@ async fn apply_sleep_when_empty(service: &Arc<InstanceService>) {
         if let Err(error) = service.stop(&view.instance.id).await {
             warn!(instance_id = %view.instance.id, %error, "sleep-when-empty could not stop the server");
         }
+    }
+}
+
+/// Servers whose automatic backup is running right now (one at a time each).
+fn auto_in_flight() -> &'static std::sync::Mutex<std::collections::HashSet<String>> {
+    static SET: std::sync::OnceLock<std::sync::Mutex<std::collections::HashSet<String>>> = std::sync::OnceLock::new();
+    SET.get_or_init(|| std::sync::Mutex::new(std::collections::HashSet::new()))
+}
+
+/// "Back up every N hours, keep K": take one when due, then drop the oldest
+/// automatic backups beyond K. A stopped server that has not run since its
+/// last automatic backup is skipped — its world has not changed.
+async fn run_auto_backups(service: &Arc<InstanceService>) {
+    let now = Utc::now();
+    for view in service.list().await.unwrap_or_default() {
+        let automation = &view.instance.automation;
+        if automation.auto_backup_hours == 0 || view.instance.install.is_none() {
+            continue;
+        }
+        let id = view.instance.id.clone();
+        let last = super::backups::last_auto(&id);
+        let due = last.is_none_or(|at| now.signed_duration_since(at).num_minutes() >= i64::from(automation.auto_backup_hours) * 60);
+        if !due {
+            continue;
+        }
+        let running = matches!(view.state.status, InstanceStatus::Online | InstanceStatus::Starting | InstanceStatus::Stopping);
+        let ran_since = match (last, view.instance.last_started_at) {
+            (Some(backup), Some(started)) => started > backup,
+            (None, _) => true,
+            (Some(_), None) => false,
+        };
+        if !running && !ran_since {
+            continue;
+        }
+        if view.state.status == InstanceStatus::Starting || view.state.status == InstanceStatus::Stopping {
+            continue; // try again next minute, not mid-transition
+        }
+        if service.ensure_not_transferring(&id).await.is_err() {
+            continue;
+        }
+        if !auto_in_flight().lock().map(|mut set| set.insert(id.clone())).unwrap_or(false) {
+            continue;
+        }
+        let keep = automation.auto_backup_keep.max(1) as usize;
+        let service = service.clone();
+        tokio::spawn(async move {
+            match super::backups::create_auto(&service, &id).await {
+                Ok(backup) => {
+                    let removed = super::backups::prune_auto(&id, keep).unwrap_or(0);
+                    tracing::info!(instance_id = %id, backup = %backup.id, removed, "automatic backup taken");
+                }
+                Err(error) => warn!(instance_id = %id, %error, "automatic backup failed"),
+            }
+            if let Ok(mut set) = auto_in_flight().lock() {
+                set.remove(&id);
+            }
+        });
     }
 }
 

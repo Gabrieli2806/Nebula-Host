@@ -48,6 +48,10 @@ export interface Instance {
     sleep_after_minutes: number;
     wake_on_join: boolean;
     restart_after_crash: boolean;
+    /** Automatic backup every N hours (0 = off). */
+    auto_backup_hours: number;
+    /** Automatic backups kept; the oldest is removed. */
+    auto_backup_keep: number;
     restart_attempts_remaining: number;
     schedules: ScheduleRule[];
   };

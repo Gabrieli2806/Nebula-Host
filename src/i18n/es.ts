@@ -515,6 +515,7 @@ export const es: Copy = {
   },
 
   backups: {
+    auto: "Copia automática",
     title: "Copias de seguridad",
     empty: "Todavía no hay puntos de restauración",
     emptyHint: "Haz uno antes de instalar mods o tocar el mundo.",
@@ -779,6 +780,13 @@ export const es: Copy = {
     wakeOnJoinHelp:
       "Mientras duerme, el servidor sigue apareciendo en la lista. Quien intente entrar lo enciende.",
     restartAfterCrash: "Volver a arrancar si se detiene solo",
+    autoBackup: "Copias automáticas",
+    autoBackupHelp: "Hace copias del servidor cada cierto tiempo y conserva solo las más recientes: al crear una nueva se borra la copia automática más antigua. Las copias manuales nunca se borran. Si el servidor está apagado y no ha arrancado desde la última, se omite.",
+    autoBackupEvery: "Cada",
+    autoBackupHours: "{count} h",
+    autoBackupDays: "{count} d",
+    autoBackupKeep: "Conservar",
+    autoBackupKeepUnit: "copias",
     schedules: "Acciones programadas",
     language: "Idioma",
     accent: "Color de acento",

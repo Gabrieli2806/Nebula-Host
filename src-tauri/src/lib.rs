@@ -26,6 +26,8 @@ pub mod node;
 pub mod remote;
 pub mod runtime;
 pub mod service;
+#[cfg(all(windows, feature = "desktop"))]
+pub mod shutdown_guard;
 pub mod store;
 #[cfg(feature = "desktop")]
 pub mod tray;
@@ -75,6 +77,8 @@ pub fn run() {
                 forward_events(handle.clone(), service.clone());
                 service::poller::spawn(service.clone());
                 restore_sleepers(service.clone());
+                #[cfg(windows)]
+                shutdown_guard::install(service.clone());
                 apply_default_icons(service.clone());
                 handle.manage(service.clone());
 

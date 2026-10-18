@@ -419,6 +419,9 @@ impl InstanceService {
             };
             instance.ports.insert(spec.key.clone(), port);
         }
+        // New servers back themselves up once a day, keeping the last 3.
+        instance.automation.auto_backup_hours = 24;
+        instance.automation.auto_backup_keep = 3;
         if let Some(memory_mb) = request.memory_mb {
             instance.resources.memory_mb = memory_mb;
         }
@@ -989,6 +992,8 @@ pub struct InstancePatch {
     pub sleep_after_minutes: Option<u32>,
     pub wake_on_join: Option<bool>,
     pub restart_after_crash: Option<bool>,
+    pub auto_backup_hours: Option<u32>,
+    pub auto_backup_keep: Option<u32>,
     pub track_latest_version: Option<bool>,
     pub schedules: Option<Vec<crate::model::ScheduleRule>>,
 }
@@ -1042,6 +1047,12 @@ impl InstanceService {
             }
             if let Some(value) = patch.restart_after_crash {
                 instance.automation.restart_after_crash = value;
+            }
+            if let Some(value) = patch.auto_backup_hours {
+                instance.automation.auto_backup_hours = value.min(24 * 30);
+            }
+            if let Some(value) = patch.auto_backup_keep {
+                instance.automation.auto_backup_keep = value.clamp(1, 50);
             }
             if let Some(value) = patch.track_latest_version {
                 instance.track_latest_version = value;

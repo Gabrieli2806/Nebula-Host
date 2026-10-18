@@ -31,10 +31,46 @@ pub struct Backup {
 
 /// Take a backup. If the server is online, ask it to flush first so the copy
 /// is not missing the last few minutes of play.
+/// Suffix on the id of backups taken by the automatic schedule. Only those
+/// count against the keep-limit and are ever removed automatically.
+const AUTO_SUFFIX: &str = "-auto";
+
 pub async fn create(
     service: &Arc<InstanceService>,
     instance_id: &str,
     label: Option<String>,
+) -> AppResult<Backup> {
+    create_inner(service, instance_id, label, false).await
+}
+
+/// An automatic backup: same as a manual one, marked so rotation can find it.
+pub async fn create_auto(service: &Arc<InstanceService>, instance_id: &str) -> AppResult<Backup> {
+    create_inner(service, instance_id, Some("auto".into()), true).await
+}
+
+/// Remove the oldest automatic backups beyond `keep`. Manual ones untouched.
+pub fn prune_auto(instance_id: &str, keep: usize) -> AppResult<usize> {
+    let autos: Vec<Backup> = list(instance_id)?.into_iter().filter(|b| b.id.ends_with(AUTO_SUFFIX)).collect();
+    let mut removed = 0;
+    // `list` is newest first: everything after the first `keep` goes.
+    for old in autos.iter().skip(keep.max(1)) {
+        if std::fs::remove_file(&old.path).is_ok() {
+            removed += 1;
+        }
+    }
+    Ok(removed)
+}
+
+/// When the newest automatic backup of this server was taken.
+pub fn last_auto(instance_id: &str) -> Option<DateTime<Utc>> {
+    list(instance_id).ok()?.into_iter().find(|b| b.id.ends_with(AUTO_SUFFIX)).map(|b| b.created_at)
+}
+
+async fn create_inner(
+    service: &Arc<InstanceService>,
+    instance_id: &str,
+    label: Option<String>,
+    auto: bool,
 ) -> AppResult<Backup> {
     let instance = service.store.get(instance_id).await?;
     let manifest = service.registry.manifest(&instance.game)?;
@@ -55,7 +91,12 @@ pub async fn create(
     }
 
     let created_at = Utc::now();
-    let id = format!("{}-{}", instance_id, created_at.format("%Y%m%d-%H%M%S"));
+    let id = format!(
+        "{}-{}{}",
+        instance_id,
+        created_at.format("%Y%m%d-%H%M%S"),
+        if auto { AUTO_SUFFIX } else { "" }
+    );
     let path = paths::backups_dir()?.join(format!("{id}.zip"));
 
     let root = instance.path.clone();
@@ -85,9 +126,9 @@ pub fn list(instance_id: &str) -> AppResult<Vec<Backup>> {
         }
         let metadata = entry.metadata()?;
         backups.push(Backup {
+            label: name.trim_end_matches(".zip").ends_with(AUTO_SUFFIX).then(|| "auto".to_string()),
             id: name.trim_end_matches(".zip").to_string(),
             instance_id: instance_id.to_string(),
-            label: None,
             created_at: metadata.modified().ok().map(DateTime::<Utc>::from).unwrap_or_else(Utc::now),
             size_bytes: metadata.len(),
             path: entry.path(),

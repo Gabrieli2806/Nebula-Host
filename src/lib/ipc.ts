@@ -396,6 +396,8 @@ export interface InstancePatch {
   sleepAfterMinutes?: number;
   wakeOnJoin?: boolean;
   restartAfterCrash?: boolean;
+  autoBackupHours?: number;
+  autoBackupKeep?: number;
   trackLatestVersion?: boolean;
   schedules?: ScheduleRule[];
 }

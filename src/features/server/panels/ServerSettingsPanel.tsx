@@ -205,6 +205,49 @@ function AutomationSettings({ instance }: { instance: InstanceView }) {
           label={t("settings.restartAfterCrash")}
         />
 
+        <SwitchRow
+          checked={(instance.automation.auto_backup_hours ?? 0) > 0}
+          onChange={(value) => patch.mutate({ autoBackupHours: value ? 24 : 0 })}
+          label={t("settings.autoBackup")}
+          help={t("settings.autoBackupHelp")}
+        >
+          {(instance.automation.auto_backup_hours ?? 0) > 0 ? (
+            <div className="pref-sub flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2">
+                <span className="pref-sub-text">{t("settings.autoBackupEvery")}</span>
+                <Select
+                  className="w-32"
+                  value={String(instance.automation.auto_backup_hours)}
+                  onChange={(event) => patch.mutate({ autoBackupHours: Number(event.target.value) })}
+                >
+                  {[1, 2, 3, 6, 12, 24, 48, 72, 168].map((hours) => (
+                    <option key={hours} value={hours}>
+                      {hours < 24
+                        ? t("settings.autoBackupHours", { count: hours })
+                        : t("settings.autoBackupDays", { count: hours / 24 })}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span className="pref-sub-text">{t("settings.autoBackupKeep")}</span>
+                <TextInput
+                  type="number"
+                  min={1}
+                  max={50}
+                  className="w-20"
+                  value={instance.automation.auto_backup_keep ?? 3}
+                  onChange={(event) => {
+                    const keep = Math.max(1, Math.min(50, Number(event.target.value) || 1));
+                    patch.mutate({ autoBackupKeep: keep });
+                  }}
+                />
+                <span className="pref-sub-text">{t("settings.autoBackupKeepUnit")}</span>
+              </label>
+            </div>
+          ) : null}
+        </SwitchRow>
+
         <MemoryRow
           instance={instance}
           onSave={(memoryMb) => patch.mutate({ memoryMb })}
