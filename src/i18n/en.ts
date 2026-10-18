@@ -942,6 +942,7 @@ export const en = {
     instance_not_found: { title: "Server not found", cause: "This server is no longer in the list.", action: "Go back to the server list." },
     instance_already_running: { title: "Already running", cause: "This server is already up.", action: "Stop it first if you want to start it again." },
     instance_not_running: { title: "Not running", cause: "The server has to be running for that.", action: "Start the server and try again." },
+    console_detached: { title: "Console reconnected without input", cause: "This server kept running while Nebula Host was closed. The app took it back and shows its log, but cannot type into its console.", action: "Restart the server (Stop, then Start) to type commands again." },
     instance_launch_files_missing: {
       title: "Server files are missing",
       cause: "The files this server needs to start are not in its folder.",

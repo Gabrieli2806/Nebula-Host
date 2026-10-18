@@ -151,6 +151,9 @@ fn forward_events(handle: tauri::AppHandle, service: Arc<InstanceService>) {
 /// back to sleep on launch, so a join wakes them instead of finding nothing.
 pub fn restore_sleepers(service: Arc<InstanceService>) {
     tokio::spawn(async move {
+        // Servers that kept running while the app was closed come back first,
+        // so they are not mistaken for stopped ones below.
+        service.adopt_running().await;
         for view in service.list().await.unwrap_or_default() {
             // An older copy left behind by a transfer must not hold the port.
             let wakeable = view.instance.automation.wake_on_join

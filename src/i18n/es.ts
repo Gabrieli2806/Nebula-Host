@@ -942,6 +942,7 @@ export const es: Copy = {
     instance_not_found: { title: "Servidor no encontrado", cause: "Este servidor ya no está en la lista.", action: "Vuelve a la lista de servidores." },
     instance_already_running: { title: "Ya está en marcha", cause: "Este servidor ya está arriba.", action: "Deténlo primero si quieres volver a arrancarlo." },
     instance_not_running: { title: "No está en marcha", cause: "El servidor tiene que estar encendido para eso.", action: "Arranca el servidor e inténtalo otra vez." },
+    console_detached: { title: "Consola reconectada sin entrada", cause: "Este servidor siguió encendido mientras Nebula Host estaba cerrado. La app lo recuperó y muestra su registro, pero no puede escribir en su consola.", action: "Reinicia el servidor (Parar y luego Iniciar) para volver a escribir comandos." },
     instance_launch_files_missing: {
       title: "Faltan los archivos del servidor",
       cause: "Los archivos que necesita para arrancar no están en su carpeta.",

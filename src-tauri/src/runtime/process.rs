@@ -19,6 +19,7 @@ use tokio::sync::{mpsc, RwLock};
 use crate::error::{AppError, AppResult, ErrorCode};
 use crate::game::registry::LaunchPlan;
 use crate::model::{ConsoleLevel, ConsoleLine, InstanceStatus, RuntimeKind};
+use crate::runtime::adopt;
 use crate::runtime::console::{read_line_lossy, ConsoleParser};
 use crate::runtime::docker;
 use crate::runtime::java::configure_no_window_command;
@@ -97,6 +98,8 @@ pub struct ProcessHandle {
     stop_requested: Arc<AtomicBool>,
     runtime_kind: RuntimeKind,
     container_name: String,
+    /// Taken back after an app restart: no stdin, stopped by signal.
+    adopted: bool,
 }
 
 /// Measured CPU and memory for a running process, refreshed by the poller.
@@ -219,6 +222,7 @@ impl ProcessSupervisor {
                 stop_requested: stop_requested.clone(),
                 runtime_kind: request.runtime_kind,
                 container_name,
+                adopted: false,
             },
         );
 
@@ -250,77 +254,22 @@ impl ProcessSupervisor {
         console_tx: mpsc::Sender<ConsoleLine>,
         events_tx: mpsc::Sender<RuntimeEvent>,
     ) {
-        let instance_id = request.instance_id.clone();
-        let parser = request.parser.clone();
-        let tick_rates = self.tick_rates.clone();
-        let silence_until = self.silence_until.clone();
-        let captures = self.captures.clone();
+        let sink = LineSink {
+            instance_id: request.instance_id.clone(),
+            parser: request.parser.clone(),
+            tick_rates: self.tick_rates.clone(),
+            silence_until: self.silence_until.clone(),
+            captures: self.captures.clone(),
+            hints: hints.clone(),
+            console_tx,
+            events_tx,
+        };
 
         thread::spawn(move || {
             let mut reader = BufReader::new(stdout);
             let mut buf = Vec::new();
-
             while let Some(line) = read_line_lossy(&mut reader, &mut buf) {
-                let reading = parser.read(&line);
-
-                if reading.ready {
-                    let _ = events_tx
-                        .blocking_send(RuntimeEvent::Status(instance_id.clone(), InstanceStatus::Online));
-                }
-                if reading.crashed {
-                    hints.crashed.store(true, Ordering::SeqCst);
-                }
-                if reading.stopping && !hints.stopping.swap(true, Ordering::SeqCst) {
-                    // Stopped from inside (a player's `/stop`): show it
-                    // stopping, as if the button had been pressed.
-                    let _ = events_tx
-                        .blocking_send(RuntimeEvent::Status(instance_id.clone(), InstanceStatus::Stopping));
-                }
-                if let Some(name) = &reading.joined {
-                    let _ = events_tx
-                        .blocking_send(RuntimeEvent::PlayerJoined(instance_id.clone(), name.clone()));
-                }
-                if let Some(name) = &reading.left {
-                    let _ = events_tx
-                        .blocking_send(RuntimeEvent::PlayerLeft(instance_id.clone(), name.clone()));
-                }
-                if let Some((name, uuid)) = &reading.identity {
-                    let _ = events_tx.blocking_send(RuntimeEvent::PlayerIdentified(
-                        instance_id.clone(),
-                        name.clone(),
-                        uuid.clone(),
-                    ));
-                }
-                if let Some(rate) = reading.tick_rate {
-                    if let Ok(mut map) = tick_rates.write() {
-                        map.insert(instance_id.clone(), rate);
-                    }
-                    let _ = events_tx.blocking_send(RuntimeEvent::TickRate(instance_id.clone(), rate));
-                }
-
-                let silenced = silence_until
-                    .read()
-                    .ok()
-                    .and_then(|map| map.get(&instance_id).copied())
-                    .is_some_and(|deadline| Instant::now() < deadline);
-
-                let captured = captures.lock().ok().is_some_and(|map| {
-                    map.get(&instance_id).is_some_and(|sink| {
-                        sink.matches.iter().any(|re| re.is_match(&reading.text))
-                            && sink.tx.send(reading.text.clone()).is_ok()
-                    })
-                });
-
-                if !captured && reading.visible && !(silenced && reading.tick_rate.is_some()) {
-                    let speaker = reading.speaker();
-                    let _ = console_tx.blocking_send(ConsoleLine {
-                        timestamp: Utc::now(),
-                        level: reading.level,
-                        message: reading.text,
-                        body: reading.body,
-                        speaker,
-                    });
-                }
+                sink.handle(line);
             }
             hints.output_closed.store(true, Ordering::SeqCst);
         });
@@ -394,6 +343,15 @@ impl ProcessSupervisor {
 
         handle.stop_requested.store(true, Ordering::SeqCst);
 
+        if handle.adopted {
+            let pid = handle.pid;
+            drop(processes);
+            return tokio::task::spawn_blocking(move || adopt::interrupt(pid))
+                .await
+                .map_err(AppError::unexpected)?
+                .map_err(|error| AppError::unexpected(format!("could not ask the server to stop: {error}")));
+        }
+
         match handle.runtime_kind {
             RuntimeKind::Docker => docker::stop(&handle.container_name)?,
             RuntimeKind::HostProcess => {
@@ -435,6 +393,9 @@ impl ProcessSupervisor {
             .get_mut(instance_id)
             .ok_or_else(|| AppError::new(ErrorCode::InstanceNotRunning).with("instance", instance_id))?;
 
+        if handle.adopted {
+            return Err(AppError::new(ErrorCode::ConsoleDetached).with("instance", instance_id));
+        }
         let stdin = handle
             .stdin
             .as_mut()
@@ -443,6 +404,87 @@ impl ProcessSupervisor {
         writeln!(stdin, "{command}")?;
         stdin.flush()?;
         Ok(())
+    }
+
+    /// Take back a server left running by an earlier run of the app (see
+    /// [`adopt`]). Its console follows `log_file`; it has no input.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn adopt(
+        &self,
+        instance_id: &str,
+        found: adopt::Found,
+        parser: Arc<ConsoleParser>,
+        log_file: std::path::PathBuf,
+        console_tx: mpsc::Sender<ConsoleLine>,
+        events_tx: mpsc::Sender<RuntimeEvent>,
+    ) -> AppResult<()> {
+        if self.is_running(instance_id).await {
+            return Err(AppError::new(ErrorCode::InstanceAlreadyRunning).with("instance", instance_id));
+        }
+        let stop_requested = Arc::new(AtomicBool::new(false));
+        self.processes.write().await.insert(
+            instance_id.to_string(),
+            ProcessHandle {
+                stdin: None,
+                pid: found.pid,
+                started_at: found.started_at,
+                stop_requested: stop_requested.clone(),
+                runtime_kind: RuntimeKind::HostProcess,
+                container_name: String::new(),
+                adopted: true,
+            },
+        );
+
+        let hints = Arc::new(ExitHints::default());
+        let sink = LineSink {
+            instance_id: instance_id.to_string(),
+            parser,
+            tick_rates: self.tick_rates.clone(),
+            silence_until: self.silence_until.clone(),
+            captures: self.captures.clone(),
+            hints: hints.clone(),
+            console_tx,
+            events_tx: events_tx.clone(),
+        };
+        thread::spawn(move || adopt::tail(log_file, || adopt::is_alive(found), |line| sink.handle(line)));
+
+        // No child to wait on: watch the pid instead.
+        let processes = self.processes.clone();
+        let tick_rates = self.tick_rates.clone();
+        let resources = self.resources.clone();
+        let runtime = tokio::runtime::Handle::try_current().ok();
+        let id = instance_id.to_string();
+        thread::spawn(move || {
+            while adopt::is_alive(found) {
+                thread::sleep(Duration::from_secs(1));
+            }
+            // Let the tail read the shutdown lines.
+            thread::sleep(OUTPUT_DRAIN);
+            let expected = exit_was_expected(
+                stop_requested.load(Ordering::SeqCst),
+                None,
+                hints.stopping.load(Ordering::SeqCst),
+                hints.crashed.load(Ordering::SeqCst),
+            );
+            if let Ok(mut map) = tick_rates.write() {
+                map.remove(&id);
+            }
+            if let Ok(mut map) = resources.write() {
+                map.remove(&id);
+            }
+            if let Some(handle) = &runtime {
+                handle.block_on(async {
+                    processes.write().await.remove(&id);
+                });
+            }
+            let _ = events_tx.blocking_send(RuntimeEvent::Exited { instance_id: id, expected, code: None });
+        });
+        Ok(())
+    }
+
+    /// Was this server taken back after an app restart (no console input)?
+    pub async fn is_adopted(&self, instance_id: &str) -> bool {
+        self.processes.read().await.get(instance_id).is_some_and(|handle| handle.adopted)
     }
 
     /// Open a capture of this server's output for lines matching `matches`.
@@ -534,6 +576,83 @@ impl ProcessSupervisor {
                 return;
             }
             tokio::time::sleep(Duration::from_millis(250)).await;
+        }
+    }
+}
+
+/// What happens to each line a server prints, whether it comes from its
+/// stdout pipe or, for a server taken back after a restart, its log file.
+struct LineSink {
+    instance_id: String,
+    parser: Arc<ConsoleParser>,
+    tick_rates: Arc<StdRwLock<HashMap<String, f32>>>,
+    silence_until: Arc<StdRwLock<HashMap<String, Instant>>>,
+    captures: Arc<StdMutex<HashMap<String, CaptureSink>>>,
+    hints: Arc<ExitHints>,
+    console_tx: mpsc::Sender<ConsoleLine>,
+    events_tx: mpsc::Sender<RuntimeEvent>,
+}
+
+impl LineSink {
+    fn handle(&self, line: String) {
+        let instance_id = &self.instance_id;
+        let events_tx = &self.events_tx;
+        let hints = &self.hints;
+        let reading = self.parser.read(&line);
+
+        if reading.ready {
+            let _ = events_tx.blocking_send(RuntimeEvent::Status(instance_id.clone(), InstanceStatus::Online));
+        }
+        if reading.crashed {
+            hints.crashed.store(true, Ordering::SeqCst);
+        }
+        if reading.stopping && !hints.stopping.swap(true, Ordering::SeqCst) {
+            // Stopped from inside (a player's `/stop`): show it
+            // stopping, as if the button had been pressed.
+            let _ = events_tx.blocking_send(RuntimeEvent::Status(instance_id.clone(), InstanceStatus::Stopping));
+        }
+        if let Some(name) = &reading.joined {
+            let _ = events_tx.blocking_send(RuntimeEvent::PlayerJoined(instance_id.clone(), name.clone()));
+        }
+        if let Some(name) = &reading.left {
+            let _ = events_tx.blocking_send(RuntimeEvent::PlayerLeft(instance_id.clone(), name.clone()));
+        }
+        if let Some((name, uuid)) = &reading.identity {
+            let _ = events_tx.blocking_send(RuntimeEvent::PlayerIdentified(
+                instance_id.clone(),
+                name.clone(),
+                uuid.clone(),
+            ));
+        }
+        if let Some(rate) = reading.tick_rate {
+            if let Ok(mut map) = self.tick_rates.write() {
+                map.insert(instance_id.clone(), rate);
+            }
+            let _ = events_tx.blocking_send(RuntimeEvent::TickRate(instance_id.clone(), rate));
+        }
+
+        let silenced = self
+            .silence_until
+            .read()
+            .ok()
+            .and_then(|map| map.get(instance_id).copied())
+            .is_some_and(|deadline| Instant::now() < deadline);
+
+        let captured = self.captures.lock().ok().is_some_and(|map| {
+            map.get(instance_id).is_some_and(|sink| {
+                sink.matches.iter().any(|re| re.is_match(&reading.text)) && sink.tx.send(reading.text.clone()).is_ok()
+            })
+        });
+
+        if !captured && reading.visible && !(silenced && reading.tick_rate.is_some()) {
+            let speaker = reading.speaker();
+            let _ = self.console_tx.blocking_send(ConsoleLine {
+                timestamp: Utc::now(),
+                level: reading.level,
+                message: reading.text,
+                body: reading.body,
+                speaker,
+            });
         }
     }
 }

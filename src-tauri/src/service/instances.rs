@@ -534,6 +534,21 @@ impl InstanceService {
             return Err(AppError::new(ErrorCode::InstanceAlreadyRunning).with("instance", instance_id));
         }
 
+        // Still running from before the app restarted? Take it back instead
+        // of starting a second process on the same world.
+        if instance.runtime_kind == RuntimeKind::HostProcess {
+            let dir = instance.path.clone();
+            let found = tokio::task::spawn_blocking(move || {
+                crate::runtime::adopt::find_in(&crate::runtime::adopt::java_processes(), &dir)
+            })
+            .await
+            .ok()
+            .flatten();
+            if let Some(found) = found {
+                return self.adopt_one(&instance, found).await;
+            }
+        }
+
         // Addon changes queued while it last ran go in before it loads its
         // jars. Normally the stop already did this; this catches a queue left
         // by an app that closed with the server still up. A change that fails
@@ -624,6 +639,63 @@ impl InstanceService {
             .await?;
 
         self.auto_forward(&instance, instance.primary_port(&manifest));
+        Ok(())
+    }
+
+    /// Take back every server still running from before the app started
+    /// (see [`crate::runtime::adopt`]). Call once at launch, before sleeping
+    /// servers get their wake proxy.
+    pub async fn adopt_running(self: &Arc<Self>) {
+        let processes = tokio::task::spawn_blocking(crate::runtime::adopt::java_processes)
+            .await
+            .unwrap_or_default();
+        if processes.is_empty() {
+            return;
+        }
+        for instance in self.store.list().await {
+            if instance.runtime_kind != RuntimeKind::HostProcess || self.processes.is_running(&instance.id).await {
+                continue;
+            }
+            if let Some(found) = crate::runtime::adopt::find_in(&processes, &instance.path) {
+                if let Err(error) = self.adopt_one(&instance, found).await {
+                    warn!(instance_id = %instance.id, %error, "could not reconnect to a running server");
+                }
+            }
+        }
+    }
+
+    async fn adopt_one(self: &Arc<Self>, instance: &Instance, found: crate::runtime::adopt::Found) -> AppResult<()> {
+        let manifest = self.registry.manifest(&instance.game)?;
+        let parser = Arc::new(ConsoleParser::new(&manifest.console)?);
+        let (console_tx, console_rx) = mpsc::channel(256);
+        let (events_tx, events_rx) = mpsc::channel(256);
+        self.clone().consume_console(instance.id.clone(), console_rx);
+        self.clone().consume_events(events_rx);
+        // A wake proxy cannot hold a port the server already has, but make sure.
+        self.wake.stop(&instance.id).await;
+        self.processes
+            .adopt(
+                &instance.id,
+                found,
+                parser,
+                instance.path.join("logs").join("latest.log"),
+                console_tx,
+                events_tx,
+            )
+            .await?;
+        self.set_status(&instance.id, InstanceStatus::Online).await;
+        self.push_console(
+            &instance.id,
+            ConsoleLine::new(
+                ConsoleLevel::System,
+                "Reconnected: this server kept running while Nebula Host was closed. The console shows its log; \
+                 typing commands works again after its next restart."
+                    .to_string(),
+            ),
+        )
+        .await;
+        self.auto_forward(instance, instance.primary_port(&manifest));
+        info!(instance_id = %instance.id, pid = found.pid, "reconnected to a server left running");
         Ok(())
     }
 

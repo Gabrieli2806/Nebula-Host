@@ -2,6 +2,7 @@
 //! a `LaunchPlan` and a compiled `ConsoleParser` and does the same work either
 //! way.
 
+pub mod adopt;
 pub mod console;
 pub mod docker;
 pub mod java;

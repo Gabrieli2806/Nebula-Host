@@ -37,6 +37,8 @@ pub enum ErrorCode {
     InstanceStartFailed,
     InstanceStopTimedOut,
     InstanceCrashed,
+    /// A server taken back after an app restart: its console input is gone.
+    ConsoleDetached,
 
     // --- installation ------------------------------------------------------
     GameNotSupported,
@@ -92,6 +94,7 @@ impl ErrorCode {
             Self::InstanceStartFailed => "instance_start_failed",
             Self::InstanceStopTimedOut => "instance_stop_timed_out",
             Self::InstanceCrashed => "instance_crashed",
+            Self::ConsoleDetached => "console_detached",
             Self::GameNotSupported => "game_not_supported",
             Self::VersionNotFound => "version_not_found",
             Self::LoaderVersionMismatch => "loader_version_mismatch",
