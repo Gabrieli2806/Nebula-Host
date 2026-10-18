@@ -33,6 +33,19 @@ pub struct GameManifest {
     /// The picture the game shows for this server in its server list.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub server_icon: Option<ServerIconSpec>,
+    /// A licence the server's operator must accept before it may run (the
+    /// Minecraft EULA). The app never accepts it on the user's behalf: the UI
+    /// shows the link, the user ticks the box, and only then does the adapter
+    /// record it (`GameAdapter::accept_agreement`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agreement: Option<AgreementSpec>,
+}
+
+/// The licence a game's server makes its operator accept.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgreementSpec {
+    /// Where the full text lives; the UI opens it in the browser.
+    pub url: String,
 }
 
 impl GameManifest {
@@ -76,6 +89,12 @@ pub struct Distribution {
     /// which means something entirely different and is never mixed with this.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub accent: Option<String>,
+    /// Which of the app's own neutral glyphs stands for this flavour next to
+    /// its name (`cube`, `sheet`, `pillar`, `spool`, `hammer`, `flame`). A
+    /// glyph is drawn by the app, never a third-party logo, so the UI needs
+    /// no per-game knowledge and no trademark permission to show it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glyph: Option<String>,
 }
 
 /// What the host needs before this game can run.
@@ -142,6 +161,16 @@ pub struct ConsoleSpec {
     pub suppress_patterns: Vec<String>,
     /// Command that stops the server cleanly.
     pub stop_command: String,
+    /// Matches the line the server logs when it begins a normal shutdown,
+    /// however it was asked to (a player's `/stop`, `stop` typed in the
+    /// console). An exit after it is a stop, not a crash.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stopping_pattern: Option<String>,
+    /// Matches lines that only a crash produces. Once seen, the exit is a
+    /// crash whatever its code and whatever was logged on the way down (a
+    /// crashing server still logs its shutdown, and may exit with 0).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crash_pattern: Option<String>,
     /// Strips in-band formatting before display (Minecraft's `§` codes).
     #[serde(default)]
     pub strip_colour_codes: bool,
@@ -366,6 +395,8 @@ mod tests {
                 tick_rate_patterns: vec![],
                 suppress_patterns: vec![],
                 stop_command: "stop".into(),
+                stopping_pattern: None,
+                crash_pattern: None,
                 strip_colour_codes: false,
                 chat_pattern: None,
                 identity_pattern: None,
@@ -383,6 +414,7 @@ mod tests {
             wake: None,
             logs: None,
             server_icon: None,
+            agreement: None,
         }
     }
 
@@ -412,6 +444,21 @@ mod tests {
                 dist.id
             );
         }
+    }
+
+    #[test]
+    fn every_distribution_has_a_known_glyph() {
+        const GLYPHS: &[&str] = &["cube", "sheet", "pillar", "spool", "hammer", "flame"];
+        for dist in crate::game::minecraft::manifest().distributions {
+            let glyph = dist.glyph.unwrap_or_default();
+            assert!(GLYPHS.contains(&glyph.as_str()), "{} has glyph {glyph:?}", dist.id);
+        }
+    }
+
+    #[test]
+    fn minecraft_asks_for_its_eula() {
+        let agreement = crate::game::minecraft::manifest().agreement.expect("an agreement");
+        assert_eq!(agreement.url, "https://aka.ms/MinecraftEULA");
     }
 
     #[test]

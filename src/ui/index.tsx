@@ -36,6 +36,8 @@ export {
 export { Mark } from "./Mark";
 export { CopyAddress } from "./CopyAddress";
 export { ServerTile } from "./ServerTile";
+export { LoaderIcon, DistributionTag } from "./LoaderIcon";
+export type { LoaderGlyph } from "./LoaderIcon";
 export { identityProps, initialOf } from "./identity";
 export { PlayerHead } from "./PlayerHead";
 export { playerHeadUrl, isOfflineUuid } from "./playerHeadUrl";
@@ -330,6 +332,7 @@ export function Dialog({
   footer,
   header,
   width = 520,
+  dismissable = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -339,6 +342,11 @@ export function Dialog({
   /** Extra content under the title row (e.g. a step header). */
   header?: ReactNode;
   width?: number;
+  /**
+   * False while something runs that cannot be called off: no close key,
+   * and Escape or a click outside do nothing.
+   */
+  dismissable?: boolean;
 }) {
   const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
@@ -350,16 +358,18 @@ export function Dialog({
   // the open effect (and its focus move) to once per opening; otherwise every
   // keystroke in a field would throw focus somewhere else.
   const onCloseRef = useRef(onClose);
+  const dismissableRef = useRef(dismissable);
   useEffect(() => {
     onCloseRef.current = onClose;
-  }, [onClose]);
+    dismissableRef.current = dismissable;
+  }, [onClose, dismissable]);
 
   useEffect(() => {
     if (!open) return;
     // Escape closes, and focus moves in: a dialog you cannot leave by
     // keyboard is a dialog that fails for anyone not using a mouse.
     const onKey = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") onCloseRef.current();
+      if (event.key === "Escape" && dismissableRef.current) onCloseRef.current();
     };
     document.addEventListener("keydown", onKey);
     // First text field or select in the body; else the first footer key
@@ -380,7 +390,7 @@ export function Dialog({
     <div
       className="dialog-scrim"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget && dismissable) onClose();
       }}
     >
       <div
@@ -396,9 +406,11 @@ export function Dialog({
             <h2 id={titleId} className="dialog-title">
               {title}
             </h2>
-            <Button variant="quiet" size="sm" iconOnly icon="close" onClick={onClose} className="-mr-2 -mt-1">
-              {t("dialog.close")}
-            </Button>
+            {dismissable ? (
+              <Button variant="quiet" size="sm" iconOnly icon="close" onClick={onClose} className="-mr-2 -mt-1">
+                {t("dialog.close")}
+              </Button>
+            ) : null}
           </div>
           {header}
         </header>

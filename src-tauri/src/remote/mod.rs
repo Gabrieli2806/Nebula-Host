@@ -11,6 +11,9 @@
 //!   over IPC (see [`dispatch`]). Bearer token required.
 //! - `GET  /events` — server-sent events: the same `AppEvent` stream the
 //!   desktop UI listens to. Bearer token required.
+//! - `POST /upload` — stream an archive in (a world, an incoming server).
+//! - `GET  /download/{exportId}` — stream out a server exported for a
+//!   transfer (`transfer_export`). Bearer token required.
 //! - `GET  /local/pairing-code` — issue a code, loopback callers only (how a
 //!   headless node shows a code: `nebula-node pair`).
 //!
@@ -18,6 +21,7 @@
 //! is a LAN feature — never forward this port to the internet.
 
 pub mod dispatch;
+pub mod transfer;
 
 use std::convert::Infallible;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -257,23 +261,42 @@ async fn upload(headers: HeaderMap, body: Body) -> Response {
     use futures_util::StreamExt;
     use tokio::io::AsyncWriteExt;
 
+    let expected: Option<u64> = headers
+        .get(axum::http::header::CONTENT_LENGTH)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.parse().ok());
     let result: AppResult<String> = async {
         let id = uuid::Uuid::new_v4().to_string();
         let path = crate::service::world::uploads_dir()?.join(format!("{id}.zip"));
         let mut file = tokio::fs::File::create(&path).await?;
-        let mut stream = body.into_data_stream();
-        let mut written: u64 = 0;
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk.map_err(|e| AppError::new(ErrorCode::InvalidInput).detail(e.to_string()))?;
-            written += chunk.len() as u64;
-            if written > MAX_UPLOAD_BYTES {
-                drop(file);
-                let _ = tokio::fs::remove_file(&path).await;
-                return Err(AppError::new(ErrorCode::InvalidInput).with("reason", "archive_too_large"));
+        let written: AppResult<u64> = async {
+            let mut stream = body.into_data_stream();
+            let mut written: u64 = 0;
+            while let Some(chunk) = stream.next().await {
+                let chunk = chunk.map_err(|e| AppError::new(ErrorCode::InvalidInput).detail(e.to_string()))?;
+                written += chunk.len() as u64;
+                if written > MAX_UPLOAD_BYTES {
+                    return Err(AppError::new(ErrorCode::InvalidInput).with("reason", "archive_too_large"));
+                }
+                file.write_all(&chunk).await?;
             }
-            file.write_all(&chunk).await?;
+            file.flush().await?;
+            Ok(written)
         }
-        file.flush().await?;
+        .await;
+        // A broken stream or a full disk must not leave a partial archive
+        // behind (it can be tens of GB).
+        let complete = match written {
+            Ok(n) if expected.is_some_and(|len| len != n) => Err(AppError::new(ErrorCode::InvalidInput)
+                .with("reason", "upload_incomplete")
+                .detail(format!("expected {} bytes, got {n}", expected.unwrap_or_default()))),
+            other => other.map(|_| ()),
+        };
+        if let Err(error) = complete {
+            drop(file);
+            let _ = tokio::fs::remove_file(&path).await;
+            return Err(error);
+        }
         Ok(id)
     }
     .await;
@@ -282,6 +305,54 @@ async fn upload(headers: HeaderMap, body: Body) -> Response {
         Ok(id) => Json(json!({ "uploadId": id })).into_response(),
         Err(error) => error_response(StatusCode::BAD_REQUEST, error),
     }
+}
+
+/// Stream out an archive `transfer_export` produced. Read from disk as it is
+/// sent; the desktop running the transfer pipes it on to the target.
+async fn download(
+    headers: HeaderMap,
+    axum::extract::Path(export_id): axum::extract::Path<String>,
+) -> Response {
+    if let Err(response) = authenticate(&headers) {
+        return response;
+    }
+    let result: AppResult<(tokio::fs::File, u64)> = async {
+        let path = crate::service::transfer::export_path(&export_id)?;
+        let file = tokio::fs::File::open(&path).await?;
+        let length = file.metadata().await?.len();
+        Ok((file, length))
+    }
+    .await;
+    match result {
+        Ok((file, length)) => {
+            let mut response = Body::from_stream(file_stream(file)).into_response();
+            let headers = response.headers_mut();
+            headers.insert("content-type", HeaderValue::from_static("application/zip"));
+            if let Ok(value) = HeaderValue::from_str(&length.to_string()) {
+                headers.insert("content-length", value);
+            }
+            response
+        }
+        Err(error) => error_response(StatusCode::NOT_FOUND, error),
+    }
+}
+
+/// A tokio file as a stream of byte chunks (without pulling in tokio-util).
+pub fn file_stream(
+    file: tokio::fs::File,
+) -> impl futures_util::Stream<Item = std::io::Result<Vec<u8>>> + Send + 'static {
+    use tokio::io::AsyncReadExt;
+    futures_util::stream::unfold(file, |mut file| async move {
+        let mut buffer = vec![0u8; 256 * 1024];
+        match file.read(&mut buffer).await {
+            Ok(0) => None,
+            Ok(n) => {
+                buffer.truncate(n);
+                Some((Ok(buffer), file))
+            }
+            Err(error) => Some((Err(error), file)),
+        }
+    })
 }
 
 async fn local_pairing_code(
@@ -309,6 +380,7 @@ fn router(ctx: Ctx) -> Router {
         .route("/rpc", post(rpc))
         .route("/events", get(events))
         .route("/upload", post(upload).layer(axum::extract::DefaultBodyLimit::disable()))
+        .route("/download/{export_id}", get(download))
         .route("/local/pairing-code", post(local_pairing_code))
         .fallback(|| async { (StatusCode::NOT_FOUND, Body::empty()) })
         .layer(middleware::from_fn(cors))

@@ -336,16 +336,63 @@
     gap: var(--space-1);
   }
 
-  .node-block-address {
-    font-family: var(--font-mono);
-    font-weight: 500;
+  .node-block-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .node-block-reconnecting {
+    margin-top: calc(var(--space-2) * -1);
     font-size: var(--text-xs);
     color: var(--text-muted);
   }
 
-  .node-block-address[data-empty] {
-    font-family: var(--font-sans);
-    color: var(--text-faint);
+  /* Managing another machine that stopped answering: one quiet notice above
+     the page, with the way back. */
+  .remote-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    /* The same column as the page below it (max-w content-max, padded by
+       the gutter), so both edges line up with its heading and cards. */
+    margin: var(--gutter) var(--gutter) 0;
+    max-width: calc(var(--content-max) - 2 * var(--gutter));
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .remote-banner > svg {
+    flex: none;
+    color: var(--status-starting);
+  }
+
+  .remote-banner-text {
+    display: flex;
+    flex: 1 1 260px;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .remote-banner-title {
+    font-weight: 650;
+  }
+
+  .remote-banner-body {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+  }
+
+  .remote-banner-actions {
+    display: flex;
+    flex: none;
+    gap: var(--space-2);
   }
 
   /* Collapsed: the lamp and three small dials in a sunken column. */

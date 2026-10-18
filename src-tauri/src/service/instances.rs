@@ -85,6 +85,13 @@ pub enum AppEvent {
         instance_id: String,
         pending: Vec<crate::service::pending::PendingAddonChange>,
     },
+    /// A server transfer between machines moving along (export, upload,
+    /// verify, adopt). Throttled; the last one has `done: true`.
+    Transfer {
+        #[serde(rename = "instanceId")]
+        instance_id: String,
+        progress: crate::service::transfer::TransferProgress,
+    },
 }
 
 /// What the UI sends when the user creates a server.
@@ -102,6 +109,11 @@ pub struct CreateInstanceRequest {
     pub runtime_kind: Option<RuntimeKind>,
     #[serde(default)]
     pub directory: Option<String>,
+    /// The user ticked "I accept" for the game's agreement (the Minecraft
+    /// EULA) in the create dialog. Only the UI ever sets this; MCP and other
+    /// callers leave it false and the server waits for the user.
+    #[serde(default)]
+    pub accept_agreement: bool,
 }
 
 pub struct InstanceService {
@@ -128,14 +140,35 @@ pub struct InstanceService {
     /// Serialises applying queued addon changes, so a stop and the start
     /// right after it (a restart) never move the same jars twice.
     pub(crate) pending_lock: Mutex<()>,
+    /// Servers being exported for a transfer: they must not start until the
+    /// transfer finishes or is abandoned, or the copy would miss that play.
+    pub(crate) transfer_locks: Mutex<HashMap<String, crate::service::transfer::ExportLock>>,
+    /// Copies adopted here whose source has not confirmed yet: what to put
+    /// back if the transfer is called off.
+    pub(crate) adoptions: Mutex<HashMap<String, crate::service::transfer::Adoption>>,
+    /// Tests point the folders a transfer writes to somewhere temporary.
+    data_root: std::sync::RwLock<Option<PathBuf>>,
 }
 
 impl InstanceService {
     pub async fn new(node: Node) -> AppResult<Arc<Self>> {
+        Self::with_store(node, InstanceStore::load().await?).await
+    }
+
+    /// A service over a given store (tests run two "machines" in one process).
+    pub async fn with_store(node: Node, store: InstanceStore) -> AppResult<Arc<Self>> {
+        // Records written when every node was called "local" follow the node
+        // to its unique id, so a transfer can tell machines apart.
+        if node.id != Node::LEGACY_LOCAL_ID {
+            let moved = store.migrate_node_id(Node::LEGACY_LOCAL_ID, &node.id).await?;
+            if moved > 0 {
+                info!(moved, node_id = %node.id, "instance records moved to the unique node id");
+            }
+        }
         let (events, _) = broadcast::channel(512);
         let service = Arc::new(Self {
             registry: GameRegistry::with_builtin_games(),
-            store: InstanceStore::load().await?,
+            store,
             processes: ProcessSupervisor::new(),
             wake: wake_proxy::WakeProxyManager::new(),
             forwarder: PortForwarder::new(),
@@ -150,15 +183,30 @@ impl InstanceService {
             addon_index: RwLock::new(HashMap::new()),
             events,
             pending_lock: Mutex::new(()),
+            transfer_locks: Mutex::new(HashMap::new()),
+            adoptions: Mutex::new(HashMap::new()),
+            data_root: std::sync::RwLock::new(None),
         });
         Ok(service)
+    }
+
+    /// Keep exports and adopted servers under `root` instead of the app's
+    /// folders. For tests that run two machines in one process.
+    pub fn set_data_root(&self, root: PathBuf) {
+        if let Ok(mut slot) = self.data_root.write() {
+            *slot = Some(root);
+        }
+    }
+
+    pub(crate) fn data_root_override(&self) -> Option<PathBuf> {
+        self.data_root.read().ok().and_then(|slot| slot.clone())
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<AppEvent> {
         self.events.subscribe()
     }
 
-    fn emit(&self, event: AppEvent) {
+    pub(crate) fn emit(&self, event: AppEvent) {
         // A send error only means nobody is listening yet.
         let _ = self.events.send(event);
     }
@@ -287,6 +335,7 @@ impl InstanceService {
         policy: crate::service::import::ConflictPolicy,
         import_id: String,
     ) -> AppResult<crate::service::import::ImportSummary> {
+        self.ensure_not_transferring(instance_id).await?;
         let instance = self.store.get(instance_id).await?;
         let events = self.events.clone();
         let id = instance_id.to_string();
@@ -346,6 +395,9 @@ impl InstanceService {
                 .with("path", root.display()));
         }
         std::fs::create_dir_all(&root)?;
+        if request.accept_agreement && manifest.agreement.is_some() {
+            self.registry.get(&request.game)?.accept_agreement(&root)?;
+        }
 
         let mut instance =
             Instance::new(self.node.read().await.id.clone(), &request.game, name, request.build, root);
@@ -413,14 +465,50 @@ impl InstanceService {
             })
             .await?;
 
+        if let Err(error) = self.ensure_default_icon(instance_id).await {
+            warn!(instance_id, %error, "default server icon not applied");
+        }
+
         progress.report(InstallProgress::Ready);
         Ok(())
+    }
+
+    // -- the game's agreement (the Minecraft EULA) ---------------------------
+
+    /// Refuse to run a server whose operator has not accepted the game's
+    /// agreement. The UI answers this error by asking the user; nothing in
+    /// the backend ever accepts on their behalf.
+    fn ensure_agreement(&self, instance: &Instance) -> AppResult<()> {
+        let manifest = self.registry.manifest(&instance.game)?;
+        let Some(agreement) = manifest.agreement else {
+            return Ok(());
+        };
+        if self.registry.get(&instance.game)?.agreement_accepted(&instance.path) {
+            return Ok(());
+        }
+        Err(AppError::new(ErrorCode::InvalidInput)
+            .with("reason", "agreement_required")
+            .with("instance", &instance.id)
+            .with("url", agreement.url))
+    }
+
+    /// The user accepted the game's agreement for this server, in the UI.
+    pub async fn accept_agreement(&self, instance_id: &str) -> AppResult<()> {
+        self.ensure_not_transferring(instance_id).await?;
+        let instance = self.store.get(instance_id).await?;
+        let manifest = self.registry.manifest(&instance.game)?;
+        if manifest.agreement.is_none() {
+            return Ok(());
+        }
+        self.registry.get(&instance.game)?.accept_agreement(&instance.path)
     }
 
     // -- lifecycle ---------------------------------------------------------
 
     pub async fn start(self: &Arc<Self>, instance_id: &str) -> AppResult<()> {
         let instance = self.store.get(instance_id).await?;
+        self.ensure_playable(&instance).await?;
+        self.ensure_agreement(&instance)?;
 
         if self.processes.is_running(instance_id).await {
             return Err(AppError::new(ErrorCode::InstanceAlreadyRunning).with("instance", instance_id));
@@ -432,6 +520,11 @@ impl InstanceService {
         // stays queued and visible, and does not keep the server down.
         if let Err(error) = self.apply_pending_addons(instance_id).await {
             warn!(instance_id, %error, "pending addon changes were not applied before start");
+        }
+
+        // Servers from before default icons get theirs on their next start.
+        if let Err(error) = self.ensure_default_icon(instance_id).await {
+            warn!(instance_id, %error, "default server icon not applied");
         }
 
         // Hand the port back before trying to bind it as the server.
@@ -538,6 +631,9 @@ impl InstanceService {
         let Some(spec) = manifest.wake.clone() else {
             return Err(AppError::new(ErrorCode::GameNotSupported).with("game", &instance.game));
         };
+        // A sleeping server is one join away from starting: same rule.
+        self.ensure_playable(&instance).await?;
+        self.ensure_agreement(&instance)?;
 
         let service = self.clone();
         let wake_id = instance_id.to_string();
@@ -598,6 +694,12 @@ impl InstanceService {
     }
 
     pub async fn delete(&self, instance_id: &str, delete_files: bool) -> AppResult<()> {
+        self.ensure_not_transferring(instance_id).await?;
+        self.delete_unchecked(instance_id, delete_files).await
+    }
+
+    /// `delete` without the transfer guard, for the transfer steps themselves.
+    pub(crate) async fn delete_unchecked(&self, instance_id: &str, delete_files: bool) -> AppResult<()> {
         if self.processes.is_running(instance_id).await {
             return Err(AppError::new(ErrorCode::InstanceAlreadyRunning).with("instance", instance_id));
         }
@@ -797,7 +899,7 @@ impl InstanceService {
 }
 
 /// A server name becomes a directory name, so it has to be boring.
-fn validate_name(name: &str) -> AppResult<String> {
+pub(crate) fn validate_name(name: &str) -> AppResult<String> {
     let trimmed = name.trim();
     if trimmed.is_empty() || trimmed.len() > 64 {
         return Err(AppError::new(ErrorCode::InvalidInput).with("field", "name"));
@@ -808,7 +910,7 @@ fn validate_name(name: &str) -> AppResult<String> {
     Ok(trimmed.to_string())
 }
 
-fn slug(name: &str) -> String {
+pub(crate) fn slug(name: &str) -> String {
     let mut out = String::new();
     let mut last_dash = false;
     for ch in name.trim().to_lowercase().chars() {
@@ -873,6 +975,7 @@ pub struct InstancePatch {
 
 impl InstanceService {
     pub async fn apply_patch(&self, instance_id: &str, patch: InstancePatch) -> AppResult<Instance> {
+    self.ensure_not_transferring(instance_id).await?;
     // Validate before touching the stored record: a rejected port must not
     // leave a half-applied edit behind.
     if let Some(port) = patch.port {

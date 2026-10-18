@@ -30,10 +30,14 @@ import {
   formatRelative,
 } from "@/lib/format";
 import type { DiskUsage, InstanceView } from "@/types/api";
+import { TransferBanner } from "@/features/server/transfer/TransferBanner";
+import { movedTo } from "@/features/server/transfer/machines";
+import { TransferDialog } from "@/features/server/transfer/TransferDialog";
 import {
   Button,
   CopyAddress,
   Dialog,
+  DistributionTag,
   ErrorNotice,
   Icon,
   Panel,
@@ -74,6 +78,9 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteFiles, setDeleteFiles] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  // An older copy left behind by a transfer moves only by "Bring it back".
+  const olderCopy = movedTo(instance) !== null;
 
   const backup = useMutation({
     mutationFn: () => api.backups.create(instance.id),
@@ -81,11 +88,7 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
   });
 
   const openFolder = useMutation({
-    mutationFn: async () => {
-      const folder = await api.files.reveal(instance.id);
-      const { openPath } = await import("@tauri-apps/plugin-opener");
-      await openPath(folder);
-    },
+    mutationFn: () => api.files.openFolder(instance.id),
   });
 
   const hint = statusHint(instance.status);
@@ -110,6 +113,8 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
 
   return (
     <div className="overview">
+      <TransferBanner instance={instance} />
+
       {/* The one header for this server. Nothing else on the screen repeats
           its name, status or build. */}
       <header
@@ -135,9 +140,7 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
                 <StatusChip status={instance.status} />
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="tag" {...identity}>
-                  {distribution?.name ?? instance.build.distribution}
-                </span>
+                <DistributionTag distribution={distribution} fallback={instance.build.distribution} />
                 <span className="tag">{instance.build.version}</span>
                 {instance.build.loader_version ? (
                   <span className="tag">{instance.build.loader_version}</span>
@@ -164,6 +167,16 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
             >
               {t("overview.openFolder")}
             </Button>
+            {olderCopy ? null : (
+              <Button
+                size="sm"
+                icon="send"
+                disabled={instance.status === "stopping"}
+                onClick={() => setTransferOpen(true)}
+              >
+                {t("transfer.action")}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -181,13 +194,17 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
 
         {actionError ? <ErrorNotice error={actionError} compact /> : null}
 
-        <CopyAddress
-          size="lg"
-          value={instance.address}
-          label={t("overview.address")}
-          hint={t("overview.copyHint")}
-          emptyText={t("overview.noAddress")}
-        />
+        {/* An older copy cannot start, and players now join the machine it
+            moved to (the banner above names it): no address to hand out. */}
+        {olderCopy ? null : (
+          <CopyAddress
+            size="lg"
+            value={instance.address}
+            label={t("overview.address")}
+            hint={t("overview.copyHint")}
+            emptyText={t("overview.noAddress")}
+          />
+        )}
       </header>
 
       <Resources instance={instance} />
@@ -238,6 +255,8 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
           {t("overview.deleteServer")}
         </Button>
       </div>
+
+      <TransferDialog instance={instance} open={transferOpen} onClose={() => setTransferOpen(false)} />
 
       <Dialog
         open={confirmDelete}

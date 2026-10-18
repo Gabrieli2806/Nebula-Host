@@ -32,6 +32,9 @@ const MAX_SOURCE_PIXELS: u64 = 40_000_000;
 /// a 64-pixel picture; the card falls back to the initial.
 const MAX_ICON_FILE_BYTES: u64 = 1024 * 1024;
 
+/// The app's own logo, 64x64: every server's icon until its owner picks one.
+const DEFAULT_ICON_PNG: &[u8] = include_bytes!("../../icons/64x64.png");
+
 /// How a non-square picture becomes a square.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -49,6 +52,7 @@ impl InstanceService {
     /// base64-encoded (it crosses IPC or HTTP as JSON either way), or a whole
     /// `data:` URL.
     pub async fn set_icon(&self, instance_id: &str, data: &str, fit: IconFit) -> AppResult<()> {
+        self.ensure_not_transferring(instance_id).await?;
         let instance = self.store.get(instance_id).await?;
         let (path, size) = self.icon_target(&instance)?;
         let bytes = base64::engine::general_purpose::STANDARD
@@ -66,6 +70,7 @@ impl InstanceService {
     /// Back to no icon: the game shows its default, the app shows the
     /// server's initial.
     pub async fn clear_icon(&self, instance_id: &str) -> AppResult<()> {
+        self.ensure_not_transferring(instance_id).await?;
         let instance = self.store.get(instance_id).await?;
         let (path, _) = self.icon_target(&instance)?;
         match std::fs::remove_file(path) {
@@ -74,6 +79,41 @@ impl InstanceService {
             Err(error) => return Err(error.into()),
         }
         self.touch_icon(instance_id).await
+    }
+
+    /// Give a server the app's logo as its icon, at most once in its life.
+    ///
+    /// `instance.icon` is the stamp every icon change leaves, so a server
+    /// whose icon Nebula has ever set, cleared or defaulted is left alone: a
+    /// user who removed the icon keeps having none. An icon already on disk
+    /// (dropped in through Files, or part of an imported server) is never
+    /// replaced. Games without a server icon are skipped.
+    pub async fn ensure_default_icon(&self, instance_id: &str) -> AppResult<()> {
+        let instance = self.store.get(instance_id).await?;
+        if instance.icon.is_some() {
+            return Ok(());
+        }
+        let Some(spec) = self.registry.manifest(&instance.game)?.server_icon else {
+            return Ok(());
+        };
+        if !instance.path.is_dir() {
+            return Ok(());
+        }
+        let path = crate::store::paths::resolve_inside(&instance.path, &spec.file)?;
+        let size = spec.size.clamp(16, 512);
+        tokio::task::spawn_blocking(move || place_default_icon(&path, size))
+            .await
+            .map_err(AppError::unexpected)??;
+        self.touch_icon(instance_id).await
+    }
+
+    /// [`Self::ensure_default_icon`] for every server, on launch.
+    pub async fn ensure_default_icons(&self) {
+        for view in self.list().await.unwrap_or_default() {
+            if let Err(error) = self.ensure_default_icon(&view.instance.id).await {
+                tracing::warn!(instance_id = %view.instance.id, %error, "default server icon not applied");
+            }
+        }
     }
 
     /// The icon file of this instance's game, and its side in pixels.
@@ -123,6 +163,17 @@ pub fn icon_data_url(root: &Path, spec: Option<&ServerIconSpec>) -> Option<Strin
         map.insert(path, (modified, meta.len(), url.clone()));
     }
     Some(url)
+}
+
+/// Write the app's logo to `path` unless something is already there.
+/// Returns whether it wrote.
+fn place_default_icon(path: &Path, size: u32) -> AppResult<bool> {
+    if path.exists() {
+        return Ok(false);
+    }
+    let png = if size == 64 { DEFAULT_ICON_PNG.to_vec() } else { render_icon(DEFAULT_ICON_PNG, IconFit::Contain, size)? };
+    write_atomic(path, &png)?;
+    Ok(true)
 }
 
 /// Decode, square, scale, encode. GIFs and other animations give their first
@@ -210,6 +261,28 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_default_icon_is_a_64_pixel_png_and_never_replaces_one_on_disk() {
+        let root = std::env::temp_dir().join(format!("nebula-default-icon-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("temp root");
+        let path = root.join("server-icon.png");
+
+        assert!(place_default_icon(&path, 64).expect("placed"));
+        let written = image::load_from_memory(&std::fs::read(&path).expect("read")).expect("valid png");
+        assert_eq!(written.dimensions(), (64, 64));
+
+        std::fs::write(&path, b"mine").expect("user icon");
+        assert!(!place_default_icon(&path, 64).expect("checked"));
+        assert_eq!(std::fs::read(&path).expect("read"), b"mine");
+
+        let other = root.join("other.png");
+        assert!(place_default_icon(&other, 32).expect("placed"));
+        let scaled = image::load_from_memory(&std::fs::read(&other).expect("read")).expect("valid png");
+        assert_eq!(scaled.dimensions(), (32, 32));
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     fn encode(image: DynamicImage, format: ImageFormat) -> Vec<u8> {
         let mut out = std::io::Cursor::new(Vec::new());

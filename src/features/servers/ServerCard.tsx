@@ -18,9 +18,12 @@ import { useDistribution, useInstanceActions } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { formatDuration, formatMegabytes } from "@/lib/format";
 import type { InstanceView } from "@/types/api";
+import { TransferNote } from "@/features/server/transfer/TransferBanner";
+import { movedTo } from "@/features/server/transfer/machines";
 import {
   Button,
   CopyAddress,
+  DistributionTag,
   ErrorNotice,
   Icon,
   ServerTile,
@@ -47,6 +50,8 @@ export function ServerCard({ instance, onOpen }: { instance: InstanceView; onOpe
   // Stop stays available while a server is starting (as in the rail), so a
   // stuck startup can be put out from the list.
   const busy = actions.start.isPending || actions.stop.isPending || instance.status === "stopping";
+  // An older copy left behind by a transfer does not start from here.
+  const movedNode = movedTo(instance);
   const accent = distribution?.accent;
   const running = instance.status === "online" || instance.status === "starting";
   // A process exists, so CPU and memory readings mean something.
@@ -87,19 +92,22 @@ export function ServerCard({ instance, onOpen }: { instance: InstanceView; onOpe
                 {instance.name}
               </button>
             </h3>
+            <StatusChip status={instance.status} className="flex-none" />
           </div>
 
-          {/* The state rides on the tag row so the name gets the card's
-              full width, even in the four-column grid. */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="tag" {...identityProps(accent)}>
-              {distribution?.name ?? instance.build.distribution}
-            </span>
+          {/* One line, always: every card in a row keeps the same header
+              height, so the addresses line up. What does not fit is the
+              least important (the loader build), and it is cut short. */}
+          <div className="server-card-tags">
+            <DistributionTag distribution={distribution} fallback={instance.build.distribution} />
+            {movedNode ? <span className="tag">{t("transfer.tagOlder")}</span> : null}
+            {!movedNode && instance.forked_from ? <span className="tag">{t("transfer.tagForked")}</span> : null}
             <span className="tag">{instance.build.version}</span>
             {instance.build.loader_version ? (
-              <span className="tag">{instance.build.loader_version}</span>
+              <span className="tag server-card-tag-trim" title={instance.build.loader_version}>
+                {instance.build.loader_version}
+              </span>
             ) : null}
-            <StatusChip status={instance.status} className="ml-auto flex-none" />
           </div>
         </div>
       </header>
@@ -107,15 +115,21 @@ export function ServerCard({ instance, onOpen }: { instance: InstanceView; onOpe
       {/* The address sits at the same offset on every card in a row; the
           state hint (sleeping, starting, crashed) comes after it. */}
       <div className="server-card-raised flex flex-col gap-2">
-        <CopyAddress
-          value={instance.address}
-          emptyText={t("servers.noAddress")}
-          className="server-card-address"
-        />
+        {/* An older copy has no address worth sharing: the server now
+            answers on the machine it moved to. */}
+        {movedNode ? (
+          <TransferNote instance={instance} />
+        ) : (
+          <CopyAddress
+            value={instance.address}
+            emptyText={t("servers.noAddress")}
+            className="server-card-address"
+          />
+        )}
         {failure ? <ErrorNotice error={failure} compact /> : null}
       </div>
 
-      {hint ? <p className="server-card-hint">{t(hint)}</p> : null}
+      {hint && !movedNode ? <p className="server-card-hint">{t(hint)}</p> : null}
 
       {/* While a process exists: what it is using, CPU as a share of the
           machine and memory against what it was given. */}
@@ -177,7 +191,8 @@ export function ServerCard({ instance, onOpen }: { instance: InstanceView; onOpe
             <Button
               size="sm"
               icon="play"
-              disabled={busy}
+              disabled={busy || movedNode !== null}
+              title={movedNode ? t("transfer.startDisabled", { node: movedNode }) : undefined}
               onClick={start}
               aria-label={`${instance.status === "sleeping" ? t("actions.wake") : t("actions.start")}: ${instance.name}`}
             >

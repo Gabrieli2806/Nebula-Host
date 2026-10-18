@@ -139,7 +139,7 @@ mod tests {
         let manifest = crate::game::minecraft::manifest();
         let values = read(&root, &manifest).expect("read");
         let motd = values.iter().find(|v| v.field.key == "motd").expect("motd is declared");
-        assert_eq!(motd.value, "A Minecraft Server");
+        assert_eq!(motd.value, crate::game::minecraft::launch::DEFAULT_MOTD);
         let _ = std::fs::remove_dir_all(&root);
     }
 

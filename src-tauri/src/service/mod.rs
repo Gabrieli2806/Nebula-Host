@@ -16,5 +16,6 @@ pub mod pending;
 pub mod players;
 pub mod poller;
 pub mod properties;
+pub mod transfer;
 
 pub use instances::{AppEvent, CreateInstanceRequest, InstancePatch, InstanceService};

@@ -5,6 +5,7 @@ import { AccentSync } from "@/app/AccentSync";
 import { AppShell } from "@/app/AppShell";
 import { ThemeSync } from "@/app/ThemeSync";
 import { FirstRun } from "@/features/onboarding/FirstRun";
+import { AgreementGate } from "@/features/server/agreement/Agreement";
 import { ServerScreen } from "@/features/server/ServerScreen";
 import { ServersScreen } from "@/features/servers/ServersScreen";
 import { SettingsScreen } from "@/features/settings/SettingsScreen";
@@ -28,6 +29,7 @@ export function App() {
       <I18nProvider>
         <AccentSync />
         <ThemeSync />
+        <AgreementGate />
         <HashRouter>
           <Routes>
             <Route path="/welcome" element={<FirstRun />} />

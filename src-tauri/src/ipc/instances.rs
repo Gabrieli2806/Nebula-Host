@@ -35,6 +35,12 @@ pub async fn instance_install(state: State<'_>, instance_id: String) -> AppResul
     state.install(&instance_id).await
 }
 
+/// The user accepted the game's agreement (the Minecraft EULA) in the UI.
+#[tauri::command]
+pub async fn instance_accept_agreement(state: State<'_>, instance_id: String) -> AppResult<()> {
+    state.accept_agreement(&instance_id).await
+}
+
 #[tauri::command]
 pub async fn instance_start(state: State<'_>, instance_id: String) -> AppResult<()> {
     state.inner().start(&instance_id).await

@@ -99,6 +99,7 @@ async fn serve(args: Args) -> AppResult<()> {
     let service: Arc<InstanceService> = InstanceService::new(node.clone()).await?;
     service::poller::spawn(service.clone());
     nebula_host_lib::restore_sleepers(service.clone());
+    nebula_host_lib::apply_default_icons(service.clone());
     let _remote = remote::serve(service.clone(), args.port).await?;
 
     let address = nebula_host_lib::net::lan::primary_address()

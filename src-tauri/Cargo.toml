@@ -60,6 +60,8 @@ reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sha1 = { workspace = true }
+# Transfers: the archive a node sends is verified end to end.
+sha2 = { workspace = true }
 sys-locale = "0.3"
 sysinfo = "0.33"
 # Java runtimes ship as .tar.gz outside Windows.

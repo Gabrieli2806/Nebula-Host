@@ -42,6 +42,39 @@ pub enum RuntimeEvent {
     Exited { instance_id: String, expected: bool, code: Option<i32> },
 }
 
+/// What the server's own output said about how it is ending, read by the
+/// reaper to tell a stop from a crash.
+#[derive(Default)]
+struct ExitHints {
+    /// The server logged its normal shutdown (a player's `/stop`, say).
+    stopping: AtomicBool,
+    /// The server logged something only a crash produces.
+    crashed: AtomicBool,
+    /// stdout reached its end, so nothing more will be learned from it.
+    output_closed: AtomicBool,
+}
+
+/// Was this exit a stop rather than a crash?
+///
+/// A stop Nebula asked for is always a stop. Otherwise the server's own word
+/// decides: a crash line makes it a crash whatever the code (a crashing
+/// Minecraft still logs its shutdown, and can exit with 0); a clean exit code
+/// or a logged normal shutdown makes it a stop — that is a player's `/stop`,
+/// or `stop` typed in the console. Anything else ended without warning.
+pub fn exit_was_expected(requested: bool, code: Option<i32>, stopping_logged: bool, crash_logged: bool) -> bool {
+    if requested {
+        return true;
+    }
+    if crash_logged {
+        return false;
+    }
+    code == Some(0) || stopping_logged
+}
+
+/// How long the reaper waits for the last of stdout after the process ends,
+/// so a shutdown line still in the pipe is not missed.
+const OUTPUT_DRAIN: Duration = Duration::from_secs(2);
+
 /// Everything needed to start one server.
 pub struct StartRequest {
     pub instance_id: String,
@@ -193,14 +226,16 @@ impl ProcessSupervisor {
             .send(RuntimeEvent::Status(request.instance_id.clone(), InstanceStatus::Starting))
             .await;
 
-        if let Some(stdout) = stdout {
-            self.pump_stdout(&request, stdout, console_tx.clone(), events_tx.clone());
+        let hints = Arc::new(ExitHints::default());
+        match stdout {
+            Some(stdout) => self.pump_stdout(&request, stdout, hints.clone(), console_tx.clone(), events_tx.clone()),
+            None => hints.output_closed.store(true, Ordering::SeqCst),
         }
         if let Some(stderr) = stderr {
             pump_stderr(request.instance_id.clone(), stderr, console_tx.clone());
         }
 
-        self.watch_exit(request.instance_id.clone(), child, stop_requested, events_tx);
+        self.watch_exit(request.instance_id.clone(), child, stop_requested, hints, events_tx);
         Ok(())
     }
 
@@ -211,6 +246,7 @@ impl ProcessSupervisor {
         &self,
         request: &StartRequest,
         stdout: std::process::ChildStdout,
+        hints: Arc<ExitHints>,
         console_tx: mpsc::Sender<ConsoleLine>,
         events_tx: mpsc::Sender<RuntimeEvent>,
     ) {
@@ -230,6 +266,15 @@ impl ProcessSupervisor {
                 if reading.ready {
                     let _ = events_tx
                         .blocking_send(RuntimeEvent::Status(instance_id.clone(), InstanceStatus::Online));
+                }
+                if reading.crashed {
+                    hints.crashed.store(true, Ordering::SeqCst);
+                }
+                if reading.stopping && !hints.stopping.swap(true, Ordering::SeqCst) {
+                    // Stopped from inside (a player's `/stop`): show it
+                    // stopping, as if the button had been pressed.
+                    let _ = events_tx
+                        .blocking_send(RuntimeEvent::Status(instance_id.clone(), InstanceStatus::Stopping));
                 }
                 if let Some(name) = &reading.joined {
                     let _ = events_tx
@@ -277,6 +322,7 @@ impl ProcessSupervisor {
                     });
                 }
             }
+            hints.output_closed.store(true, Ordering::SeqCst);
         });
     }
 
@@ -286,6 +332,7 @@ impl ProcessSupervisor {
         instance_id: String,
         mut child: Child,
         stop_requested: Arc<AtomicBool>,
+        hints: Arc<ExitHints>,
         events_tx: mpsc::Sender<RuntimeEvent>,
     ) {
         let processes = self.processes.clone();
@@ -300,9 +347,18 @@ impl ProcessSupervisor {
         thread::spawn(move || {
             let status = child.wait();
             let code = status.as_ref().ok().and_then(|s| s.code());
-            // A non-zero exit we asked for is not a crash; a zero exit we did
-            // not ask for is still an unexpected stop.
-            let expected = stop_requested.load(Ordering::SeqCst);
+            // The last lines may still be in the pipe; give the reader a
+            // moment to reach them before judging.
+            let drained_by = Instant::now() + OUTPUT_DRAIN;
+            while !hints.output_closed.load(Ordering::SeqCst) && Instant::now() < drained_by {
+                thread::sleep(Duration::from_millis(25));
+            }
+            let expected = exit_was_expected(
+                stop_requested.load(Ordering::SeqCst),
+                code,
+                hints.stopping.load(Ordering::SeqCst),
+                hints.crashed.load(Ordering::SeqCst),
+            );
 
             if let Ok(mut map) = tick_rates.write() {
                 map.remove(&instance_id);
@@ -550,6 +606,79 @@ mod tests {
         .expect("exit reported in time");
         assert!(exited);
         assert!(!supervisor.is_running("short").await, "deregistered before Exited is sent");
+    }
+
+    #[test]
+    fn an_exit_is_a_stop_or_a_crash() {
+        // Nebula asked: always a stop, even when the server exits non-zero.
+        assert!(exit_was_expected(true, Some(1), false, false));
+        assert!(exit_was_expected(true, None, false, true));
+        // A player's `/stop`: the server said so, whatever the code.
+        assert!(exit_was_expected(false, Some(1), true, false));
+        assert!(exit_was_expected(false, None, true, false));
+        // A clean exit code.
+        assert!(exit_was_expected(false, Some(0), false, false));
+        // Ended without warning.
+        assert!(!exit_was_expected(false, Some(1), false, false));
+        assert!(!exit_was_expected(false, None, false, false));
+        // A crash logs its shutdown too, and may exit 0: still a crash.
+        assert!(!exit_was_expected(false, Some(0), true, true));
+    }
+
+    /// Run a shell line as a server and report whether its exit was expected.
+    async fn exit_of(script: &str) -> bool {
+        let supervisor = ProcessSupervisor::new();
+        let (program, args) = if cfg!(windows) {
+            ("cmd".to_string(), vec!["/C".to_string(), script.to_string()])
+        } else {
+            ("sh".to_string(), vec!["-c".to_string(), script.to_string()])
+        };
+        let request = StartRequest {
+            instance_id: "exit".into(),
+            instance_name: "exit".into(),
+            plan: LaunchPlan { program, args, working_dir: std::env::temp_dir(), env: Default::default() },
+            runtime_kind: RuntimeKind::HostProcess,
+            parser: Arc::new(
+                ConsoleParser::new(&crate::game::minecraft::manifest().console).expect("patterns compile"),
+            ),
+            stop_command: "stop".into(),
+            container_image: None,
+            port: 0,
+        };
+        let (console_tx, _console_rx) = mpsc::channel(64);
+        let (events_tx, mut events_rx) = mpsc::channel(64);
+        supervisor.start(request, console_tx, events_tx).await.expect("starts");
+        tokio::time::timeout(Duration::from_secs(10), async {
+            while let Some(event) = events_rx.recv().await {
+                if let RuntimeEvent::Exited { expected, .. } = event {
+                    return expected;
+                }
+            }
+            panic!("no exit reported");
+        })
+        .await
+        .expect("exit reported in time")
+    }
+
+    /// Regression: a player's `/stop` (or `stop` typed in the console) made
+    /// Nebula report a crash, because only its own Stop button counted.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_stop_from_inside_the_server_is_not_a_crash() {
+        assert!(exit_of("echo [12:00:00] [Server thread/INFO]: Stopping the server&& exit 1").await);
+        assert!(!exit_of("echo [12:00:00] [Server thread/INFO]: Preparing level&& exit 1").await);
+        assert!(exit_of("exit 0").await);
+    }
+
+    /// A frozen Paper server: the watchdog logs it, then Spigot's restart
+    /// path logs a normal shutdown and exits 0. Still a crash.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn a_watchdog_shutdown_is_a_crash() {
+        assert!(
+            !exit_of(
+                "echo [12:00:00 ERROR]: The server has stopped responding! This is not a Paper bug.&& echo [12:00:01 INFO]: Stopping server&& exit 0"
+            )
+            .await
+        );
     }
 
     #[tokio::test]

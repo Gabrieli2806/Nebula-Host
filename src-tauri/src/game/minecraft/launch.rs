@@ -111,11 +111,34 @@ fn find_file_named(root: &Path, name: &str) -> Option<PathBuf> {
     None
 }
 
-/// Accept the EULA on the user's behalf once they have said yes in the UI.
-pub fn write_eula(root: &Path) -> AppResult<()> {
-    fs::write(root.join("eula.txt"), "eula=true\n")?;
+/// Record the operator's acceptance of the Minecraft EULA. Called only after
+/// the user ticked "I accept" in the UI for this server; the date goes in a
+/// comment so the file says when and where it was accepted.
+pub fn accept_eula(root: &Path, at: chrono::DateTime<chrono::Utc>) -> AppResult<()> {
+    fs::create_dir_all(root)?;
+    let contents = format!(
+        "#By changing the setting below to TRUE you are indicating your agreement to the EULA (https://aka.ms/MinecraftEULA).\n#Accepted by the server's operator in Nebula Host on {}\neula=true\n",
+        at.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+    );
+    fs::write(root.join("eula.txt"), contents)?;
     Ok(())
 }
+
+/// Whether `eula.txt` says the EULA was accepted, the way the server reads it.
+pub fn eula_accepted(root: &Path) -> bool {
+    let Ok(text) = fs::read_to_string(root.join("eula.txt")) else {
+        return false;
+    };
+    text.lines()
+        .map(str::trim)
+        .filter(|line| !line.starts_with('#'))
+        .filter_map(|line| line.split_once('='))
+        .any(|(key, value)| key.trim() == "eula" && value.trim().eq_ignore_ascii_case("true"))
+}
+
+/// What a new server calls itself in the multiplayer list. The manifest's
+/// `motd` setting declares the same default (a test keeps them in step).
+pub const DEFAULT_MOTD: &str = "A Nebula Host Server";
 
 /// Seed `server.properties` so the first launch already uses the right port.
 pub fn write_initial_properties(root: &Path, port: u16) -> AppResult<()> {
@@ -124,7 +147,7 @@ pub fn write_initial_properties(root: &Path, port: u16) -> AppResult<()> {
         return Ok(());
     }
     let contents = format!(
-        "#Minecraft server properties\nserver-port={port}\nmotd=A Minecraft Server\nmax-players=20\nonline-mode=true\n"
+        "#Minecraft server properties\nserver-port={port}\nmotd={DEFAULT_MOTD}\nmax-players=20\nonline-mode=true\n"
     );
     fs::write(path, contents)?;
     Ok(())
@@ -133,6 +156,40 @@ pub fn write_initial_properties(root: &Path, port: u16) -> AppResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_eula_counts_only_once_it_is_accepted() {
+        let root = std::env::temp_dir().join(format!("nebula-eula-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).expect("dir");
+        assert!(!eula_accepted(&root), "no file is not accepted");
+
+        // What the server writes itself on a first launch without consent.
+        fs::write(root.join("eula.txt"), "#eula=true is not it\neula=false\n").expect("write");
+        assert!(!eula_accepted(&root), "false and comments are not accepted");
+
+        accept_eula(&root, chrono::Utc::now()).expect("accept");
+        assert!(eula_accepted(&root));
+        let text = fs::read_to_string(root.join("eula.txt")).expect("read");
+        assert!(text.contains("https://aka.ms/MinecraftEULA") && text.contains("Nebula Host on "));
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_new_server_is_named_after_nebula_and_an_existing_one_is_left_alone() {
+        let root = std::env::temp_dir().join(format!("nebula-initprops-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).expect("temp root");
+        write_initial_properties(&root, 25570).expect("write");
+        let text = fs::read_to_string(root.join("server.properties")).expect("read");
+        assert!(text.contains("motd=A Nebula Host Server"));
+        assert!(text.contains("server-port=25570"));
+
+        fs::write(root.join("server.properties"), "motd=Mine\n").expect("rewrite");
+        write_initial_properties(&root, 25570).expect("no-op");
+        assert_eq!(fs::read_to_string(root.join("server.properties")).expect("read"), "motd=Mine\n");
+        let _ = fs::remove_dir_all(&root);
+    }
 
     #[test]
     fn min_java_version_matches_mojang_requirements() {

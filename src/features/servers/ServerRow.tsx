@@ -11,7 +11,8 @@ import { useDistribution, useInstanceActions } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { formatDuration, formatMegabytes } from "@/lib/format";
 import type { InstanceView } from "@/types/api";
-import { Button, ErrorNotice, ServerTile, StatusDot, identityProps, isIdle } from "@/ui";
+import { movedTo } from "@/features/server/transfer/machines";
+import { Button, DistributionTag, ErrorNotice, ServerTile, StatusDot, identityProps, isIdle } from "@/ui";
 
 /** Allocated memory the way it was chosen: "4 GB", not "4.0 GB". */
 function formatAllocation(mb: number): string {
@@ -31,6 +32,8 @@ export function ServerRow({ instance, onOpen }: { instance: InstanceView; onOpen
   // stuck startup can be put out from the list.
   const busy = actions.start.isPending || actions.stop.isPending || instance.status === "stopping";
   const failure = actions.start.error ?? actions.stop.error;
+  // An older copy left behind by a transfer does not start from here.
+  const movedNode = movedTo(instance);
   const actionLabel = running
     ? t("actions.stop")
     : instance.status === "sleeping"
@@ -82,10 +85,13 @@ export function ServerRow({ instance, onOpen }: { instance: InstanceView; onOpen
         </td>
         <td>
           <span className="flex items-center gap-2">
-            <span className="tag" {...identityProps(accent)}>
-              {distribution?.name ?? instance.build.distribution}
-            </span>
+            <DistributionTag distribution={distribution} fallback={instance.build.distribution} />
             <span className="mono server-row-muted">{instance.build.version}</span>
+            {movedNode ? (
+              <span className="tag" title={t("transfer.cardMoved", { node: movedNode })}>
+                {t("transfer.tagOlder")}
+              </span>
+            ) : null}
           </span>
         </td>
         <td className="readout server-row-num" data-numeric="">
@@ -108,7 +114,7 @@ export function ServerRow({ instance, onOpen }: { instance: InstanceView; onOpen
             size="sm"
             icon={running ? "stop" : "play"}
             iconOnly
-            disabled={busy}
+            disabled={busy || (!running && movedNode !== null)}
             onClick={toggle}
           >
             {`${actionLabel}: ${instance.name}`}

@@ -112,6 +112,7 @@ pub async fn restore(
     instance_id: &str,
     backup_id: &str,
 ) -> AppResult<()> {
+    service.ensure_not_transferring(instance_id).await?;
     if service.processes.is_running(instance_id).await {
         return Err(AppError::new(ErrorCode::InstanceAlreadyRunning).with("instance", instance_id));
     }

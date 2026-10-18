@@ -48,6 +48,7 @@ pub async fn instance_settings_set(
     instance_id: String,
     values: BTreeMap<String, String>,
 ) -> AppResult<()> {
+    state.ensure_not_transferring(&instance_id).await?;
     let instance = state.store.get(&instance_id).await?;
     let manifest = state.registry.manifest(&instance.game)?;
     properties::write(&instance.path, &manifest, &values)
@@ -89,8 +90,9 @@ pub async fn app_log(lines: Option<usize>) -> AppResult<crate::logging::AppLog> 
     Ok(crate::logging::tail(lines.unwrap_or(400).min(5000)))
 }
 
-/// The logs folder on this PC.
+/// Open the logs folder on this PC in the system file manager.
 #[tauri::command]
-pub async fn app_log_folder() -> AppResult<String> {
-    crate::logging::folder()
+pub async fn app_open_log_folder(app: tauri::AppHandle) -> AppResult<()> {
+    let folder = crate::logging::folder()?;
+    crate::ipc::open_folder(&app, std::path::Path::new(&folder))
 }

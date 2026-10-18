@@ -15,7 +15,8 @@ use crate::error::{AppError, AppResult, ErrorCode};
 use crate::model::Instance;
 use crate::store::paths;
 
-const INSTANCE_FILE: &str = "nebula-instance.json";
+/// The record each server folder carries about itself.
+pub const INSTANCE_FILE: &str = "nebula-instance.json";
 const INDEX_FILE: &str = "instances.json";
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -35,7 +36,12 @@ impl InstanceStore {
     /// has gone (unplugged drive, deleted folder) is skipped with a warning
     /// rather than failing startup — the user still has the other nine.
     pub async fn load() -> AppResult<Self> {
-        let index_path = paths::config_dir()?.join(INDEX_FILE);
+        Self::load_from(paths::config_dir()?.join(INDEX_FILE)).await
+    }
+
+    /// Load from a specific index file (tests, and anything that runs two
+    /// stores in one process).
+    pub async fn load_from(index_path: PathBuf) -> AppResult<Self> {
         let index: Index = match std::fs::read_to_string(&index_path) {
             Ok(text) => serde_json::from_str(&text).unwrap_or_default(),
             Err(_) => Index::default(),
@@ -95,21 +101,42 @@ impl InstanceStore {
 
     /// Forget an instance. `delete_files` is the difference between "remove
     /// from the app" and "delete the world" — never infer it.
+    ///
+    /// The files go first: when deleting them fails part way (a file held
+    /// open on Windows, a permission), the record stays so the server is
+    /// still listed and can be deleted again.
     pub async fn remove(&self, id: &str, delete_files: bool) -> AppResult<()> {
-        let instance = self
-            .instances
-            .write()
-            .await
-            .remove(id)
-            .ok_or_else(|| AppError::new(ErrorCode::InstanceNotFound).with("instance", id))?;
+        let instance = self.get(id).await?;
 
         if delete_files {
-            std::fs::remove_dir_all(&instance.path)?;
+            match std::fs::remove_dir_all(&instance.path) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(error.into()),
+            }
         } else {
             let _ = std::fs::remove_file(instance.path.join(INSTANCE_FILE));
         }
 
+        self.instances.write().await.remove(id);
         self.write_index().await
+    }
+
+    /// Point every instance recorded under node `from` at node `to`. Used once,
+    /// when a node's legacy shared id (`"local"`) is replaced by a unique one.
+    pub async fn migrate_node_id(&self, from: &str, to: &str) -> AppResult<usize> {
+        let ids: Vec<String> = self
+            .instances
+            .read()
+            .await
+            .values()
+            .filter(|instance| instance.node_id == from)
+            .map(|instance| instance.id.clone())
+            .collect();
+        for id in &ids {
+            self.update(id, |instance| instance.node_id = to.to_string()).await?;
+        }
+        Ok(ids.len())
     }
 
     /// Adopt an existing server directory that already carries an instance file.
@@ -136,7 +163,7 @@ impl InstanceStore {
     }
 }
 
-fn read_instance(dir: &Path) -> AppResult<Instance> {
+pub(crate) fn read_instance(dir: &Path) -> AppResult<Instance> {
     let text = std::fs::read_to_string(dir.join(INSTANCE_FILE))?;
     let mut instance: Instance = serde_json::from_str(&text)?;
     // The directory on disk is the truth: the folder may have been moved.
@@ -144,7 +171,7 @@ fn read_instance(dir: &Path) -> AppResult<Instance> {
     Ok(instance)
 }
 
-fn write_instance(instance: &Instance) -> AppResult<()> {
+pub(crate) fn write_instance(instance: &Instance) -> AppResult<()> {
     std::fs::create_dir_all(&instance.path)?;
     let path = instance.path.join(INSTANCE_FILE);
     let temp = path.with_extension("json.tmp");
@@ -201,6 +228,42 @@ mod tests {
 
         let read = read_instance(&dir).expect("read");
         assert_eq!(read.path, dir, "the folder we found it in is where it lives");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn legacy_node_ids_are_migrated_on_every_record() {
+        let root = temp_dir("migrate");
+        let store = InstanceStore::load_from(root.join("index.json")).await.expect("store");
+        let mine = sample(&root.join("a"));
+        let mut other = sample(&root.join("b"));
+        other.node_id = "someone-else".into();
+        store.put(mine.clone()).await.expect("put");
+        store.put(other.clone()).await.expect("put");
+
+        let moved = store.migrate_node_id("local", "node-123").await.expect("migrate");
+        assert_eq!(moved, 1);
+        assert_eq!(store.get(&mine.id).await.expect("get").node_id, "node-123");
+        assert_eq!(store.get(&other.id).await.expect("get").node_id, "someone-else");
+        // Persisted, not just in memory.
+        assert_eq!(read_instance(&root.join("a")).expect("read").node_id, "node-123");
+        assert_eq!(store.migrate_node_id("local", "node-123").await.expect("again"), 0);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn records_from_before_transfers_read_as_active_generation_zero() {
+        let dir = temp_dir("legacy-record");
+        let mut value = serde_json::to_value(sample(&dir)).expect("json");
+        let object = value.as_object_mut().expect("object");
+        object.remove("generation");
+        object.remove("transfer");
+        object.remove("forked_from");
+        std::fs::write(dir.join(INSTANCE_FILE), serde_json::to_vec(&value).expect("bytes")).expect("write");
+        let read = read_instance(&dir).expect("read");
+        assert_eq!(read.generation, 0);
+        assert_eq!(read.transfer, crate::model::TransferState::Active);
+        assert!(read.forked_from.is_none());
         let _ = std::fs::remove_dir_all(&dir);
     }
 

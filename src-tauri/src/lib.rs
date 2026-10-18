@@ -75,6 +75,7 @@ pub fn run() {
                 forward_events(handle.clone(), service.clone());
                 service::poller::spawn(service.clone());
                 restore_sleepers(service.clone());
+                apply_default_icons(service.clone());
                 handle.manage(service.clone());
 
                 let mcp = Arc::new(mcp::McpServer::new());
@@ -147,7 +148,9 @@ fn forward_events(handle: tauri::AppHandle, service: Arc<InstanceService>) {
 pub fn restore_sleepers(service: Arc<InstanceService>) {
     tokio::spawn(async move {
         for view in service.list().await.unwrap_or_default() {
+            // An older copy left behind by a transfer must not hold the port.
             let wakeable = view.instance.automation.wake_on_join
+                && !view.instance.is_transferred_out()
                 && view.instance.install.is_some()
                 && view.state.status == model::InstanceStatus::Offline
                 && service.registry.manifest(&view.instance.game).is_ok_and(|m| m.wake.is_some());
@@ -158,6 +161,12 @@ pub fn restore_sleepers(service: Arc<InstanceService>) {
             }
         }
     });
+}
+
+/// Servers created before default icons existed get the app's logo once, on
+/// launch, so the multiplayer list shows it without waiting for a restart.
+pub fn apply_default_icons(service: Arc<InstanceService>) {
+    tokio::spawn(async move { service.ensure_default_icons().await });
 }
 
 /// So `AppEvent` stays reachable for consumers of this crate as a library.

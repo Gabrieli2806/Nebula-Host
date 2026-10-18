@@ -168,6 +168,7 @@ impl InstanceService {
         version_id: Option<&str>,
         replace: Option<&str>,
     ) -> AppResult<AddonInstallResult> {
+        self.ensure_not_transferring(instance_id).await?;
         let instance = self.store.get(instance_id).await?;
         let (dir, profile) = self.addon_profile(&instance)?;
         let client = Modrinth::new();
@@ -217,6 +218,7 @@ impl InstanceService {
 
     /// Update one installed jar to its latest compatible version.
     pub async fn addon_update(&self, instance_id: &str, file_name: &str) -> AppResult<AddonInstallResult> {
+        self.ensure_not_transferring(instance_id).await?;
         let report = self.addons_list(instance_id).await?;
         let entry = report
             .addons
@@ -251,6 +253,7 @@ impl InstanceService {
     }
 
     pub async fn addon_toggle(&self, instance_id: &str, file_name: &str, enabled: bool) -> AppResult<String> {
+        self.ensure_not_transferring(instance_id).await?;
         let instance = self.store.get(instance_id).await?;
         let (dir, _) = self.addon_profile(&instance)?;
         if self.addons_locked(instance_id).await {
@@ -269,6 +272,7 @@ impl InstanceService {
     }
 
     pub async fn addon_delete(&self, instance_id: &str, file_name: &str) -> AppResult<()> {
+        self.ensure_not_transferring(instance_id).await?;
         let instance = self.store.get(instance_id).await?;
         let (dir, _) = self.addon_profile(&instance)?;
         let path = crate::store::paths::resolve_inside(&dir, file_name)?;

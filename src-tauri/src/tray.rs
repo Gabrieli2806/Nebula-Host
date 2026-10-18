@@ -118,6 +118,26 @@ async fn build_menu(app: &AppHandle, service: &InstanceService) -> tauri::Result
         .build()
 }
 
+/// A start the tray cannot finish on its own: the EULA needs the user's
+/// tick, or the server is an older copy left behind by a transfer. The
+/// window comes up and asks (or shows why), instead of nothing happening.
+fn refused_in_window(app: &AppHandle, instance_id: &str, error: &crate::error::AppError) {
+    use tauri::Emitter;
+    let reason = error.params.get("reason").map(String::as_str);
+    if !matches!(reason, Some("agreement_required" | "transferred_out")) {
+        return;
+    }
+    show_main(app);
+    let _ = app.emit(
+        "nebula:tray-refused",
+        serde_json::json!({
+            "instanceId": instance_id,
+            "reason": reason,
+            "url": error.params.get("url"),
+        }),
+    );
+}
+
 pub fn show_main(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
@@ -168,6 +188,7 @@ pub fn install(app: &AppHandle, service: Arc<InstanceService>) -> tauri::Result<
                     let (action, instance_id) = (action.to_string(), instance_id.to_string());
                     if let Some(service) = app.try_state::<Arc<InstanceService>>() {
                         let service = service.inner().clone();
+                        let app = app.clone();
                         tauri::async_runtime::spawn(async move {
                             let result = match action.as_str() {
                                 "start" => service.start(&instance_id).await,
@@ -177,6 +198,7 @@ pub fn install(app: &AppHandle, service: Arc<InstanceService>) -> tauri::Result<
                             };
                             if let Err(error) = result {
                                 tracing::warn!(%instance_id, %error, "tray action failed");
+                                refused_in_window(&app, &instance_id, &error);
                             }
                         });
                     }

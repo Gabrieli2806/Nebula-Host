@@ -28,6 +28,7 @@ pub async fn file_write(
     path: String,
     contents: String,
 ) -> AppResult<()> {
+    state.ensure_not_transferring(&instance_id).await?;
     let instance = state.store.get(&instance_id).await?;
     files::write_text(&instance.path, &path, &contents)?;
     state.after_folder_change(&instance_id).await;
@@ -36,6 +37,7 @@ pub async fn file_write(
 
 #[tauri::command]
 pub async fn file_delete(state: State<'_>, instance_id: String, path: String) -> AppResult<()> {
+    state.ensure_not_transferring(&instance_id).await?;
     let instance = state.store.get(&instance_id).await?;
     files::delete(&instance.path, &path)?;
     state.after_folder_change(&instance_id).await;
@@ -49,6 +51,7 @@ pub async fn file_rename(
     path: String,
     new_name: String,
 ) -> AppResult<()> {
+    state.ensure_not_transferring(&instance_id).await?;
     let instance = state.store.get(&instance_id).await?;
     files::rename(&instance.path, &path, &new_name)?;
     state.after_folder_change(&instance_id).await;
@@ -57,15 +60,26 @@ pub async fn file_rename(
 
 #[tauri::command]
 pub async fn folder_create(state: State<'_>, instance_id: String, path: String) -> AppResult<()> {
+    state.ensure_not_transferring(&instance_id).await?;
     let instance = state.store.get(&instance_id).await?;
     files::create_dir(&instance.path, &path)
 }
 
 /// Open the instance folder in the system file manager.
+///
+/// Opened from here rather than from the webview: the opener plugin's JS
+/// `openPath` is limited to a path scope, and instance folders live wherever
+/// the user put them (a custom instances folder included), so the call from
+/// the UI was refused and the button did nothing.
 #[tauri::command]
-pub async fn instance_reveal(state: State<'_>, instance_id: String) -> AppResult<String> {
+pub async fn instance_open_folder(
+    app: tauri::AppHandle,
+    state: State<'_>,
+    instance_id: String,
+) -> AppResult<()> {
     let instance = state.store.get(&instance_id).await?;
-    Ok(instance.path.to_string_lossy().to_string())
+    std::fs::create_dir_all(&instance.path)?;
+    crate::ipc::open_folder(&app, &instance.path)
 }
 
 /// Dry run of a drop: what would land where, and what already exists.

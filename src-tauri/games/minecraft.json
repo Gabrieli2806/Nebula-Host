@@ -3,12 +3,16 @@
   "name": "Minecraft: Java Edition",
   "accent": "#5FBF8F",
   "icon": "minecraft",
+  "agreement": {
+    "url": "https://aka.ms/MinecraftEULA"
+  },
   "distributions": [
     {
       "id": "vanilla",
       "accent": "#79b851",
       "name": "Vanilla",
       "summary_key": "game.minecraft.dist.vanilla",
+      "glyph": "cube",
       "has_loader_version": false
     },
     {
@@ -16,6 +20,7 @@
       "accent": "#dfe6ee",
       "name": "Paper",
       "summary_key": "game.minecraft.dist.paper",
+      "glyph": "sheet",
       "has_loader_version": false,
       "addon_loaders": [
         "paper",
@@ -31,6 +36,7 @@
       "accent": "#a855f7",
       "name": "Purpur",
       "summary_key": "game.minecraft.dist.purpur",
+      "glyph": "pillar",
       "has_loader_version": false,
       "addon_loaders": [
         "purpur",
@@ -47,6 +53,7 @@
       "accent": "#c8a165",
       "name": "Fabric",
       "summary_key": "game.minecraft.dist.fabric",
+      "glyph": "spool",
       "has_loader_version": true,
       "addon_loaders": [
         "fabric"
@@ -59,6 +66,7 @@
       "accent": "#5b7fa6",
       "name": "Forge",
       "summary_key": "game.minecraft.dist.forge",
+      "glyph": "hammer",
       "has_loader_version": true,
       "addon_loaders": [
         "forge"
@@ -72,6 +80,7 @@
       "accent": "#f16436",
       "name": "NeoForge",
       "summary_key": "game.minecraft.dist.neoforge",
+      "glyph": "flame",
       "has_loader_version": true,
       "addon_loaders": [
         "neoforge"
@@ -108,6 +117,8 @@
       "Mean tick time:"
     ],
     "stop_command": "stop",
+    "stopping_pattern": "(?:^|\\]: |\\[[A-Za-z0-9_]{1,16}: )Stopping (?:the )?server\\]?$",
+    "crash_pattern": "Encountered an unexpected exception|This crash report has been saved to|Considering it to be crashed|Failed to start the minecraft server|The server has stopped responding!",
     "strip_colour_codes": true,
     "chat_pattern": "\\]: (?:\\[Not Secure\\] )?<(?P<name>[A-Za-z0-9_]{1,16})> (?P<message>.*)$",
     "log_prefix_pattern": "^\\[\\d{2}:\\d{2}:\\d{2}(?: [A-Z]+)?\\]:? (?:\\[[^\\]]*/[A-Z]+\\](?: \\[[^\\]]+\\])?: )?",
@@ -468,7 +479,7 @@
       "label_key": "setting.minecraft.motd",
       "help_key": "setting.minecraft.motd.help",
       "type": "text",
-      "default": "A Minecraft Server",
+      "default": "A Nebula Host Server",
       "max_len": 59,
       "group": "identity"
     },

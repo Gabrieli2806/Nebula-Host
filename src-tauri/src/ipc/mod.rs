@@ -14,6 +14,7 @@ pub mod node;
 pub mod players;
 pub mod remote;
 pub mod settings;
+pub mod transfer;
 
 use std::sync::Arc;
 
@@ -21,6 +22,22 @@ use crate::service::InstanceService;
 
 /// What every command reaches for.
 pub type State<'a> = tauri::State<'a, Arc<InstanceService>>;
+
+/// Open a folder on this PC in the system file manager.
+///
+/// Goes through the opener plugin's Rust API, which is not bound by the
+/// webview's path scope (that scope cannot know where the user keeps their
+/// instances).
+pub fn open_folder(app: &tauri::AppHandle, folder: &std::path::Path) -> crate::error::AppResult<()> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_path(folder.to_string_lossy(), None::<&str>)
+        .map_err(|error| {
+            crate::error::AppError::new(crate::error::ErrorCode::IoFailed)
+                .with("path", folder.display().to_string())
+                .detail(error.to_string())
+        })
+}
 
 /// Register every command with the Tauri builder.
 ///
@@ -45,6 +62,7 @@ macro_rules! ipc_handlers {
             $crate::ipc::instances::instance_get,
             $crate::ipc::instances::instance_create,
             $crate::ipc::instances::instance_install,
+            $crate::ipc::instances::instance_accept_agreement,
             $crate::ipc::instances::instance_start,
             $crate::ipc::instances::instance_stop,
             $crate::ipc::instances::instance_restart,
@@ -67,7 +85,7 @@ macro_rules! ipc_handlers {
             $crate::ipc::files::file_delete,
             $crate::ipc::files::file_rename,
             $crate::ipc::files::folder_create,
-            $crate::ipc::files::instance_reveal,
+            $crate::ipc::files::instance_open_folder,
             $crate::ipc::files::files_import_check,
             $crate::ipc::files::files_import,
             $crate::ipc::files::instance_disk_usage,
@@ -118,7 +136,10 @@ macro_rules! ipc_handlers {
             $crate::ipc::settings::java_download,
             $crate::ipc::settings::java_overview,
             $crate::ipc::settings::app_log,
-            $crate::ipc::settings::app_log_folder,
+            $crate::ipc::settings::app_open_log_folder,
+            // transfers
+            $crate::ipc::transfer::transfer_run,
+            $crate::ipc::transfer::instance_force_play,
         ]
     };
 }

@@ -167,6 +167,18 @@ pub trait GameAdapter: Send + Sync {
     fn runtime_major(&self, _build: &BuildSelector) -> Option<u32> {
         None
     }
+
+    /// Whether the operator has accepted the manifest's `agreement` for the
+    /// server in `root`. Games without one are always accepted.
+    fn agreement_accepted(&self, _root: &std::path::Path) -> bool {
+        true
+    }
+
+    /// Record that the user accepted the manifest's `agreement` for the
+    /// server in `root`. Only ever called on an explicit user action.
+    fn accept_agreement(&self, _root: &std::path::Path) -> AppResult<()> {
+        Ok(())
+    }
 }
 
 /// Resolves game ids to adapters. Built once at startup and shared.

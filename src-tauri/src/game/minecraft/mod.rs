@@ -128,9 +128,9 @@ impl GameAdapter for MinecraftAdapter {
             )
             .await?;
 
-        // Minecraft refuses to start until the EULA is accepted; the UI asks
-        // before we ever get here.
-        launch::write_eula(ctx.root)?;
+        // eula.txt is not written here: Minecraft refuses to start until the
+        // operator accepts the EULA, and that is the user's call
+        // (`accept_agreement`), never the installer's.
 
         let entry_point = launch::installer_arg_file(ctx.root, true)
             .or_else(|| ctx.root.join("server.jar").exists().then(|| "server.jar".to_string()));
@@ -156,6 +156,14 @@ impl GameAdapter for MinecraftAdapter {
 
     fn runtime_major(&self, build: &BuildSelector) -> Option<u32> {
         Some(launch::min_java_version(&build.version))
+    }
+
+    fn agreement_accepted(&self, root: &std::path::Path) -> bool {
+        launch::eula_accepted(root)
+    }
+
+    fn accept_agreement(&self, root: &std::path::Path) -> AppResult<()> {
+        launch::accept_eula(root, chrono::Utc::now())
     }
 
     fn launch_plan(&self, ctx: LaunchContext<'_>) -> AppResult<LaunchPlan> {

@@ -56,6 +56,29 @@ export interface Instance {
   icon?: string | null;
   created_at: string;
   last_started_at?: string | null;
+  /** Lineage counter: bumped when the server changes machines or is forked. */
+  generation: number;
+  /** Whether this copy is the server, or an older copy a transfer left behind. */
+  transfer: TransferState;
+  /** Set when this copy was forced into play while another machine had a newer one. */
+  forked_from?: ForkInfo | null;
+}
+
+export type TransferState =
+  | { state: "active" }
+  | {
+      state: "transferred_out";
+      to_node_id: string;
+      to_node_name: string;
+      at: string;
+      generation: number;
+    };
+
+export interface ForkInfo {
+  node_id: string;
+  node_name: string;
+  generation: number;
+  at: string;
 }
 
 /** Config and live state arrive flattened together. */
@@ -113,6 +136,8 @@ export interface Distribution {
   /** `mod` or `plugin`, for distributions that take addons. */
   addon_project_type?: string | null;
   tick_rate_command?: string | null;
+  /** Which of the app's own glyphs (src/ui/loaders) stands for it. */
+  glyph?: string | null;
 }
 
 export type SettingKind =
@@ -146,6 +171,9 @@ export interface GameManifest {
   wake?: { protocol: string; sleeping_motd: string } | null;
   /** The game's server-list icon file, when it has one. */
   server_icon?: { file: string; size: number } | null;
+  /** A licence the server's operator must accept before it runs (the
+   *  Minecraft EULA). The user accepts it; the app never does. */
+  agreement?: { url: string } | null;
   /** The game's own log files, when it writes any. */
   logs?: { latest: string; crash_dir?: string | null } | null;
 }
@@ -618,7 +646,68 @@ export type AppEvent =
   | { type: "players"; instanceId: string; online: string[] }
   | { type: "import"; instanceId: string; progress: ImportProgress }
   | { type: "javaDownload"; major: number; progress: JavaDownloadProgress }
-  | { type: "pendingAddons"; instanceId: string; pending: PendingAddonChange[] };
+  | { type: "pendingAddons"; instanceId: string; pending: PendingAddonChange[] }
+  | { type: "transfer"; instanceId: string; progress: TransferProgress };
+
+// -- transfers between machines ----------------------------------------------
+
+export type TransferPhase = "prepare" | "export" | "upload" | "verify" | "adopt" | "finalize";
+
+export interface TransferProgress {
+  transferId: string;
+  phase: TransferPhase;
+  bytes: number;
+  total: number;
+  done: boolean;
+  failed: boolean;
+}
+
+/** One end of a transfer, as the desktop that runs it reaches it. */
+export type TransferEndpoint = { kind: "local" } | { kind: "remote"; address: string; token: string };
+
+/** keep = leave the older copy (recommended); delete = remove its files. */
+export type TransferMode = "keep" | "delete";
+
+export interface TransferRequest {
+  transferId?: string;
+  instanceId: string;
+  source: TransferEndpoint;
+  target: TransferEndpoint;
+  mode: TransferMode;
+  allowPlayers?: boolean;
+  keepBoth?: boolean;
+}
+
+export interface TransferExport {
+  exportId: string;
+  instanceId: string;
+  name: string;
+  sizeBytes: number;
+  sha256: string;
+  generation: number;
+  sourceNodeId: string;
+  sourceNodeName: string;
+  exportedAt: string;
+}
+
+export interface TransferAdoptReport {
+  instance: Instance;
+  nodeId: string;
+  nodeName: string;
+  portChanged?: { from: number; to: number } | null;
+  javaMissing?: number | null;
+  replacedOlderCopy: boolean;
+  runtimePathCleared: boolean;
+  keptBoth: boolean;
+}
+
+export interface TransferOutcome {
+  transferId: string;
+  export: TransferExport;
+  adopted: TransferAdoptReport;
+  mode: TransferMode;
+  commitWarning?: string | null;
+}
 
 // -- AI assistants (MCP) ------------------------------------------------------
 

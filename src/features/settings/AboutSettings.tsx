@@ -9,33 +9,23 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { useI18n } from "@/i18n";
 import { activeRemote } from "@/lib/connection";
+import { openExternal } from "@/lib/external";
 import { api } from "@/lib/ipc";
 import { Button, Dialog, ErrorNotice, Icon, Mark, type IconName } from "@/ui";
 
+import { LICENCE_GROUPS } from "./licences";
 import "./AboutSettings.css";
 
 const DISCORD_URL = "https://discord.com/invite/s5w2HEGvdX";
 const SITE_URL = "https://g2806.net/apps";
 
-async function openUrl(url: string) {
-  try {
-    const { openUrl } = await import("@tauri-apps/plugin-opener");
-    await openUrl(url);
-  } catch {
-    window.open(url, "_blank", "noopener");
-  }
-}
 
 export function DiagnosticsSettings() {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const remote = activeRemote();
   const openFolder = useMutation({
-    mutationFn: async () => {
-      const folder = await api.app.logFolder();
-      const { openPath } = await import("@tauri-apps/plugin-opener");
-      await openPath(folder);
-    },
+    mutationFn: () => api.app.openLogFolder(),
   });
 
   return (
@@ -139,7 +129,77 @@ export function AboutSettings() {
       </div>
       <LinkRow icon="chat" title="Discord" help={t("about.discordHelp")} url={DISCORD_URL} />
       <LinkRow icon="globe" title="G2806.net" help={t("about.siteHelp")} url={SITE_URL} />
+      <LegalSettings />
     </section>
+  );
+}
+
+/**
+ * The affiliation disclaimer the Minecraft Usage Guidelines ask for, the
+ * trademark notices, and the open-source licences.
+ */
+function LegalSettings() {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <h3 className="about-heading">
+        <Icon name="file" size={16} /> {t("about.legal")}
+      </h3>
+      <div className="about-card about-legal">
+        <p className="about-disclaimer">{t("about.disclaimer")}</p>
+        <p className="about-legal-text">{t("about.trademarks")}</p>
+        <p className="about-legal-text">{t("about.glyphs")}</p>
+      </div>
+      <div className="about-card about-row">
+        <span className="about-row-icon" aria-hidden="true">
+          <Icon name="file" size={20} />
+        </span>
+        <span className="about-row-text">
+          <span className="about-row-title">{t("about.licences")}</span>
+          <span className="about-row-help">{t("about.licencesHelp")}</span>
+        </span>
+        <span className="about-row-actions">
+          <Button size="sm" variant="quiet" icon="file" onClick={() => setOpen(true)}>
+            {t("about.licencesView")}
+          </Button>
+        </span>
+      </div>
+      {open ? <LicencesDialog onClose={() => setOpen(false)} /> : null}
+    </>
+  );
+}
+
+function LicencesDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={t("about.licences")}
+      width={620}
+      footer={<Button onClick={onClose}>{t("dialog.close")}</Button>}
+    >
+      <div className="flex flex-col gap-4">
+        {LICENCE_GROUPS.map((group) => (
+          <section key={group.key} className="about-licence-group">
+            <h4 className="about-licence-heading">{t(`about.licencesGroup.${group.key}`)}</h4>
+            <ul className="about-licence-list">
+              {group.entries.map((entry) => (
+                <li key={entry.name} className="about-licence-item">
+                  <button type="button" className="about-licence-name" onClick={() => void openExternal(entry.url)}>
+                    {entry.name}
+                    <Icon name="external" size={12} />
+                  </button>
+                  <span className="about-licence-kind">{entry.licence}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+        <p className="about-legal-text">{t("about.licencesNote")}</p>
+      </div>
+    </Dialog>
   );
 }
 
@@ -155,7 +215,7 @@ function LinkRow({ icon, title, help, url }: { icon: IconName; title: string; he
         <span className="about-row-help">{help}</span>
       </span>
       <span className="about-row-actions">
-        <Button size="sm" variant="quiet" icon="external" onClick={() => void openUrl(url)}>
+        <Button size="sm" variant="quiet" icon="external" onClick={() => void openExternal(url)}>
           {t("about.open")}
         </Button>
       </span>

@@ -138,6 +138,7 @@ impl InstanceService {
 
     /// Drop one queued change; a waiting download is deleted with it.
     pub async fn cancel_pending_addon(&self, instance_id: &str, change_id: &str) -> AppResult<Vec<PendingAddonChange>> {
+        self.ensure_not_transferring(instance_id).await?;
         let _ = self.store.get(instance_id).await?;
         let _guard = self.pending_lock.lock().await;
         let mut queue = load(instance_id)?;

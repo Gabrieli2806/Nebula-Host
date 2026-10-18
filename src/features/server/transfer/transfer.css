@@ -1,0 +1,309 @@
+/*
+ * Nebula Host: transfer.css. Moving a server between machines: the transfer
+ * dialog (choices, phases, outcome) and the banner an older or diverged copy
+ * shows on its overview and card.
+ */
+
+@layer components {
+  /* == dialog: choices ================================================== */
+
+  .transfer-quiet {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+  }
+
+  .transfer-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .transfer-legend {
+    margin-bottom: var(--space-2);
+    padding: 0;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-strong);
+    color: var(--text-heading);
+  }
+
+  .transfer-options {
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-sunken);
+  }
+
+  .transfer-option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 48px;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--line);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease);
+  }
+
+  .transfer-option:last-child {
+    border-bottom: 0;
+  }
+
+  .transfer-option:hover {
+    background-color: var(--quiet-hover);
+  }
+
+  .transfer-option[data-selected] {
+    background-color: var(--accent-wash);
+    color: var(--text);
+  }
+
+  .transfer-option:has(:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  .transfer-option-mark {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--line-hover);
+    border-radius: 50%;
+    transition: border-color var(--duration-fast) var(--ease);
+  }
+
+  .transfer-option[data-selected] .transfer-option-mark {
+    border: 4px solid var(--accent);
+  }
+
+  .transfer-option > svg {
+    flex: none;
+    color: var(--text-faint);
+  }
+
+  .transfer-option-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-heading);
+  }
+
+  .transfer-option-hint {
+    font-size: var(--text-xs);
+    color: var(--text-faint);
+  }
+
+  .transfer-confirm {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--status-starting-dim);
+    font-size: var(--text-sm);
+  }
+
+  .transfer-confirm input {
+    margin-top: 3px;
+  }
+
+  .transfer-safe,
+  .transfer-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+
+  .transfer-safe > svg {
+    flex: none;
+    margin-top: 3px;
+    color: var(--status-online);
+  }
+
+  .transfer-warning > svg {
+    flex: none;
+    margin-top: 3px;
+    color: var(--status-starting);
+  }
+
+  .transfer-notes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-sunken);
+    font-size: var(--text-sm);
+    list-style: none;
+  }
+
+  .transfer-notes li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .transfer-notes svg {
+    flex: none;
+    margin-top: 3px;
+    color: var(--status-starting);
+  }
+
+  /* == dialog: phases =================================================== */
+
+  .transfer-phases {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-sunken);
+    list-style: none;
+  }
+
+  .transfer-phase {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-3);
+    row-gap: var(--space-2);
+    padding: 10px var(--space-3);
+    border-bottom: 1px solid var(--line);
+    font-size: var(--text-sm);
+    color: var(--text-faint);
+  }
+
+  .transfer-phase:last-child {
+    border-bottom: 0;
+  }
+
+  .transfer-phase[data-state="active"] {
+    color: var(--text-heading);
+  }
+
+  .transfer-phase[data-state="done"] {
+    color: var(--text-muted);
+  }
+
+  .transfer-phase-mark {
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--line-hover);
+    border-radius: 50%;
+  }
+
+  .transfer-phase[data-state="active"] .transfer-phase-mark {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .transfer-phase[data-state="done"] .transfer-phase-mark {
+    border-color: var(--status-online);
+    color: var(--status-online);
+  }
+
+  .transfer-phase-label {
+    min-width: 0;
+    font-weight: 600;
+  }
+
+  .transfer-phase-bytes {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+  }
+
+  .transfer-phase-bar {
+    grid-column: 2 / -1;
+    height: 4px;
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background: var(--groove);
+  }
+
+  .transfer-phase-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+    transition: width var(--duration-fast) var(--ease);
+  }
+
+  /* == banner (overview) and note (card) ================================ */
+
+  .transfer-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3) var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid color-mix(in srgb, var(--status-sleeping) 40%, transparent);
+    border-radius: var(--radius-lg);
+    background: var(--status-sleeping-dim);
+    color: var(--text);
+  }
+
+  .transfer-banner[data-tone="forked"] {
+    border-color: color-mix(in srgb, var(--status-starting) 40%, transparent);
+    background: var(--status-starting-dim);
+  }
+
+  .transfer-banner > svg {
+    flex: none;
+    color: var(--status-sleeping);
+  }
+
+  .transfer-banner[data-tone="forked"] > svg {
+    color: var(--status-starting);
+  }
+
+  .transfer-banner-text {
+    display: flex;
+    flex: 1 1 280px;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .transfer-banner-title {
+    font-weight: var(--weight-strong);
+  }
+
+  .transfer-banner-body {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+  }
+
+  .transfer-banner-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .transfer-note {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid color-mix(in srgb, var(--status-sleeping) 35%, transparent);
+    border-radius: var(--radius);
+    background: var(--status-sleeping-dim);
+    font-size: var(--text-xs);
+    color: var(--text);
+  }
+
+  .transfer-note > svg {
+    flex: none;
+    margin-top: 1px;
+    color: var(--status-sleeping);
+  }
+}

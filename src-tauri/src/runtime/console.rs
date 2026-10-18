@@ -28,6 +28,10 @@ pub struct LineReading {
     pub identity: Option<(String, String)>,
     /// False when the line is the answer to a poll the user never made.
     pub visible: bool,
+    /// The server announced a normal shutdown.
+    pub stopping: bool,
+    /// The line is one only a crash produces.
+    pub crashed: bool,
 }
 
 impl LineReading {
@@ -66,6 +70,8 @@ pub struct ConsoleParser {
     tick_rate: Vec<Regex>,
     suppress: Vec<Regex>,
     log_prefix: Option<Regex>,
+    stopping: Option<Regex>,
+    crash: Option<Regex>,
     strip_colour_codes: bool,
 }
 
@@ -80,6 +86,8 @@ impl ConsoleParser {
             tick_rate: spec.tick_rate_patterns.iter().map(|p| compile(p)).collect::<Result<_, _>>()?,
             suppress: spec.suppress_patterns.iter().map(|p| compile(p)).collect::<Result<_, _>>()?,
             log_prefix: spec.log_prefix_pattern.as_deref().map(compile).transpose()?,
+            stopping: spec.stopping_pattern.as_deref().map(compile).transpose()?,
+            crash: spec.crash_pattern.as_deref().map(compile).transpose()?,
             strip_colour_codes: spec.strip_colour_codes,
         })
     }
@@ -123,6 +131,8 @@ impl ConsoleParser {
             chat,
             identity: if is_chat { None } else { identity },
             visible: !self.suppress.iter().any(|re| re.is_match(&text)),
+            stopping: !is_chat && self.stopping.as_ref().is_some_and(|re| re.is_match(&text)),
+            crashed: !is_chat && self.crash.as_ref().is_some_and(|re| re.is_match(&text)),
             body,
             text,
         }
@@ -230,6 +240,42 @@ mod tests {
 
     fn minecraft_parser() -> ConsoleParser {
         ConsoleParser::new(&minecraft::manifest().console).expect("manifest patterns compile")
+    }
+
+    #[test]
+    fn detects_a_normal_shutdown_however_it_was_asked_for() {
+        let parser = minecraft_parser();
+        // `stop` typed in the console.
+        assert!(parser.read("[22:41:54] [Server thread/INFO]: Stopping the server").stopping);
+        // A player's `/stop`, echoed to the log as an admin command.
+        assert!(parser.read("[22:41:54] [Server thread/INFO]: [Steve: Stopping the server]").stopping);
+        // The shutdown itself.
+        assert!(parser.read("[22:41:54] [Server thread/INFO]: Stopping server").stopping);
+        assert!(!parser.read("[22:41:54] [Server thread/INFO]: Done (1.0s)!").stopping);
+    }
+
+    #[test]
+    fn chat_cannot_fake_a_shutdown_or_a_crash() {
+        let parser = minecraft_parser();
+        let said = parser.read("[22:41:54] [Server thread/INFO]: <Bob> Stopping the server");
+        assert!(!said.stopping);
+        let said = parser.read("[22:41:54] [Server thread/INFO]: <Bob> This crash report has been saved to");
+        assert!(!said.crashed);
+    }
+
+    #[test]
+    fn detects_crash_only_lines() {
+        let parser = minecraft_parser();
+        assert!(parser.read("[22:41:54] [Server thread/ERROR]: Encountered an unexpected exception").crashed);
+        assert!(parser
+            .read("[22:41:54] [Server thread/ERROR]: This crash report has been saved to: ./crash-reports/x.txt")
+            .crashed);
+        // Paper / Spigot watchdog: the server froze. It then shuts down
+        // through the normal path and may exit 0.
+        assert!(parser
+            .read("[22:41:54 ERROR]: The server has stopped responding! This is (probably) not a Paper bug.")
+            .crashed);
+        assert!(!parser.read("[22:41:54] [Server thread/INFO]: Stopping server").crashed);
     }
 
     #[test]

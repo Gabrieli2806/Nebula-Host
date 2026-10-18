@@ -46,9 +46,15 @@ pub struct Node {
 }
 
 impl Node {
+    /// The id every node used before ids were unique. Records that still carry
+    /// it are migrated once on load (see `store::nodes::load`).
+    pub const LEGACY_LOCAL_ID: &'static str = "local";
+
+    /// This machine, with a fresh globally unique id. Transfers move servers
+    /// between nodes, so "which machine" has to mean one machine.
     pub fn local(name: impl Into<String>) -> Self {
         Self {
-            id: "local".to_string(),
+            id: Uuid::new_v4().to_string(),
             name: name.into(),
             transport: NodeTransport::Local,
             paired_devices: Vec::new(),
@@ -236,9 +242,55 @@ pub struct Instance {
     pub created_at: DateTime<Utc>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_started_at: Option<DateTime<Utc>>,
+    /// Lineage counter: bumped each time the authoritative copy changes
+    /// machines, and when an older copy is forced back into play. Records
+    /// from before transfers read as 0.
+    #[serde(default)]
+    pub generation: u64,
+    /// Whether this copy is the one to play, or an older copy left behind by
+    /// a transfer.
+    #[serde(default)]
+    pub transfer: TransferState,
+    /// Set when this copy was forced into play while another machine had a
+    /// newer one: from then on the two copies have diverged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub forked_from: Option<ForkInfo>,
+}
+
+/// Where the authoritative copy of a server is, from this copy's point of view.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub enum TransferState {
+    /// This copy is the server. It starts, sleeps and wakes normally.
+    #[default]
+    Active,
+    /// The server moved to another machine; this is the copy it left behind.
+    /// It does not start unless the user forces it (which forks it).
+    TransferredOut {
+        to_node_id: String,
+        to_node_name: String,
+        at: DateTime<Utc>,
+        /// The generation the destination took on — newer than ours.
+        generation: u64,
+    },
+}
+
+/// The copy this one diverged from when it was forced into play.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ForkInfo {
+    /// The machine holding the other (possibly newer) copy.
+    pub node_id: String,
+    pub node_name: String,
+    /// That copy's generation at the time of the fork.
+    pub generation: u64,
+    pub at: DateTime<Utc>,
 }
 
 impl Instance {
+    /// Whether this copy is an older one left behind by a transfer.
+    pub fn is_transferred_out(&self) -> bool {
+        matches!(self.transfer, TransferState::TransferredOut { .. })
+    }
     pub fn new(
         node_id: impl Into<String>,
         game: impl Into<String>,
@@ -262,6 +314,9 @@ impl Instance {
             icon: None,
             created_at: Utc::now(),
             last_started_at: None,
+            generation: 0,
+            transfer: TransferState::Active,
+            forked_from: None,
         }
     }
 

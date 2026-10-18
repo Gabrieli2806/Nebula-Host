@@ -183,7 +183,7 @@ fn catalog() -> Vec<Tool> {
         Tool {
             name: "create_server",
             title: "Create server",
-            description: "Create a new server and install it in the background. Use list_versions to pick a version. Poll get_server until it is installed (status offline) before starting.",
+            description: "Create a new server and install it in the background. Use list_versions to pick a version. Poll get_server until it is installed (status offline) before starting. The server cannot start until its owner accepts the Minecraft EULA in the Nebula Host app; tell them to do so.",
             schema: json!({ "type": "object", "properties": {
                 "name": { "type": "string" },
                 "distribution": { "type": "string", "description": "e.g. vanilla, paper, purpur, spigot, fabric, forge, neoforge. Omit for the default (Paper)." },
@@ -588,6 +588,9 @@ async fn create_server(service: &Arc<InstanceService>, args: &Value) -> AppResul
         port: args.get("port").and_then(Value::as_u64).and_then(|p| u16::try_from(p).ok()),
         runtime_kind: None,
         directory: None,
+        // An agent can never accept the Minecraft EULA for the user: the
+        // server waits until they accept it in the app.
+        accept_agreement: false,
     };
     let instance = service.create(request).await?;
     let id = instance.id.clone();

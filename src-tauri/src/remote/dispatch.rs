@@ -19,6 +19,7 @@ use crate::service::addons::BrowseRequest;
 use crate::service::icon::IconFit;
 use crate::service::logs::LogSource;
 use crate::service::players::PlayerEntry;
+use crate::service::transfer::FinalizeMode;
 use crate::service::{backups, files, players, properties, CreateInstanceRequest, InstancePatch, InstanceService};
 use crate::store::settings::{self as settings_store, AppSettings};
 
@@ -48,6 +49,16 @@ fn local_only(command: &str) -> AppError {
 
 pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Value) -> AppResult<Value> {
     let id = || arg::<String>(args, "instanceId");
+    // A server being packed for a transfer, or one that just arrived and
+    // waits for its source, does not take changes: they would be missing
+    // from the copy that left, or thrown away on undo. (The service guards
+    // its own mutating calls; these write the folder directly.)
+    if matches!(
+        command,
+        "file_write" | "file_delete" | "file_rename" | "folder_create" | "players_write_list" | "instance_settings_set"
+    ) {
+        service.ensure_not_transferring(&id()?).await?;
+    }
     match command {
         // -- node -----------------------------------------------------------
         "node_get" => ok(service.node().await),
@@ -80,6 +91,7 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
         "instance_get" => ok(service.view(&id()?).await?),
         "instance_create" => ok(service.create(arg::<CreateInstanceRequest>(args, "request")?).await?),
         "instance_install" => ok(service.install(&id()?).await?),
+        "instance_accept_agreement" => ok(service.accept_agreement(&id()?).await?),
         "instance_start" => ok(service.start(&id()?).await?),
         "instance_stop" => ok(service.stop(&id()?).await?),
         "instance_restart" => ok(service.restart(&id()?).await?),
@@ -162,6 +174,51 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             let _ = std::fs::remove_file(&archive);
             ok(result?)
         }
+
+        // -- transfers (each step of a move between machines) ------------------
+        "transfer_export" => {
+            let allow: Option<bool> = opt(args, "allowPlayers")?;
+            let transfer_id: Option<String> = opt(args, "transferId")?;
+            ok(service
+                .transfer_export(&id()?, &transfer_id.unwrap_or_default(), allow.unwrap_or(false))
+                .await?)
+        }
+        "transfer_abort" => match opt::<String>(args, "exportId")? {
+            Some(export_id) => ok(service.transfer_abort(&id()?, &export_id).await?),
+            None => ok(service.transfer_abort_by_transfer(&id()?, &arg::<String>(args, "transferId")?).await?),
+        },
+        "transfer_finalize" => {
+            let mode: Option<FinalizeMode> = opt(args, "mode")?;
+            ok(service
+                .transfer_finalize(
+                    &id()?,
+                    &arg::<String>(args, "exportId")?,
+                    mode.unwrap_or_default(),
+                    &arg::<String>(args, "toNodeId")?,
+                    &arg::<String>(args, "toNodeName")?,
+                    arg(args, "generation")?,
+                )
+                .await?)
+        }
+        "transfer_adopt" => {
+            let archive = crate::service::world::upload_path(&arg::<String>(args, "uploadId")?)?;
+            let keep_both: Option<bool> = opt(args, "keepBoth")?;
+            let transfer_id: Option<String> = opt(args, "transferId")?;
+            ok(service
+                .transfer_adopt(
+                    archive,
+                    &arg::<String>(args, "sha256")?,
+                    keep_both.unwrap_or(false),
+                    &transfer_id.unwrap_or_default(),
+                )
+                .await?)
+        }
+        "transfer_commit" => ok(service.transfer_commit(&id()?).await?),
+        "transfer_discard" => match opt::<String>(args, "instanceId")? {
+            Some(instance_id) => ok(service.transfer_discard(&instance_id).await?),
+            None => ok(service.transfer_discard_by_transfer(&arg::<String>(args, "transferId")?).await?),
+        },
+        "instance_force_play" => ok(service.force_play(&id()?).await?),
 
         // -- backups --------------------------------------------------------------
         "backups_list" => {
@@ -267,7 +324,7 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
         "upnp_check" => ok(crate::net::upnp::check().await),
 
         // Commands that act on the local machine's files or desktop.
-        "instance_reveal" | "app_log_folder" | "files_import" | "files_import_check" | "mcp_status" | "mcp_configure"
+        "instance_open_folder" | "app_open_log_folder" | "transfer_run" | "files_import" | "files_import_check" | "mcp_status" | "mcp_configure"
         | "mcp_regenerate_token" | "addons_search" | "addons_installed" | "addon_install" => {
             Err(local_only(command))
         }

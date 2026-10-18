@@ -110,6 +110,8 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
     queryFn: () => api.files.list(instance.id, path),
   });
 
+  const openFolder = useMutation({ mutationFn: () => api.files.openFolder(instance.id) });
+
   const remove = useMutation({
     mutationFn: (target: string) => api.files.remove(instance.id, target),
     onSuccess: () => {
@@ -377,13 +379,9 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
             size="sm"
             variant="quiet"
             icon="external"
-            disabled={isRemote()}
+            disabled={isRemote() || openFolder.isPending}
             title={isRemote() ? t("remote.localOnly") : undefined}
-            onClick={async () => {
-              const folder = await api.files.reveal(instance.id);
-              const { openPath } = await import("@tauri-apps/plugin-opener");
-              await openPath(folder);
-            }}
+            onClick={() => openFolder.mutate()}
           >
             {t("actions.openFolder")}
           </Button>
@@ -408,6 +406,12 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
           {[0, 1, 2, 3, 4].map((index) => (
             <Skeleton key={index} className="h-7" />
           ))}
+        </div>
+      ) : null}
+
+      {openFolder.error ? (
+        <div className="px-4 pt-3">
+          <ErrorNotice error={openFolder.error} compact />
         </div>
       ) : null}
 

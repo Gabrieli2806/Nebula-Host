@@ -15,6 +15,7 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 
+import { agreementRequired, requestAgreement } from "@/lib/agreement";
 import { api, onAppEvent, onWindowDragDrop, toAppError, type AppError } from "@/lib/ipc";
 import type {
   AddonBrowseRequest,
@@ -141,6 +142,11 @@ function applyEvent(client: QueryClient, event: AppEvent) {
     case "javaDownload":
       // Consumed by `useJavaDownload`.
       break;
+    case "transfer":
+      // Consumed by the transfer dialog. When one ends, the server may have
+      // left (or arrived), so the list is re-read.
+      if (event.progress.done) void client.invalidateQueries({ queryKey: keys.instances });
+      break;
   }
 }
 
@@ -243,16 +249,33 @@ export function useAppSettings() {
 
 // -- mutations --------------------------------------------------------------
 
+/**
+ * Start or sleep, unless the server still needs the game's agreement (the
+ * Minecraft EULA): then the agreement dialog asks for it (AgreementGate) and
+ * repeats the action once the user accepts. That is not a failure to show.
+ */
+function gated(resume: "start" | "sleep", run: (instanceId: string) => Promise<void>) {
+  return async (instanceId: string) => {
+    try {
+      await run(instanceId);
+    } catch (error) {
+      const needed = agreementRequired(error);
+      if (!needed) throw error;
+      requestAgreement({ instanceId, url: needed.url, resume });
+    }
+  };
+}
+
 /** Lifecycle actions share one hook so every caller gets the same refresh. */
 export function useInstanceActions() {
   const client = useQueryClient();
   const invalidate = () => client.invalidateQueries({ queryKey: keys.instances });
 
   return {
-    start: useMutation({ mutationFn: api.instances.start, onSettled: invalidate }),
+    start: useMutation({ mutationFn: gated("start", api.instances.start), onSettled: invalidate }),
     stop: useMutation({ mutationFn: api.instances.stop, onSettled: invalidate }),
     restart: useMutation({ mutationFn: api.instances.restart, onSettled: invalidate }),
-    sleep: useMutation({ mutationFn: api.instances.sleep, onSettled: invalidate }),
+    sleep: useMutation({ mutationFn: gated("sleep", api.instances.sleep), onSettled: invalidate }),
     remove: useMutation({
       mutationFn: ({ id, deleteFiles }: { id: string; deleteFiles: boolean }) =>
         api.instances.remove(id, deleteFiles),

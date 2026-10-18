@@ -15,10 +15,23 @@ import { useId, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { InstallProgressPanel } from "./InstallProgressPanel";
+import { AgreementConsent } from "@/features/server/agreement/Agreement";
 import { keys, useGames } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { api } from "@/lib/ipc";
-import { Button, Dialog, ErrorNotice, Field, Icon, Select, TextInput, identityProps } from "@/ui";
+import type { Distribution } from "@/types/api";
+import {
+  Button,
+  Dialog,
+  DistributionTag,
+  ErrorNotice,
+  Field,
+  Icon,
+  LoaderIcon,
+  Select,
+  TextInput,
+  identityProps,
+} from "@/ui";
 import { RamSlider, useRamPlan } from "@/ui/RamSlider";
 
 type Step = "build" | "details" | "installing";
@@ -56,10 +69,16 @@ export function CreateServerDialog({
   const [name, setName] = useState("");
   const [chosenMemoryMb, setChosenMemoryMb] = useState<number | null>(null);
   const [instanceId, setInstanceId] = useState<string | null>(null);
+  // The game's agreement (the Minecraft EULA). Unticked until the user ticks
+  // it, every time the dialog opens; without it the server cannot be created.
+  const [agreed, setAgreed] = useState(false);
+  const distributionLabelId = useId();
+  const distributionHelpId = useId();
 
   // The only game there is. When there are two, this becomes a first step.
   const game = games?.[0];
   const gameId = game?.id ?? "";
+  const agreement = game?.agreement ?? null;
 
   // Default to the second distribution: for Minecraft that is Paper, which is
   // what most people actually want.
@@ -110,6 +129,7 @@ export function CreateServerDialog({
           loader_version: loaderVersion || null,
         },
         memoryMb,
+        acceptAgreement: Boolean(agreement && agreed),
       });
       setInstanceId(instance.id);
       setStep("installing");
@@ -126,6 +146,7 @@ export function CreateServerDialog({
     setChosenVersion(null);
     setLoaderVersion("");
     setChosenMemoryMb(null);
+    setAgreed(false);
     create.reset();
   };
 
@@ -134,7 +155,8 @@ export function CreateServerDialog({
     onClose();
   };
 
-  const canCreate = Boolean(name.trim() && version) && !create.isPending;
+  const canCreate =
+    Boolean(name.trim() && version) && (!agreement || agreed) && !create.isPending;
 
   const footer =
     step === "build" ? (
@@ -190,29 +212,50 @@ export function CreateServerDialog({
     >
       {step === "build" ? (
         <div className="flex flex-col gap-4">
-          <Field
-            label={t("create.distribution")}
-            help={distribution ? t(distribution.summary_key) : undefined}
-          >
-            {/* The distribution's colour rides along as a small swatch inside
-                the field: the same colour its card will carry. */}
-            <span className="create-distribution" {...identityProps(distribution?.accent)}>
-              <span className="create-distribution-swatch" aria-hidden="true" />
-              <Select
-                value={distributionId}
-                onChange={(event) => {
-                  setChosenDistribution(event.target.value);
-                  setLoaderVersion("");
-                }}
-              >
-                {game?.distributions.map((candidate) => (
-                  <option key={candidate.id} value={candidate.id}>
-                    {candidate.name}
-                  </option>
-                ))}
-              </Select>
+          {/* Each distribution as a choice with its glyph and name, in the
+              colour its card will carry. Native radios, so arrow keys and
+              screen readers work as for any radio group. */}
+          <div className="flex flex-col gap-1.5">
+            <span id={distributionLabelId} className="text-[length:var(--text-sm)] font-[600]">
+              {t("create.distribution")}
             </span>
-          </Field>
+            <div
+              className="create-distributions"
+              role="radiogroup"
+              aria-labelledby={distributionLabelId}
+              aria-describedby={distribution ? distributionHelpId : undefined}
+            >
+              {game?.distributions.map((candidate) => (
+                <label
+                  key={candidate.id}
+                  className="create-distribution-option"
+                  data-selected={candidate.id === distributionId ? "" : undefined}
+                  {...identityProps(candidate.accent)}
+                >
+                  <input
+                    type="radio"
+                    name={distributionLabelId}
+                    value={candidate.id}
+                    checked={candidate.id === distributionId}
+                    onChange={() => {
+                      setChosenDistribution(candidate.id);
+                      setLoaderVersion("");
+                    }}
+                  />
+                  <LoaderIcon glyph={candidate.glyph} size={16} />
+                  <span className="create-distribution-name">{candidate.name}</span>
+                </label>
+              ))}
+            </div>
+            {distribution ? (
+              <span
+                id={distributionHelpId}
+                className="text-[length:var(--text-xs)] text-[color:var(--text-muted)]"
+              >
+                {t(distribution.summary_key)}
+              </span>
+            ) : null}
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <Field label={t("create.version")}>
@@ -289,13 +332,21 @@ export function CreateServerDialog({
           </div>
 
           <BuildSummary
-            accent={distribution?.accent}
-            distributionName={distribution?.name}
+            distribution={distribution}
             version={version}
             loaderVersion={
               distribution?.has_loader_version ? loaderVersion || t("create.latest") : null
             }
           />
+
+          {agreement ? (
+            <AgreementConsent
+              gameName={game?.name ?? ""}
+              url={agreement.url}
+              checked={agreed}
+              onChange={setAgreed}
+            />
+          ) : null}
 
           {create.error ? <ErrorNotice error={create.error} /> : null}
         </div>
@@ -346,25 +397,21 @@ function StepHeader({ current, gameName }: { current: "build" | "details"; gameN
 
 /** What Create will build, as the tags its card will show. */
 function BuildSummary({
-  accent,
-  distributionName,
+  distribution,
   version,
   loaderVersion,
 }: {
-  accent?: string | null;
-  distributionName?: string;
+  distribution?: Distribution;
   version: string;
   loaderVersion: string | null;
 }) {
   const { t } = useI18n();
-  if (!distributionName) return null;
+  if (!distribution) return null;
   return (
     <div className="create-summary">
       <span className="label">{t("create.stepBuild")}</span>
       <span className="flex flex-wrap items-center gap-1.5">
-        <span className="tag" {...identityProps(accent)}>
-          {distributionName}
-        </span>
+        <DistributionTag distribution={distribution} fallback={distribution.id} />
         {version ? <span className="tag">{version}</span> : null}
         {loaderVersion ? (
           <span className="tag">

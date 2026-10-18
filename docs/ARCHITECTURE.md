@@ -51,6 +51,18 @@ cheap:
 Identity is pairing, not login: a short code, LAN-first, that **expires**. See
 `node/pairing.rs`.
 
+### Moving a server between nodes
+
+Node ids are UUIDs (records with the old shared id `"local"` are migrated once
+on load, instance records included). A transfer is run by the desktop, which
+may be the source, the target or a relay; bytes go source → desktop backend →
+target, never through the webview (`GET /download/{exportId}`, `POST /upload`).
+The rules live in `service/transfer.rs`: the source stops and locks the
+server and exports it with a SHA-256; the target verifies and adopts it at
+`generation + 1`; only then does the source mark its copy `transferred_out`
+(or delete it). An older copy never starts unless forced, which forks it
+(`forked_from`); an active copy is never overwritten by an incoming one.
+
 ## One entry point
 
 There is one build profile. No cloud branch, no `localOnlyDesktop`

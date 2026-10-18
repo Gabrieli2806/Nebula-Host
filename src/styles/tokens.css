@@ -386,7 +386,13 @@
 :root[data-theme="light"] [data-identity] {
   --identity-ink: color-mix(in oklab, var(--identity, var(--accent-base)) 44%, #0f1a2a);
   --identity-dim: color-mix(in srgb, var(--identity, var(--accent-base)) 18%, transparent);
-  --identity-line: color-mix(in srgb, var(--identity, var(--accent-base)) 50%, transparent);
+  /* Darkened before it is thinned, so a near-white identity still draws a
+     visible edge on white. */
+  --identity-line: color-mix(
+    in srgb,
+    color-mix(in oklab, var(--identity, var(--accent-base)) 62%, #0f1a2a) 48%,
+    transparent
+  );
   --identity-muted: color-mix(in srgb, var(--identity, var(--accent-base)) 8%, var(--surface-sunken));
   --identity-muted-ink: color-mix(in oklab, var(--identity, var(--accent-base)) 30%, var(--text-muted));
   --identity-muted-line: color-mix(in srgb, var(--identity, var(--accent-base)) 26%, transparent);

@@ -575,6 +575,12 @@
     border-color: var(--identity-line);
   }
 
+  /* A distribution's glyph before its name (LoaderIcon). */
+  .tag .loader-icon {
+    flex: none;
+    margin-left: -1px;
+  }
+
   /* == fields ========================================================== */
 
   /* The legacy sunken input: gradient well, hairline, inset shade. Focus is

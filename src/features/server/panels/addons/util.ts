@@ -143,14 +143,7 @@ export function modrinthUrl(projectType: string, slug: string): string {
   return `https://modrinth.com/${type}/${encodeURIComponent(slug)}`;
 }
 
-export async function openExternal(url: string) {
-  try {
-    const { openUrl } = await import("@tauri-apps/plugin-opener");
-    await openUrl(url);
-  } catch {
-    // Nothing useful to say: the link is a convenience.
-  }
-}
+export { openExternal } from "@/lib/external";
 
 /** The server's own loader as a name, or "" when it has none. */
 export function primaryLoader(context: AddonContext): string {

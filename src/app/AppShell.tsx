@@ -23,6 +23,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { NavLink, Outlet, useLocation, useMatch, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 import {
   useBackendEvents,
@@ -32,7 +33,9 @@ import {
   useNode,
   useNodeHealth,
 } from "@/hooks/useBackend";
+import { useRemoteLink } from "@/hooks/useRemoteLink";
 import { useI18n } from "@/i18n";
+import { switchTo } from "@/lib/connection";
 import { formatMegabytes } from "@/lib/format";
 import { toAppError } from "@/lib/ipc";
 import type { InstanceView } from "@/types/api";
@@ -153,6 +156,7 @@ export function AppShell() {
         </nav>
 
         <main ref={mainRef} className="app-main min-w-0 flex-1 overflow-auto">
+          <RemoteLinkBanner />
           <Outlet />
         </main>
       </div>
@@ -317,6 +321,9 @@ function ServerControl({
   const failure = latest.error;
 
   const startLabel = instance.status === "sleeping" ? t("actions.wake") : t("actions.start");
+  // An older copy left behind by a transfer starts only from its overview
+  // ("Play this copy anyway").
+  const olderCopy = instance.transfer?.state === "transferred_out";
   const start = () => actions.start.mutate(instance.id);
   const stop = () => actions.stop.mutate(instance.id);
   const restart = () => actions.restart.mutate(instance.id);
@@ -335,7 +342,7 @@ function ServerControl({
             icon="play"
             label={startLabel}
             primary
-            disabled={busy}
+            disabled={busy || olderCopy}
             onClick={start}
           />
         )}
@@ -367,7 +374,12 @@ function ServerControl({
             variant="primary"
             icon="play"
             className="flex-1"
-            disabled={busy}
+            disabled={busy || olderCopy}
+            title={
+              instance.transfer?.state === "transferred_out"
+                ? t("transfer.startDisabled", { node: instance.transfer.to_node_name })
+                : undefined
+            }
             onClick={start}
           >
             {startLabel}
@@ -430,21 +442,66 @@ function NavItem({ to, icon, label }: { to: string; icon: IconName; label: strin
   );
 }
 
-/** The machine, its load, and how to reach it. */
-function NodeBlock() {
+/**
+ * While managing another machine that stops answering: say so above every
+ * page, keep retrying (the event stream and the queries already do), and
+ * offer the way back to this PC.
+ */
+function RemoteLinkBanner() {
   const { t } = useI18n();
-  const { data: health } = useNodeHealth();
+  const client = useQueryClient();
+  const { remote, reachable } = useRemoteLink();
+  if (!remote || reachable) return null;
 
   return (
-    <section className="node-block" aria-label={t("node.thisMachine")}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="label">{t("node.thisMachine")}</span>
-        <StatusDot
-          status={health ? "online" : "offline"}
-          size={7}
-          label={t(health ? "status.online" : "status.offline")}
-        />
+    <div className="remote-banner" role="status">
+      <Icon name="warning" size={16} />
+      <div className="remote-banner-text">
+        <p className="remote-banner-title">{t("remote.unreachable", { name: remote.name })}</p>
+        <p className="remote-banner-body">{t("remote.unreachableBody")}</p>
       </div>
+      <div className="remote-banner-actions">
+        <Button size="sm" variant="quiet" onClick={() => void client.invalidateQueries()}>
+          {t("actions.retry")}
+        </Button>
+        <Button size="sm" onClick={() => switchTo("local")}>
+          {t("remote.useThisPc")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The machine being managed and its load: this PC, or the remote node by its
+ * own name with its own numbers (every query is routed to it). The lamp says
+ * whether it answers.
+ */
+function useMachine() {
+  const { t } = useI18n();
+  const { remote, reachable } = useRemoteLink();
+  const { data: node } = useNode();
+  const health = useNodeHealth();
+  // Numbers from before the link dropped would be stale: hide them.
+  const data = reachable && !health.isError ? health.data : undefined;
+  const title = remote ? (node?.name ?? remote.name) : t("node.thisMachine");
+  return { remote, reachable, up: data !== undefined, title, health: data };
+}
+
+function NodeBlock() {
+  const { t } = useI18n();
+  const { remote, reachable, up, title, health } = useMachine();
+
+  return (
+    <section className="node-block" aria-label={title}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="label node-block-title" title={title}>
+          {title}
+        </span>
+        <StatusDot status={up ? "online" : "offline"} size={7} label={t(up ? "status.online" : "status.offline")} />
+      </div>
+
+      {remote && !reachable ? <p className="node-block-reconnecting">{t("remote.reconnecting")}</p> : null}
 
       {health ? (
         <>
@@ -465,18 +522,6 @@ function NodeBlock() {
               detail={`${health.disk_total_gb} GB`}
             />
           </div>
-
-          <div className="divider" aria-hidden="true" />
-
-          <div className="flex items-center justify-between gap-2">
-            <span className="label">{t("node.address")}</span>
-            <span
-              className="node-block-address readout readout-fit selectable"
-              data-empty={health.lan_address ? undefined : ""}
-            >
-              {health.lan_address ?? t("node.offline")}
-            </span>
-          </div>
         </>
       ) : null}
     </section>
@@ -486,20 +531,13 @@ function NodeBlock() {
 /** The machine block, folded into the collapsed rail: three small dials. */
 function NodeMini() {
   const { t } = useI18n();
-  const { data: node } = useNode();
-  const { data: health } = useNodeHealth();
-
-  const name = node?.name ?? t("node.thisMachine");
-  const where = health ? (health.lan_address ?? t("node.offline")) : t("status.offline");
+  const { remote, reachable, up, title, health } = useMachine();
+  const state = remote && !reachable ? t("remote.reconnecting") : t(up ? "status.online" : "status.offline");
 
   return (
-    <section className="node-mini" aria-label={t("node.thisMachine")}>
-      <span className="node-mini-lamp" data-tip={`${name} · ${where}`}>
-        <StatusDot
-          status={health ? "online" : "offline"}
-          size={7}
-          label={t(health ? "status.online" : "status.offline")}
-        />
+    <section className="node-mini" aria-label={title}>
+      <span className="node-mini-lamp" data-tip={`${title} · ${state}`}>
+        <StatusDot status={up ? "online" : "offline"} size={7} label={state} />
       </span>
       {health ? (
         <>

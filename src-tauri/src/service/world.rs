@@ -94,6 +94,7 @@ fn copy_folder(from: &Path, to: &Path) -> AppResult<()> {
 impl InstanceService {
     /// Import the world in `source` (a `.zip` or a folder on this machine).
     pub async fn import_world(self: &Arc<Self>, instance_id: &str, source: PathBuf) -> AppResult<WorldImportResult> {
+        self.ensure_not_transferring(instance_id).await?;
         if self.processes.is_running(instance_id).await {
             return Err(AppError::new(ErrorCode::InstanceAlreadyRunning).with("instance", instance_id));
         }

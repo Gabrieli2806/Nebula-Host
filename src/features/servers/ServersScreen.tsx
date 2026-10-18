@@ -19,6 +19,7 @@ import {
   useInstances,
   useNodeHealth,
 } from "@/hooks/useBackend";
+import { useRemoteLink } from "@/hooks/useRemoteLink";
 import { useI18n } from "@/i18n";
 import { formatMegabytes } from "@/lib/format";
 import type { InstanceStatus, InstanceView } from "@/types/api";
@@ -102,6 +103,11 @@ export function ServersScreen() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: instances, isLoading, error, refetch } = useInstances();
+  // A managed machine that stopped answering: say so instead of loading for
+  // minutes or summing up zeros that look real.
+  const { remote, reachable } = useRemoteLink();
+  const unreachable = remote !== null && !reachable;
+  const noData = unreachable && !instances;
   const { data: settings } = useAppSettings();
   const [creating, setCreating] = useState(false);
   // The saved preference is the default; a click here overrides it for this
@@ -140,15 +146,16 @@ export function ServersScreen() {
       <Heading
         instances={instances}
         onCreate={() => setCreating(true)}
+        canCreate={!unreachable}
         density={density}
         onDensity={setOverride}
       />
 
       {/* With nothing hosted, the empty state carries the one action and the
           summary would only read zeros. */}
-      {instances?.length === 0 ? null : <MachineSummary instances={instances ?? []} />}
+      {instances?.length === 0 || noData ? null : <MachineSummary instances={instances ?? []} />}
 
-      {error ? <ErrorNotice error={error} onRetry={() => void refetch()} /> : null}
+      {error && !noData ? <ErrorNotice error={error} onRetry={() => void refetch()} /> : null}
 
       {total > 1 ? (
         <Toolbar
@@ -163,7 +170,9 @@ export function ServersScreen() {
         />
       ) : null}
 
-      {isLoading ? <LoadingServers density={density} /> : null}
+      {noData && remote ? <Unreachable name={remote.name} /> : null}
+
+      {isLoading && !noData ? <LoadingServers density={density} /> : null}
 
       {instances && instances.length === 0 ? <NoServers onCreate={() => setCreating(true)} /> : null}
 
@@ -416,11 +425,13 @@ function NoMatch({ onClear }: { onClear: () => void }) {
 function Heading({
   instances,
   onCreate,
+  canCreate,
   density,
   onDensity,
 }: {
   instances: InstanceView[] | undefined;
   onCreate: () => void;
+  canCreate: boolean;
   density: Density;
   onDensity: (density: Density) => void;
 }) {
@@ -445,7 +456,7 @@ function Heading({
               label={t("servers.densityList")}
             />
           </div>
-          <Button variant="primary" icon="plus" onClick={onCreate}>
+          <Button variant="primary" icon="plus" onClick={onCreate} disabled={!canCreate}>
             {t("actions.create")}
           </Button>
         </div>
@@ -614,6 +625,22 @@ function BudgetSegment({ instance, share }: { instance: InstanceView; share: num
 }
 
 /** Nothing hosted yet: the mark, one plain line and the one action. */
+/** The managed machine is not answering and nothing was loaded from it. */
+function Unreachable({ name }: { name: string }) {
+  const { t } = useI18n();
+  return (
+    <div className="panel servers-empty">
+      <div className="empty-state">
+        <span className="empty-state-icon">
+          <Icon name="servers" size={20} />
+        </span>
+        <p className="empty-state-title">{t("servers.unreachableTitle", { name })}</p>
+        <p className="empty-state-hint">{t("servers.unreachableHint", { name })}</p>
+      </div>
+    </div>
+  );
+}
+
 function NoServers({ onCreate }: { onCreate: () => void }) {
   const { t } = useI18n();
   return (

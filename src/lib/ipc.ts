@@ -58,6 +58,8 @@ import type {
   RuntimeKind,
   ScheduleRule,
   SettingValue,
+  TransferOutcome,
+  TransferRequest,
   VersionInfo,
 } from "@/types/api";
 
@@ -133,6 +135,10 @@ async function call<T>(command: string, args?: Record<string, unknown>): Promise
 export const api = {
   node: {
     get: () => call<Node>("node_get"),
+    /** This PC's own node record, whichever machine the window manages. */
+    getLocal: () => local<Node>("node_get").catch((error) => {
+      throw toAppError(error);
+    }),
     rename: (name: string) => call<Node>("node_rename", { name }),
     health: () => call<NodeHealth>("node_health"),
     requirements: () => call<Requirement[]>("node_requirements"),
@@ -157,7 +163,11 @@ export const api = {
       memoryMb?: number;
       port?: number;
       runtimeKind?: RuntimeKind;
+      /** The user ticked "I accept" for the game's agreement (EULA). */
+      acceptAgreement?: boolean;
     }) => call<Instance>("instance_create", { request }),
+    /** Record that the user accepted the game's agreement for this server. */
+    acceptAgreement: (instanceId: string) => call<void>("instance_accept_agreement", { instanceId }),
     install: (instanceId: string) => call<void>("instance_install", { instanceId }),
     start: (instanceId: string) => call<void>("instance_start", { instanceId }),
     stop: (instanceId: string) => call<void>("instance_stop", { instanceId }),
@@ -196,6 +206,25 @@ export const api = {
     /** Upload a log to mclo.gs. Ask the user first: logs carry names and IPs. */
     shareLog: (instanceId: string, source: LogSource) =>
       call<SharedLog>("instance_log_share", { instanceId, source }),
+    /**
+     * Play an older copy a transfer left behind anyway. It forks: from then on
+     * this copy and the one on the other machine are different servers.
+     */
+    forcePlay: (instanceId: string) => call<Instance>("instance_force_play", { instanceId }),
+  },
+
+  transfer: {
+    /**
+     * Move a server between machines. Always runs on this PC's backend, which
+     * may be the source, the target or a relay between two nodes; the bytes
+     * never pass through the webview. Progress arrives as `transfer` events on
+     * this PC's channel (see `onLocalAppEvent`), and on the source's while it
+     * packs.
+     */
+    run: (request: TransferRequest) =>
+      local<TransferOutcome>("transfer_run", { request }).catch((error) => {
+        throw toAppError(error);
+      }),
   },
 
   files: {
@@ -209,7 +238,10 @@ export const api = {
       call<void>("file_rename", { instanceId, path, newName }),
     createFolder: (instanceId: string, path: string) =>
       call<void>("folder_create", { instanceId, path }),
-    reveal: (instanceId: string) => call<string>("instance_reveal", { instanceId }),
+    /** Open the instance folder in this PC's file manager (local servers only). */
+    openFolder: (instanceId: string) => local<void>("instance_open_folder", { instanceId }).catch((error) => {
+      throw toAppError(error);
+    }),
     /** Dry run of a drop into `target` (instance-relative, "" = root). */
     importCheck: (instanceId: string, target: string, sources: string[]) =>
       call<ImportCheck>("files_import_check", { instanceId, target, sources }),
@@ -329,8 +361,10 @@ export const api = {
   app: {
     /** Tail of the app's own log (the managed machine's, when remote). */
     log: (lines = 400) => call<AppLog>("app_log", { lines }),
-    /** The logs folder on this PC. */
-    logFolder: () => call<string>("app_log_folder"),
+    /** Open the logs folder on this PC in the file manager. */
+    openLogFolder: () => local<void>("app_open_log_folder").catch((error) => {
+      throw toAppError(error);
+    }),
   },
 
   mcp: {
@@ -404,6 +438,29 @@ export function onWindowDragDrop(handler: (event: WindowDragDrop) => void): () =
   return () => {
     disposed = true;
     stop?.();
+  };
+}
+
+/** Events from this PC's backend, whichever machine the window manages. */
+export function onLocalAppEvent(handler: (event: AppEvent) => void): () => void {
+  const unlisten = listen<AppEvent>("nebula:event", (message) => handler(message.payload));
+  return () => {
+    void unlisten.then((stop) => stop());
+  };
+}
+
+/** A start from the tray menu (this PC) that needs the window. */
+export interface TrayRefusal {
+  instanceId: string;
+  reason: "agreement_required" | "transferred_out";
+  url?: string | null;
+}
+
+/** The tray asked for something only the window can finish. */
+export function onTrayRefused(handler: (refusal: TrayRefusal) => void): () => void {
+  const unlisten = listen<TrayRefusal>("nebula:tray-refused", (message) => handler(message.payload));
+  return () => {
+    void unlisten.then((stop) => stop()).catch(() => {});
   };
 }
 

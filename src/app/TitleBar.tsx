@@ -15,7 +15,6 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { useI18n } from "@/i18n";
-import { useNode } from "@/hooks/useBackend";
 import { Icon, Mark } from "@/ui";
 
 import { NodeSwitcher } from "./NodeSwitcher";
@@ -29,7 +28,6 @@ export interface SidebarToggle {
 
 export function TitleBar({ sidebar }: { sidebar?: SidebarToggle } = {}) {
   const { t } = useI18n();
-  const { data: node } = useNode();
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {
@@ -51,14 +49,12 @@ export function TitleBar({ sidebar }: { sidebar?: SidebarToggle } = {}) {
         {sidebar ? <SidebarButton {...sidebar} /> : null}
         <Mark size={16} />
         <span className="wordmark">{t("app.name")}</span>
-        {node ? (
-          <>
-            <span className="titlebar-sep" aria-hidden="true">
-              /
-            </span>
-            <NodeSwitcher />
-          </>
-        ) : null}
+        {/* Always there: the way to another machine must not depend on the
+            one being managed answering. */}
+        <span className="titlebar-sep" aria-hidden="true">
+          /
+        </span>
+        <NodeSwitcher />
       </div>
 
       <div className="no-drag flex flex-none items-stretch">
