@@ -35,8 +35,20 @@ pub enum RequirementStatus {
 }
 
 /// Sample the machine.
+///
+/// CPU usage is a delta between two refreshes, so one `System` is kept for
+/// the life of the app: a fresh one per call always reads (close to) zero.
 pub fn sample(instances_running: u32) -> NodeHealth {
-    let mut system = System::new();
+    static SYSTEM: std::sync::OnceLock<std::sync::Mutex<System>> = std::sync::OnceLock::new();
+    let shared = SYSTEM.get_or_init(|| {
+        let mut system = System::new();
+        system.refresh_cpu_usage();
+        std::sync::Mutex::new(system)
+    });
+    let mut system = match shared.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
     system.refresh_memory();
     system.refresh_cpu_usage();
 

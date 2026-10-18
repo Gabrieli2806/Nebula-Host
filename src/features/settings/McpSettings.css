@@ -1,0 +1,145 @@
+/* AI assistants (MCP) card in App Settings. */
+
+@layer components {
+  .mcp-intro {
+    /* Lined up with the rows below it, which carry the panel's side padding themselves. */
+    margin: 0;
+    padding: 14px 20px 0;
+    max-width: 68ch;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    line-height: var(--leading-body, 1.5);
+  }
+
+  .mcp-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-3) 0;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .mcp-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--status-offline);
+  }
+
+  .mcp-status[data-running] .mcp-status-dot {
+    background: var(--status-online);
+  }
+
+  .mcp-fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: 0;
+  }
+
+  .mcp-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .mcp-field dd {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+  }
+
+  .mcp-code {
+    min-width: 0;
+    flex: 1 1 280px;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mcp-note {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+    color: var(--text-faint);
+    font-size: var(--text-xs);
+    line-height: 1.5;
+  }
+
+  .mcp-note svg {
+    flex: none;
+    margin-top: 2px;
+    color: var(--status-starting);
+  }
+
+  .mcp-setup {
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--line);
+  }
+
+  .mcp-setup-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  .mcp-setup-help {
+    margin: var(--space-2) 0;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .mcp-snippet {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--space-2);
+  }
+
+  .mcp-pre {
+    width: 100%;
+    margin: 0;
+    padding: var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--screen-bg, var(--surface-sunken));
+    color: var(--screen-text, var(--text));
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+    box-sizing: border-box;
+  }
+
+  .mcp-tools {
+    margin-top: var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .mcp-tools summary {
+    cursor: pointer;
+    color: var(--text);
+    font-weight: var(--weight-control, 600);
+  }
+
+  .mcp-tools p {
+    margin: var(--space-2) 0 0;
+    line-height: 1.6;
+  }
+}

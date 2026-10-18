@@ -1,0 +1,64 @@
+/*
+ * PlayerHead primitive. Owner: Backend/contract agent (round 3).
+ * Sizes via data-size (16 | 24 | 32 | 48 | 64). Hard pixels, no smoothing.
+ */
+@layer components {
+  .player-head {
+    --head: 32px;
+    position: relative;
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: var(--head);
+    height: var(--head);
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background: var(--well-fill);
+    box-shadow: inset 0 0 0 1px var(--line);
+    font-family: var(--font-display);
+    font-size: calc(var(--head) * 0.44);
+    font-weight: var(--weight-display);
+    line-height: 1;
+    color: var(--text-muted);
+    user-select: none;
+  }
+
+  .player-head[data-size="16"] {
+    --head: 16px;
+    border-radius: 3px;
+    font-size: 9px;
+  }
+  .player-head[data-size="24"] { --head: 24px; }
+  .player-head[data-size="32"] { --head: 32px; }
+  .player-head[data-size="48"] { --head: 48px; }
+  .player-head[data-size="64"] {
+    --head: 64px;
+    border-radius: calc(var(--radius-sm) + 2px);
+  }
+
+  .player-head img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    opacity: 0;
+    transition: opacity 160ms ease-out;
+  }
+
+  .player-head img[data-loaded] {
+    opacity: 1;
+  }
+
+  /* Once the face is in, the hairline frame would sit on top of the pixels. */
+  .player-head:has(img[data-loaded]) {
+    box-shadow: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .player-head img {
+      transition: none;
+    }
+  }
+}

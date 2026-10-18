@@ -138,6 +138,12 @@ pub trait GameAdapter: Send + Sync {
 
     /// Build the launch command. Pure: no network, no installs.
     fn launch_plan(&self, ctx: LaunchContext<'_>) -> AppResult<LaunchPlan>;
+
+    /// The Java major a build is meant to run on, for games whose manifest
+    /// asks for a JVM. Drives the "Recommended" runtime and its download.
+    fn runtime_major(&self, _build: &BuildSelector) -> Option<u32> {
+        None
+    }
 }
 
 /// Resolves game ids to adapters. Built once at startup and shared.

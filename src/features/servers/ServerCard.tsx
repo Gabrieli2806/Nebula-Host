@@ -3,137 +3,245 @@
  *
  * The card answers the three questions someone actually opens this app to ask:
  * is it up, who is on it, and what do I tell my friends to type.
+ *
+ * Anatomy: the
+ * identity tile (muted while the server is idle), the name with its
+ * lamp-and-word status, the build tags, the address, then the facts row and
+ * the one action that matters.
+ *
+ * The whole card opens the server: the name is the real button and its hit
+ * area is stretched over the card, so there is one tab stop for "open" and
+ * the address and the Start/Stop button stay separate controls on top.
  */
 
-import { useState } from "react";
-
-import { useInstanceActions } from "@/hooks/useBackend";
+import { useDistribution, useInstanceActions } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { formatDuration, formatMegabytes } from "@/lib/format";
 import type { InstanceView } from "@/types/api";
-import { Button, ErrorNotice, Icon, StatusChip, statusHint, statusStyle } from "@/ui";
+import {
+  Button,
+  CopyAddress,
+  ErrorNotice,
+  Icon,
+  ServerTile,
+  StatusChip,
+  identityProps,
+  isIdle,
+  statusHint,
+} from "@/ui";
 
-export function ServerCard({
-  instance,
-  onOpen,
-}: {
-  instance: InstanceView;
-  onOpen: () => void;
-}) {
+/** Allocated memory the way it was chosen: "4 GB", not "4.0 GB". */
+function formatAllocation(mb: number): string {
+  return mb >= 1024 && mb % 1024 === 0 ? `${mb / 1024} GB` : formatMegabytes(mb);
+}
+
+/** Above this share a usage bar turns amber. */
+const USAGE_WARN = 90;
+
+export function ServerCard({ instance, onOpen }: { instance: InstanceView; onOpen: () => void }) {
   const { t } = useI18n();
   const actions = useInstanceActions();
-  const [copied, setCopied] = useState(false);
+  const distribution = useDistribution(instance);
 
   const hint = statusHint(instance.status);
-  const busy =
-    actions.start.isPending || actions.stop.isPending || instance.status === "starting" ||
-    instance.status === "stopping";
+  // Stop stays available while a server is starting (as in the rail), so a
+  // stuck startup can be put out from the list.
+  const busy = actions.start.isPending || actions.stop.isPending || instance.status === "stopping";
+  const accent = distribution?.accent;
+  const running = instance.status === "online" || instance.status === "starting";
+  // A process exists, so CPU and memory readings mean something.
+  const live = running || instance.status === "stopping";
+  const cpu = Math.min(100, Math.max(0, instance.cpu_percent));
+  const allocated = instance.resources.memory_mb;
+  // The last start/stop that failed, shown under the address.
   const failure = actions.start.error ?? actions.stop.error;
 
-  const copyAddress = async () => {
-    if (!instance.address) return;
-    await navigator.clipboard.writeText(instance.address);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
+  const start = () => {
+    actions.stop.reset();
+    actions.start.mutate(instance.id);
+  };
+  const stop = () => {
+    actions.start.reset();
+    actions.stop.mutate(instance.id);
   };
 
   return (
     <article
-      className="panel relative flex flex-col gap-4 overflow-hidden p-4 transition-colors hover:border-[color:var(--line-strong)]"
-      style={statusStyle(instance.status)}
+      className="panel card-interactive server-card"
+      {...identityProps(accent)}
+      data-idle={isIdle(instance.status) ? "" : undefined}
+      data-status={instance.status}
     >
-      {/* State earns colour in exactly one place on the surface: a hairline
-          down the left edge, readable at a glance across ten cards. */}
-      <span
-        aria-hidden="true"
-        className="absolute inset-y-0 left-0 w-[2px]"
-        style={{ background: "var(--chip-fg)", opacity: 0.7 }}
-      />
-      <header className="flex items-start justify-between gap-3">
-        <button
-          type="button"
-          onClick={onOpen}
-          className="min-w-0 text-left"
-        >
-          <h3 className="truncate text-[length:var(--text-lg)] font-semibold">{instance.name}</h3>
-          <p className="mono truncate text-[length:var(--text-xs)] text-[color:var(--text-faint)]">
-            {instance.build.distribution} {instance.build.version}
-          </p>
-        </button>
-        <StatusChip status={instance.status} />
+      <header className="flex items-start gap-3.5">
+        <ServerTile name={instance.name} identity={accent} status={instance.status} image={instance.icon_url} />
+
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div className="server-card-title">
+            <h3 className="pt-[1px]">
+              <button
+                type="button"
+                className="server-card-open"
+                onClick={onOpen}
+                title={instance.name}
+              >
+                {instance.name}
+              </button>
+            </h3>
+          </div>
+
+          {/* The state rides on the tag row so the name gets the card's
+              full width, even in the four-column grid. */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="tag" {...identityProps(accent)}>
+              {distribution?.name ?? instance.build.distribution}
+            </span>
+            <span className="tag">{instance.build.version}</span>
+            {instance.build.loader_version ? (
+              <span className="tag">{instance.build.loader_version}</span>
+            ) : null}
+            <StatusChip status={instance.status} className="ml-auto flex-none" />
+          </div>
+        </div>
       </header>
 
-      {hint ? (
-        <p className="text-[length:var(--text-xs)] text-[color:var(--text-muted)]">{t(hint)}</p>
+      {/* The address sits at the same offset on every card in a row; the
+          state hint (sleeping, starting, crashed) comes after it. */}
+      <div className="server-card-raised flex flex-col gap-2">
+        <CopyAddress
+          value={instance.address}
+          emptyText={t("servers.noAddress")}
+          className="server-card-address"
+        />
+        {failure ? <ErrorNotice error={failure} compact /> : null}
+      </div>
+
+      {hint ? <p className="server-card-hint">{t(hint)}</p> : null}
+
+      {/* While a process exists: what it is using, CPU as a share of the
+          machine and memory against what it was given. */}
+      {live ? (
+        <div className="card-usage">
+          <Usage
+            label={t("node.cpu")}
+            value={`${Math.round(cpu)}%`}
+            share={cpu}
+          />
+          <Usage
+            label={t("servers.memory")}
+            value={instance.memory_used_mb ? formatMegabytes(instance.memory_used_mb) : "—"}
+            of={formatAllocation(allocated)}
+            share={allocated > 0 ? (instance.memory_used_mb / allocated) * 100 : 0}
+          />
+        </div>
       ) : null}
 
-      <dl className="grid grid-cols-3 gap-3">
-        <Stat
-          label={t("servers.players")}
-          value={
-            instance.status === "online"
-              ? `${instance.players_online}${instance.players_max ? ` / ${instance.players_max}` : ""}`
-              : "—"
-          }
-        />
-        <Stat
-          label={t("servers.memory")}
-          value={instance.memory_used_mb ? formatMegabytes(instance.memory_used_mb) : "—"}
-        />
-        <Stat label={t("servers.uptime")} value={formatDuration(instance.uptime_seconds)} />
-      </dl>
+      {/* The foot: the numbers that change, in one line, under a hairline. */}
+      <div className="fact-strip server-card-foot">
+        <div className="server-facts">
+          <Fact
+            icon="users"
+            label={t("servers.players")}
+            value={
+              instance.status === "online"
+                ? `${instance.players_online}${instance.players_max ? `/${instance.players_max}` : ""}`
+                : "—"
+            }
+          />
+          <span className="rule" data-fact="uptime" aria-hidden="true" />
+          <Fact
+            fact="uptime"
+            icon="clock"
+            label={t("servers.uptime")}
+            value={formatDuration(instance.uptime_seconds)}
+          />
+          {live ? null : (
+            <>
+              <span className="rule" aria-hidden="true" />
+              <Fact icon="cpu" label={t("servers.memory")} value={formatAllocation(allocated)} />
+            </>
+          )}
+        </div>
 
-      {instance.address ? (
-        <button
-          type="button"
-          onClick={() => void copyAddress()}
-          className="flex items-center justify-between gap-2 rounded-[var(--radius)] border border-[color:var(--line)] px-3 py-2 text-left transition-colors hover:border-[color:var(--line-strong)]"
-          style={{ background: "var(--surface-sunken)" }}
-        >
-          <span className="mono truncate text-[length:var(--text-sm)]">{instance.address}</span>
-          <span className="flex flex-none items-center gap-1.5 text-[length:var(--text-xs)] text-[color:var(--text-faint)]">
-            <Icon name={copied ? "check" : "external"} size={13} />
-            {copied ? t("actions.copied") : t("actions.copy")}
-          </span>
-        </button>
-      ) : null}
-
-      {failure ? <ErrorNotice error={failure} compact /> : null}
-
-      <footer className="flex items-center gap-2">
-        {instance.status === "online" || instance.status === "starting" ? (
-          <Button
-            icon="stop"
-            disabled={busy}
-            onClick={() => actions.stop.mutate(instance.id)}
-            className="flex-1"
-          >
-            {t("actions.stop")}
-          </Button>
-        ) : (
-          <Button
-            variant="primary"
-            icon="play"
-            disabled={busy}
-            onClick={() => actions.start.mutate(instance.id)}
-            className="flex-1"
-          >
-            {instance.status === "sleeping" ? t("actions.wake") : t("actions.start")}
-          </Button>
-        )}
-        <Button variant="quiet" icon="chevron-right" iconOnly onClick={onOpen}>
-          {instance.name}
-        </Button>
-      </footer>
+        <div className="server-card-raised server-card-action">
+          {running ? (
+            <Button
+              size="sm"
+              icon="stop"
+              disabled={busy}
+              onClick={stop}
+              aria-label={`${t("actions.stop")}: ${instance.name}`}
+            >
+              {t("actions.stop")}
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              icon="play"
+              disabled={busy}
+              onClick={start}
+              aria-label={`${instance.status === "sleeping" ? t("actions.wake") : t("actions.start")}: ${instance.name}`}
+            >
+              {instance.status === "sleeping" ? t("actions.wake") : t("actions.start")}
+            </Button>
+          )}
+        </div>
+      </div>
     </article>
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Fact({
+  fact,
+  icon,
+  label,
+  value,
+}: {
+  fact?: string;
+  icon: "users" | "clock" | "cpu";
+  label: string;
+  value: string;
+}) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="label">{label}</dt>
-      <dd className="mono text-[length:var(--text-sm)]">{value}</dd>
+    <span className="server-fact" data-fact={fact} title={label}>
+      <Icon name={icon} size={13} />
+      <span className="sr-only">{label}</span>
+      <span className="readout">{value}</span>
+    </span>
+  );
+}
+
+function Usage({
+  label,
+  value,
+  of,
+  share,
+}: {
+  label: string;
+  value: string;
+  of?: string;
+  /** 0–100. */
+  share: number;
+}) {
+  const fill = Math.min(100, Math.max(0, share));
+  return (
+    <div className="card-usage-item" data-warn={fill >= USAGE_WARN ? "" : undefined}>
+      <div className="card-usage-line">
+        <span className="card-usage-label">{label}</span>
+        <span className="readout card-usage-value">
+          {value}
+          {of ? <span className="card-usage-of">{` / ${of}`}</span> : null}
+        </span>
+      </div>
+      <span
+        className="card-usage-bar"
+        role="meter"
+        aria-label={label}
+        aria-valuenow={Math.round(fill)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <span style={{ width: `${fill}%` }} />
+      </span>
     </div>
   );
 }

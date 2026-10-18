@@ -3,6 +3,7 @@ import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { AccentSync } from "@/app/AccentSync";
 import { AppShell } from "@/app/AppShell";
+import { ThemeSync } from "@/app/ThemeSync";
 import { FirstRun } from "@/features/onboarding/FirstRun";
 import { ServerScreen } from "@/features/server/ServerScreen";
 import { ServersScreen } from "@/features/servers/ServersScreen";
@@ -26,6 +27,7 @@ export function App() {
     <QueryClientProvider client={client}>
       <I18nProvider>
         <AccentSync />
+        <ThemeSync />
         <HashRouter>
           <Routes>
             <Route path="/welcome" element={<FirstRun />} />

@@ -8,6 +8,7 @@
 pub mod addons;
 pub mod downloader;
 pub mod launch;
+pub mod modrinth;
 pub mod types;
 
 use std::path::PathBuf;
@@ -20,7 +21,7 @@ use crate::game::manifest::GameManifest;
 use crate::game::registry::{
     GameAdapter, InstallContext, InstallReport, LaunchContext, LaunchPlan,
 };
-use crate::game::VersionInfo;
+use crate::game::{BuildSelector, VersionInfo};
 use crate::runtime::java;
 
 use downloader::Downloader;
@@ -68,7 +69,11 @@ impl GameAdapter for MinecraftAdapter {
 
     async fn versions(&self, distribution: &str) -> AppResult<Vec<VersionInfo>> {
         let server_type = ServerType::parse(distribution)?;
-        let versions = self.downloader.get_versions(server_type).await?;
+        let mut versions = self.downloader.get_versions(server_type).await?;
+        // Newest first for every distribution — upstream order varies (Paper
+        // groups by family, which put the 26.x line at the bottom).
+        versions.sort_by(|a, b| compare_versions_desc(a, b));
+        versions.dedup();
         Ok(versions
             .into_iter()
             .map(|id| {
@@ -139,6 +144,10 @@ impl GameAdapter for MinecraftAdapter {
         })
     }
 
+    fn runtime_major(&self, build: &BuildSelector) -> Option<u32> {
+        Some(launch::min_java_version(&build.version))
+    }
+
     fn launch_plan(&self, ctx: LaunchContext<'_>) -> AppResult<LaunchPlan> {
         let server_type = ServerType::parse(&ctx.build.distribution)?;
         let java_path = match &ctx.java {
@@ -159,6 +168,20 @@ impl GameAdapter for MinecraftAdapter {
 }
 
 /// `1.21.4` is a release; `24w45a` and `1.21.4-pre1` are not.
+/// Order Minecraft version ids newest first: numeric components compared as
+/// numbers (`1.21.10` > `1.21.9`, `26.1` > `1.21.11`), and a release before
+/// its own pre-releases (`1.21` > `1.21-rc1`).
+pub fn compare_versions_desc(a: &str, b: &str) -> std::cmp::Ordering {
+    fn key(id: &str) -> (Vec<u32>, bool) {
+        let release = id.split(['-', '+', ' ']).next().unwrap_or(id);
+        let nums = release.split('.').map_while(|p| p.parse::<u32>().ok()).collect();
+        (nums, release.len() == id.len())
+    }
+    let (ka, ra) = key(a);
+    let (kb, rb) = key(b);
+    kb.cmp(&ka).then(rb.cmp(&ra)).then_with(|| b.cmp(a))
+}
+
 fn is_release(id: &str) -> bool {
     id.split('.').next().is_some_and(|head| head.chars().all(|c| c.is_ascii_digit()))
         && !id.contains("pre")
@@ -186,10 +209,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn versions_sort_newest_first() {
+        let mut v = vec!["1.20.6", "26.1", "1.21.11", "1.21.9", "1.21.10", "26.1.2", "1.21", "1.21-rc1"];
+        v.sort_by(|a, b| compare_versions_desc(a, b));
+        assert_eq!(v, ["26.1.2", "26.1", "1.21.11", "1.21.10", "1.21.9", "1.21", "1.21-rc1", "1.20.6"]);
+    }
+
+    #[test]
     fn bundled_manifest_parses() {
         let manifest = manifest();
         assert_eq!(manifest.id, "minecraft");
-        assert_eq!(manifest.distributions.len(), 7);
+        assert_eq!(manifest.distributions.len(), 6, "vanilla, paper, purpur, fabric, forge, neoforge (Spigot removed)");
         assert_eq!(manifest.primary_port().expect("a port").default, 25565);
     }
 

@@ -84,7 +84,7 @@ pub fn cancel(node_id: &str) {
 }
 
 /// Compare without leaking how much of the code matched through timing.
-fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+pub fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
     if a.len() != b.len() {
         return false;
     }

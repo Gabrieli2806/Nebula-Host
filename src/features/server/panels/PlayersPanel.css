@@ -1,0 +1,218 @@
+/*
+ * Players panel. Owner: Players agent (round 3).
+ * Online players as cards around a 64px head; the lists as dense rows with
+ * 32px heads. Heads come from the PlayerHead primitive (src/ui/PlayerHead.css).
+ */
+@layer components {
+  .players {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .players-count-max {
+    color: var(--text-faint);
+  }
+
+  /* == online now ===================================================== */
+
+  .players-online-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(264px, 1fr));
+    gap: var(--space-3);
+    padding: var(--space-4);
+  }
+
+  /* Head and name on top; the actions sit on their own bar below, so every
+     card lines up whatever the name, tags or language. */
+  .player-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-raised);
+    transition: border-color var(--duration-fast) var(--ease);
+  }
+
+  .player-card:hover,
+  .player-card:focus-within {
+    border-color: var(--line-strong);
+  }
+
+  .player-card-main {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+    padding: var(--space-3);
+  }
+
+  /* The face is the subject here; give its pixels a quiet frame. */
+  .player-card-head.player-head {
+    box-shadow: 0 0 0 1px var(--line), 0 2px 6px rgb(0 0 0 / 28%);
+  }
+
+  .player-card-title {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    min-width: 0;
+  }
+
+  .player-card-title .tag {
+    flex: none;
+  }
+
+  .player-card-name {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-display);
+    line-height: var(--leading-tight);
+    color: var(--text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .player-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    padding: 4px 6px;
+    border-top: 1px solid var(--line);
+  }
+
+  .player-card-actions .btn-sm {
+    padding-inline: 8px;
+  }
+
+  .player-card-actions .btn-quiet {
+    color: var(--text-muted);
+  }
+
+  .player-card-actions .btn-quiet:hover:not(:disabled) {
+    background-color: var(--quiet-hover);
+    border-color: var(--line);
+    color: var(--text);
+  }
+
+  /* Block is the one action that sticks: red text at rest, as the delete
+     buttons are, so it never reads like "Make operator". */
+  .player-card-actions .player-action-danger.btn-quiet {
+    color: var(--status-crashed);
+  }
+
+  .player-card-actions .player-action-danger.btn-quiet:hover:not(:disabled) {
+    color: var(--status-crashed);
+    background-color: var(--status-crashed-dim);
+    border-color: var(--status-crashed-line);
+  }
+
+  /* == lists ========================================================== */
+
+  .players-row {
+    min-height: 52px;
+  }
+
+  .players-row-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .players-row-name {
+    overflow: hidden;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .players-row-reason {
+    overflow: hidden;
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* The add form: name (+ reason on the ban list) and the add key. */
+  .players-add {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .players-add-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .players-add-fields .players-add-name {
+    flex: 0 1 240px;
+    min-width: 160px;
+  }
+
+  .players-add-fields .players-add-reason {
+    flex: 1 1 240px;
+    max-width: 380px;
+    min-width: 160px;
+  }
+
+  .players-add-problem,
+  .players-add-note {
+    font-size: var(--text-xs);
+    line-height: var(--leading-body);
+  }
+
+  .players-add-problem {
+    color: var(--status-crashed);
+  }
+
+  .players-add-note {
+    color: var(--text-muted);
+  }
+
+  /* == dialogs ======================================================== */
+
+  .players-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .players-dialog-who {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .players-dialog-name {
+    font-family: var(--font-display);
+    font-weight: var(--weight-display);
+    color: var(--text);
+  }
+
+  .players-dialog-hint {
+    margin-top: 2px;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 640px) {
+    .players-online-grid {
+      grid-template-columns: 1fr;
+      padding: var(--space-3);
+    }
+  }
+}

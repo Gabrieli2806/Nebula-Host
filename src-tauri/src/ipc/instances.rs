@@ -1,10 +1,13 @@
 //! Server lifecycle commands.
 
-use serde::Deserialize;
+
 
 use crate::error::AppResult;
 use crate::ipc::State;
-use crate::model::{ConsoleLine, Instance, InstanceView, RuntimeKind};
+use crate::model::{ConsoleLine, Instance, InstanceView};
+use crate::service::completion::CompletionSet;
+use crate::service::icon::IconFit;
+use crate::service::logs::{LogFiles, LogSource, SharedLog};
 use crate::service::CreateInstanceRequest;
 
 #[tauri::command]
@@ -71,6 +74,17 @@ pub async fn instance_command(
     state.send_command(&instance_id, &command).await
 }
 
+/// Autocomplete for the console input: commands (builtin + what the running
+/// server reports) and online players.
+#[tauri::command]
+pub async fn console_completions(
+    state: State<'_>,
+    instance_id: String,
+    refresh: Option<bool>,
+) -> AppResult<CompletionSet> {
+    state.completions(&instance_id, refresh.unwrap_or(false)).await
+}
+
 #[tauri::command]
 pub async fn instance_console(
     state: State<'_>,
@@ -80,24 +94,7 @@ pub async fn instance_console(
     Ok(state.console_tail(&instance_id, limit.unwrap_or(500)).await)
 }
 
-/// Everything on the instance a user can change from the UI. Absent fields are
-/// left alone, so the UI can send one edit at a time.
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct InstancePatch {
-    pub name: Option<String>,
-    pub memory_mb: Option<u32>,
-    pub port: Option<u16>,
-    pub runtime_kind: Option<RuntimeKind>,
-    pub runtime_path: Option<String>,
-    pub extra_args: Option<Vec<String>>,
-    pub sleep_when_empty: Option<bool>,
-    pub sleep_after_minutes: Option<u32>,
-    pub wake_on_join: Option<bool>,
-    pub restart_after_crash: Option<bool>,
-    pub track_latest_version: Option<bool>,
-    pub schedules: Option<Vec<crate::model::ScheduleRule>>,
-}
+pub use crate::service::InstancePatch;
 
 #[tauri::command]
 pub async fn instance_update(
@@ -105,61 +102,7 @@ pub async fn instance_update(
     instance_id: String,
     patch: InstancePatch,
 ) -> AppResult<Instance> {
-    // Validate before touching the stored record: a rejected port must not
-    // leave a half-applied edit behind.
-    if let Some(port) = patch.port {
-        crate::net::ports::validate(port)?;
-    }
-
-    let manifest = {
-        let instance = state.store.get(&instance_id).await?;
-        state.registry.manifest(&instance.game)?
-    };
-
-    state
-        .store
-        .update(&instance_id, move |instance| {
-            if let Some(name) = patch.name {
-                instance.name = name;
-            }
-            if let Some(memory_mb) = patch.memory_mb {
-                instance.resources.memory_mb = memory_mb;
-            }
-            if let Some(port) = patch.port {
-                if let Some(spec) = manifest.primary_port() {
-                    instance.ports.insert(spec.key.clone(), port);
-                }
-            }
-            if let Some(runtime_kind) = patch.runtime_kind {
-                instance.runtime_kind = runtime_kind;
-            }
-            if let Some(runtime_path) = patch.runtime_path {
-                instance.resources.runtime_path =
-                    Some(runtime_path).filter(|path| !path.trim().is_empty());
-            }
-            if let Some(extra_args) = patch.extra_args {
-                instance.resources.extra_args = extra_args;
-            }
-            if let Some(value) = patch.sleep_when_empty {
-                instance.automation.sleep_when_empty = value;
-            }
-            if let Some(value) = patch.sleep_after_minutes {
-                instance.automation.sleep_after_minutes = value.max(1);
-            }
-            if let Some(value) = patch.wake_on_join {
-                instance.automation.wake_on_join = value;
-            }
-            if let Some(value) = patch.restart_after_crash {
-                instance.automation.restart_after_crash = value;
-            }
-            if let Some(value) = patch.track_latest_version {
-                instance.track_latest_version = value;
-            }
-            if let Some(schedules) = patch.schedules {
-                instance.automation.schedules = schedules;
-            }
-        })
-        .await
+    state.apply_patch(&instance_id, patch).await
 }
 
 /// Ask the router to forward this server's port. Opt-in, and never implied by
@@ -176,4 +119,38 @@ pub async fn instance_forward_port(state: State<'_>, instance_id: String) -> App
 pub async fn instance_release_port(state: State<'_>, instance_id: String) -> AppResult<()> {
     state.forwarder.release(&instance_id).await;
     Ok(())
+}
+
+/// Make any picture the server's icon (cropped or fitted to the game's
+/// square). `data` is the image's bytes in base64, or a `data:` URL.
+#[tauri::command]
+pub async fn instance_icon_set(
+    state: State<'_>,
+    instance_id: String,
+    data: String,
+    fit: Option<IconFit>,
+) -> AppResult<()> {
+    state.set_icon(&instance_id, &data, fit.unwrap_or_default()).await
+}
+
+/// Remove the server's icon; the game and the app fall back to their defaults.
+#[tauri::command]
+pub async fn instance_icon_clear(state: State<'_>, instance_id: String) -> AppResult<()> {
+    state.clear_icon(&instance_id).await
+}
+
+/// The game's own log files that can be shared (latest log, crash reports).
+#[tauri::command]
+pub async fn instance_log_files(state: State<'_>, instance_id: String) -> AppResult<LogFiles> {
+    state.log_files(&instance_id).await
+}
+
+/// Upload a log to mclo.gs. The UI has asked the user first.
+#[tauri::command]
+pub async fn instance_log_share(
+    state: State<'_>,
+    instance_id: String,
+    source: LogSource,
+) -> AppResult<SharedLog> {
+    state.share_log(&instance_id, source).await
 }

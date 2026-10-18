@@ -1,0 +1,16 @@
+[Unit]
+Description=Nebula Host node (headless game-server host)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=__USER__
+ExecStart=__BIN__ serve
+Restart=on-failure
+RestartSec=5
+# Give game servers time to save their worlds on stop.
+TimeoutStopSec=90
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

@@ -1,26 +1,77 @@
 /**
- * The landing panel for a server: is it up, who is on it, what do I tell my
- * friends to type — then the things you reach for straight after.
+ * The landing panel for a server, and the only place its identity is shown.
+ *
+ * Top to bottom: the header card (tile, name, status, build tags, the two
+ * housekeeping actions, then the address in the size it deserves), the
+ * instance's own resources (each number once), what fills its folder, its
+ * details and its automation. Start / Stop / Restart live in the sidebar, so
+ * they are not repeated here.
  */
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
-import { keys, useInstanceActions } from "@/hooks/useBackend";
+import {
+  keys,
+  useDiskUsage,
+  useDistribution,
+  useInstanceActions,
+} from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { api } from "@/lib/ipc";
-import { formatDateTime, formatDuration, formatMegabytes } from "@/lib/format";
-import type { InstanceView } from "@/types/api";
-import { Button, Dialog, ErrorNotice, Icon, Panel, StatusChip, statusHint } from "@/ui";
+import { isRemote } from "@/lib/connection";
+import {
+  formatBytes,
+  formatCount,
+  formatDateTime,
+  formatDuration,
+  formatMegabytes,
+  formatRelative,
+} from "@/lib/format";
+import type { DiskUsage, InstanceView } from "@/types/api";
+import {
+  Button,
+  CopyAddress,
+  Dialog,
+  ErrorNotice,
+  Icon,
+  Panel,
+  ServerTile,
+  Skeleton,
+  StatusChip,
+  identityProps,
+  isIdle,
+  statusHint,
+} from "@/ui";
+
+/** Below this the server is falling behind: say so in the starting colour. */
+const TICK_RATE_WARN = 18;
+/** Minecraft's target tick rate; the tick-rate bar is drawn against it. */
+const TICK_RATE_TARGET = 20;
+/** CPU share of the machine, and memory share of the allocation, worth flagging. */
+const LOAD_WARN = 90;
+/** Entries listed under Storage. */
+const STORAGE_ROWS = 6;
+
+/** Allocated memory the way it was chosen: "4 GB", not "4096 MB" or "4.0 GB". */
+function formatAllocation(mb: number): string {
+  return mb >= 1024 && mb % 1024 === 0 ? `${mb / 1024} GB` : formatMegabytes(mb);
+}
+
+/** "1.8 GB" split into its number and its unit, so the unit can step down. */
+function splitUnit(text: string): [string, string | undefined] {
+  const [value, unit] = text.split(" ");
+  return [value ?? text, unit];
+}
 
 export function OverviewPanel({ instance }: { instance: InstanceView }) {
   const { t, language } = useI18n();
   const client = useQueryClient();
   const navigate = useNavigate();
   const actions = useInstanceActions();
+  const distribution = useDistribution(instance);
 
-  const [copied, setCopied] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteFiles, setDeleteFiles] = useState(false);
 
@@ -29,30 +80,73 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
     onSuccess: () => client.invalidateQueries({ queryKey: keys.backups(instance.id) }),
   });
 
+  const openFolder = useMutation({
+    mutationFn: async () => {
+      const folder = await api.files.reveal(instance.id);
+      const { openPath } = await import("@tauri-apps/plugin-opener");
+      await openPath(folder);
+    },
+  });
+
   const hint = statusHint(instance.status);
   const automation = instance.automation;
-
-  const copyAddress = async () => {
-    if (!instance.address) return;
-    await navigator.clipboard.writeText(instance.address);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1600);
-  };
+  const crashed = instance.status === "crashed";
+  const identity = identityProps(distribution?.accent);
+  const actionError = backup.error ?? openFolder.error;
+  const port = Object.values(instance.ports)[0];
+  const automationParts = [
+    automation.sleep_when_empty
+      ? t("overview.automationSleep", { minutes: automation.sleep_after_minutes })
+      : null,
+    automation.wake_on_join ? t("overview.automationWake") : null,
+    automation.restart_after_crash ? t("overview.automationRestart") : null,
+    automation.schedules.length
+      ? t("overview.automationSchedules", { count: automation.schedules.length })
+      : null,
+  ].filter((part): part is string => part !== null);
+  const automationSummary = automationParts.length
+    ? automationParts.join(" · ")
+    : t("overview.automationNone");
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* The state, said once, large */}
-      <section className="panel flex flex-col gap-4 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <StatusChip status={instance.status} />
-            {hint ? (
-              <span className="text-[length:var(--text-sm)] text-[color:var(--text-muted)]">
-                {t(hint)}
-              </span>
-            ) : null}
+    <div className="overview">
+      {/* The one header for this server. Nothing else on the screen repeats
+          its name, status or build. */}
+      <header
+        className="plate overview-head"
+        data-status={instance.status}
+        data-idle={isIdle(instance.status) ? "" : undefined}
+        {...identity}
+      >
+        <div className="overview-head-top">
+          <div className="flex min-w-0 flex-[1_1_auto] items-center gap-4">
+            <ServerTile
+              name={instance.name}
+              identity={distribution?.accent}
+              status={instance.status}
+              image={instance.icon_url}
+              size="lg"
+            />
+            <div className="flex min-w-0 flex-col gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+                <h1 className="display overview-name min-w-0 truncate" title={instance.name}>
+                  {instance.name}
+                </h1>
+                <StatusChip status={instance.status} />
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="tag" {...identity}>
+                  {distribution?.name ?? instance.build.distribution}
+                </span>
+                <span className="tag">{instance.build.version}</span>
+                {instance.build.loader_version ? (
+                  <span className="tag">{instance.build.loader_version}</span>
+                ) : null}
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="overview-head-actions">
             <Button
               size="sm"
               icon="archive"
@@ -64,106 +158,82 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
             <Button
               size="sm"
               icon="external"
-              onClick={async () => {
-                const folder = await api.files.reveal(instance.id);
-                const { openPath } = await import("@tauri-apps/plugin-opener");
-                await openPath(folder);
-              }}
+              disabled={openFolder.isPending || isRemote()}
+              title={isRemote() ? t("remote.localOnly") : undefined}
+              onClick={() => openFolder.mutate()}
             >
               {t("overview.openFolder")}
             </Button>
           </div>
         </div>
 
-        <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Stat
-            label={t("servers.players")}
-            value={
-              instance.status === "online"
-                ? `${instance.players_online}${instance.players_max ? ` / ${instance.players_max}` : ""}`
-                : "—"
-            }
-          />
-          <Stat label={t("servers.uptime")} value={formatDuration(instance.uptime_seconds)} />
-          <Stat
-            label={t("servers.memory")}
-            value={instance.memory_used_mb ? formatMegabytes(instance.memory_used_mb) : "—"}
-          />
-          <Stat
-            label={t("overview.tickRate")}
-            value={instance.tick_rate ? instance.tick_rate.toFixed(1) : "—"}
-          />
-        </dl>
-      </section>
+        {hint || crashed ? (
+          <div className="overview-head-note">
+            <p className="min-w-0 max-w-[60ch]">{hint ? t(hint) : null}</p>
+            {/* After a crash the console says why; Start is in the sidebar. */}
+            {crashed ? (
+              <Button size="sm" icon="terminal" onClick={() => navigate(`/servers/${instance.id}/console`)}>
+                {t("overview.openConsole")}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
 
-      {/* The one thing people actually come here to copy */}
-      <Panel title={t("overview.address")}>
-        <div className="p-4">
-          {instance.address ? (
-            <button
-              type="button"
-              onClick={() => void copyAddress()}
-              className="flex w-full items-center justify-between gap-3 rounded-[var(--radius)] border border-[color:var(--line)] px-4 py-3 text-left transition-colors hover:border-[color:var(--line-strong)]"
-              style={{ background: "var(--surface-sunken)" }}
-            >
-              <span className="mono truncate text-[length:var(--text-lg)]">{instance.address}</span>
-              <span className="flex flex-none items-center gap-2 text-[length:var(--text-xs)] text-[color:var(--text-faint)]">
-                <Icon name={copied ? "check" : "external"} size={14} />
-                {copied ? t("actions.copied") : t("overview.copyHint")}
-              </span>
-            </button>
-          ) : (
-            <p className="text-[color:var(--text-muted)]">{t("overview.noAddress")}</p>
-          )}
+        {actionError ? <ErrorNotice error={actionError} compact /> : null}
+
+        <CopyAddress
+          size="lg"
+          value={instance.address}
+          label={t("overview.address")}
+          hint={t("overview.copyHint")}
+          emptyText={t("overview.noAddress")}
+        />
+      </header>
+
+      <Resources instance={instance} />
+
+      <div className="overview-columns">
+        <Storage instanceId={instance.id} />
+
+        <div className="flex min-w-0 flex-col gap-5">
+          <Panel title={t("overview.details")}>
+            <dl className="overview-facts">
+              {/* The address above already carries the port; it is listed
+                  here only when there is no address to read it from. */}
+              {port !== undefined && !instance.address ? (
+                <Row label={t("create.port")} value={String(port)} face="readout" />
+              ) : null}
+              <Row label={t("overview.created")} value={formatDateTime(instance.created_at, language)} />
+              <Row
+                label={t("servers.lastPlayed")}
+                value={
+                  instance.last_player_seen_at
+                    ? formatDateTime(instance.last_player_seen_at, language)
+                    : t("servers.never")
+                }
+              />
+              <Row label={t("overview.folder")} value={instance.path} face="mono" />
+              {/* Settings owns the automation switches; this is one quiet
+                  line that says what is on and leads there. */}
+              <div className="overview-fact">
+                <dt className="flex-none text-[color:var(--text-muted)]">{t("overview.automation")}</dt>
+                <dd className="min-w-0 text-right leading-snug">
+                  <Link
+                    to={`/servers/${instance.id}/settings`}
+                    className="overview-fact-link"
+                    title={`${automationSummary} · ${t("overview.automationEdit")}`}
+                  >
+                    {automationSummary}
+                  </Link>
+                </dd>
+              </div>
+            </dl>
+          </Panel>
+
         </div>
-      </Panel>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Panel title={t("overview.automation")}>
-          <ul className="flex flex-col gap-2 p-4">
-            {automation.sleep_when_empty ? (
-              <Fact
-                icon="clock"
-                text={`${t("settings.sleepWhenEmpty")} — ${t("settings.sleepAfter")} ${automation.sleep_after_minutes} ${t("settings.minutes")}`}
-              />
-            ) : null}
-            {automation.wake_on_join ? <Fact icon="moon" text={t("settings.wakeOnJoin")} /> : null}
-            {automation.restart_after_crash ? (
-              <Fact icon="restart" text={t("settings.restartAfterCrash")} />
-            ) : null}
-            {automation.schedules.length ? (
-              <Fact
-                icon="clock"
-                text={`${t("settings.schedules")}: ${automation.schedules.length}`}
-              />
-            ) : null}
-            {!automation.sleep_when_empty &&
-            !automation.wake_on_join &&
-            !automation.restart_after_crash &&
-            !automation.schedules.length ? (
-              <li className="text-[color:var(--text-muted)]">{t("overview.automationNone")}</li>
-            ) : null}
-          </ul>
-        </Panel>
-
-        <Panel title={t("servers.version")}>
-          <dl className="flex flex-col gap-3 p-4">
-            <Row label={t("create.distribution")} value={instance.build.distribution} />
-            <Row label={t("create.version")} value={instance.build.version} />
-            {instance.build.loader_version ? (
-              <Row label={t("create.loaderVersion")} value={instance.build.loader_version} />
-            ) : null}
-            <Row label={t("create.memory")} value={formatMegabytes(instance.resources.memory_mb)} />
-            <Row label={t("create.port")} value={String(Object.values(instance.ports)[0] ?? "—")} />
-            <Row label={t("overview.created")} value={formatDateTime(instance.created_at, language)} />
-            <Row label={t("overview.folder")} value={instance.path} mono />
-          </dl>
-        </Panel>
       </div>
 
-      {backup.error ? <ErrorNotice error={backup.error} /> : null}
-
-      <div>
+      <div className="overview-danger">
         <Button variant="danger" icon="trash" onClick={() => setConfirmDelete(true)}>
           {t("overview.deleteServer")}
         </Button>
@@ -212,38 +282,254 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+// -- resources ---------------------------------------------------------------
+
+/**
+ * What this server is using right now, each number once: CPU (share of the
+ * machine), memory (used of allocated), disk (its folder), players, tick
+ * rate and uptime. Machine-wide numbers stay on the dashboard.
+ */
+function Resources({ instance }: { instance: InstanceView }) {
+  const { t, language } = useI18n();
+  const disk = useDiskUsage(instance.id);
+
+  const live = instance.status === "online" || instance.status === "starting" || instance.status === "stopping";
+  const online = instance.status === "online";
+  const allocated = instance.resources.memory_mb;
+  const memoryUsed = live && instance.memory_used_mb > 0 ? instance.memory_used_mb : null;
+  const memoryShare = memoryUsed && allocated > 0 ? (memoryUsed / allocated) * 100 : 0;
+  const cpu = live ? Math.max(0, Math.min(100, instance.cpu_percent)) : null;
+  const ticks = online && instance.tick_rate ? instance.tick_rate : null;
+  const slowTicks = Boolean(ticks && ticks < TICK_RATE_WARN);
+  const startedAt = instance.last_started_at ?? null;
+
   return (
-    <div className="flex flex-col gap-1">
-      <dt className="label">{label}</dt>
-      <dd className="mono text-[length:var(--text-xl)]">{value}</dd>
+    <Panel title={t("overview.resources")} bodyClassName="resources-body">
+      <dl className="resources">
+        <Resource
+          label={t("overview.cpu")}
+          value={cpu === null ? null : `${cpu < 10 ? cpu.toFixed(1) : Math.round(cpu)} %`}
+          detail={t("overview.cpuOfMachine")}
+          bar={cpu}
+          warn={cpu !== null && cpu >= LOAD_WARN}
+        />
+        <Resource
+          label={t("servers.memory")}
+          value={memoryUsed === null ? null : formatMegabytes(memoryUsed)}
+          detail={t("overview.memoryOf", { total: formatAllocation(allocated) })}
+          bar={memoryUsed === null ? null : memoryShare}
+          warn={memoryShare >= LOAD_WARN}
+        />
+        <Resource
+          label={t("node.disk")}
+          value={disk.data ? formatBytes(disk.data.totalBytes) : null}
+          loading={disk.isLoading}
+          detail={
+            disk.data
+              ? t("overview.diskFiles", { count: formatCount(disk.data.fileCount, language) })
+              : t("overview.diskFolder")
+          }
+        />
+        <Resource
+          label={t("servers.players")}
+          value={online ? String(instance.players_online) : null}
+          of={online && instance.players_max ? `/${instance.players_max}` : undefined}
+          detail={t("overview.playersNow")}
+          bar={online && instance.players_max ? (instance.players_online / instance.players_max) * 100 : null}
+        />
+        <Resource
+          label={t("overview.tickRate")}
+          value={ticks === null ? null : ticks.toFixed(1)}
+          detail={slowTicks ? t("overview.tickRateSlow") : t("overview.tickRateTarget")}
+          bar={ticks === null ? null : (ticks / TICK_RATE_TARGET) * 100}
+          warn={slowTicks}
+        />
+        <Resource
+          label={t("servers.uptime")}
+          value={online ? formatDuration(instance.uptime_seconds) : null}
+          detail={
+            !startedAt
+              ? online
+                ? ""
+                : t("overview.neverStarted")
+              : online
+                ? t("overview.uptimeSince", { time: formatDateTime(startedAt, language) })
+                : // Relative ("2 h ago") so it fits the cell; the full date is the tooltip.
+                  t("overview.lastStarted", { time: formatRelative(startedAt, language) })
+          }
+          detailTitle={startedAt ? formatDateTime(startedAt, language) : undefined}
+        />
+      </dl>
+    </Panel>
+  );
+}
+
+function Resource({
+  label,
+  value,
+  of,
+  detail,
+  bar = null,
+  warn = false,
+  loading = false,
+  detailTitle,
+}: {
+  label: string;
+  /** null renders an em dash (not running, or not measured). */
+  value: string | null;
+  /** A quieter suffix such as "/20". */
+  of?: string;
+  detail: string;
+  /** 0–100 fill for the thin bar under the value; null hides it. */
+  bar?: number | null;
+  warn?: boolean;
+  loading?: boolean;
+  detailTitle?: string;
+}) {
+  const [number, unit] = value ? splitUnit(value) : ["—", undefined];
+  const fill = bar === null ? null : Math.max(0, Math.min(100, bar));
+
+  return (
+    <div className="resource" data-warn={warn ? "" : undefined}>
+      <dt className="resource-label">{label}</dt>
+      <dd className="resource-value readout">
+        {loading ? (
+          <Skeleton className="h-[26px] w-[72px] rounded-[var(--radius-sm)]" />
+        ) : (
+          <>
+            {warn ? <span className="resource-mark" aria-hidden="true" /> : null}
+            {number}
+            {unit ? <span className="resource-unit">{unit}</span> : null}
+            {of ? <span className="resource-of">{of}</span> : null}
+          </>
+        )}
+      </dd>
+      <dd className="resource-detail" title={detailTitle ?? (detail || undefined)}>
+        {detail}
+      </dd>
+      {fill !== null ? (
+        <dd className="resource-bar" aria-hidden="true">
+          <span style={{ width: `${fill}%` }} />
+        </dd>
+      ) : null}
     </div>
   );
 }
 
-function Row({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+// -- storage -----------------------------------------------------------------
+
+/** What fills the server's folder: the biggest top-level entries. */
+function Storage({ instanceId }: { instanceId: string }) {
+  const { t } = useI18n();
+  const client = useQueryClient();
+  const disk = useDiskUsage(instanceId);
+
+  const refresh = useMutation({
+    mutationFn: () => api.instances.diskUsage(instanceId, true),
+    onSuccess: (data) => client.setQueryData<DiskUsage>(keys.diskUsage(instanceId), data),
+  });
+
+  const data = disk.data;
+  const rows = data?.largest.slice(0, STORAGE_ROWS) ?? [];
+  const total = Math.max(1, data?.totalBytes ?? 1);
+
   return (
-    <div className="flex items-baseline justify-between gap-4">
-      <dt className="flex-none text-[length:var(--text-sm)] text-[color:var(--text-muted)]">
-        {label}
-      </dt>
-      <dd
-        className={`selectable min-w-0 truncate text-right text-[length:var(--text-sm)] ${mono ? "mono" : ""}`}
-        title={value}
-      >
+    <Panel
+      title={t("overview.storage")}
+      actions={
+        <Button
+          size="sm"
+          variant="quiet"
+          icon="refresh"
+          iconOnly
+          disabled={refresh.isPending || disk.isLoading}
+          onClick={() => refresh.mutate()}
+        >
+          {t("actions.refresh")}
+        </Button>
+      }
+    >
+      {disk.isLoading ? (
+        <div className="flex flex-col gap-3 px-5 py-4">
+          {[0, 1, 2, 3].map((index) => (
+            <Skeleton key={index} className="h-[18px] rounded-[var(--radius-sm)]" />
+          ))}
+        </div>
+      ) : disk.error && !data ? (
+        <div className="px-5 py-4">
+          <ErrorNotice error={disk.error} compact onRetry={() => void disk.refetch()} />
+        </div>
+      ) : rows.length === 0 ? (
+        <p className="px-5 py-4 text-[length:var(--text-sm)] text-[color:var(--text-muted)]">
+          {t("overview.storageEmpty")}
+        </p>
+      ) : (
+        <ul className="storage-list" data-busy={refresh.isPending ? "" : undefined}>
+          {rows.map((entry) => (
+            <StorageRow
+              key={entry.name}
+              name={entry.name}
+              isDir={entry.isDir}
+              bytes={entry.bytes}
+              share={(entry.bytes / total) * 100}
+            />
+          ))}
+        </ul>
+      )}
+      {refresh.error ? (
+        <div className="px-5 pb-4">
+          <ErrorNotice error={refresh.error} compact />
+        </div>
+      ) : null}
+    </Panel>
+  );
+}
+
+function StorageRow({
+  name,
+  isDir,
+  bytes,
+  share,
+}: {
+  name: string;
+  isDir: boolean;
+  bytes: number;
+  share: number;
+}) {
+  return (
+    <li className="storage-row">
+      <span className="storage-icon" aria-hidden="true">
+        <Icon name={isDir ? "folder" : "file"} size={14} />
+      </span>
+      <span className="storage-name mono selectable" title={name}>
+        {name}
+      </span>
+      <span className="storage-size readout">{formatBytes(bytes)}</span>
+      <span className="storage-bar" aria-hidden="true">
+        <span style={{ width: `${Math.max(1, Math.min(100, share))}%` }} />
+      </span>
+    </li>
+  );
+}
+
+// -- small parts -------------------------------------------------------------
+
+function Row({
+  label,
+  value,
+  face = "text",
+}: {
+  label: string;
+  value: string;
+  /** text for words, mono for versions and paths, readout for machine numbers. */
+  face?: "text" | "mono" | "readout";
+}) {
+  return (
+    <div className="overview-fact">
+      <dt className="flex-none text-[color:var(--text-muted)]">{label}</dt>
+      <dd className={`selectable min-w-0 truncate text-right ${face === "text" ? "" : face}`} title={value}>
         {value}
       </dd>
     </div>
-  );
-}
-
-function Fact({ icon, text }: { icon: "clock" | "moon" | "restart"; text: string }) {
-  return (
-    <li className="flex items-center gap-3">
-      <span className="text-[color:var(--accent)]">
-        <Icon name={icon} size={14} />
-      </span>
-      <span className="text-[length:var(--text-sm)]">{text}</span>
-    </li>
   );
 }

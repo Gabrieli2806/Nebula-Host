@@ -1,5 +1,7 @@
 //! Who is on, who is allowed, who is banned.
 
+use std::collections::HashMap;
+
 use crate::error::AppResult;
 use crate::ipc::State;
 use crate::service::players::{self, PlayerEntry, PlayerLists};
@@ -26,4 +28,14 @@ pub async fn players_write_list(
     let instance = state.store.get(&instance_id).await?;
     let manifest = state.registry.manifest(&instance.game)?;
     players::write_list(&instance.path, &manifest.players, &list, &entries)
+}
+
+/// Name to UUID for every player this server knows, for faces. Names keep
+/// the game's spelling; look them up case-insensitively.
+#[tauri::command]
+pub async fn players_identities(
+    state: State<'_>,
+    instance_id: String,
+) -> AppResult<HashMap<String, String>> {
+    state.player_identities(&instance_id).await
 }

@@ -159,29 +159,10 @@ impl Downloader {
     async fn neoforge_versions(&self) -> AppResult<Vec<String>> {
         let raw = self.neoforge_version_list().await?;
 
-        // Sort numerically: a string sort puts "1.21.10" before "1.21.2".
-        let mut pairs: Vec<(u32, u32)> = raw
-            .iter()
-            .filter_map(|v| {
-                let mut parts = v.split('.');
-                Some((parts.next()?.parse().ok()?, parts.next()?.parse().ok()?))
-            })
-            .collect();
-        pairs.sort_unstable();
-        pairs.dedup();
-        pairs.reverse();
-
-        let versions: Vec<String> = pairs
-            .into_iter()
-            .map(|(major, minor)| {
-                if minor == 0 {
-                    format!("1.{major}")
-                } else {
-                    format!("1.{major}.{minor}")
-                }
-            })
-            .take(15)
-            .collect();
+        let mut versions: Vec<String> = raw.iter().filter_map(|v| neoforge_to_mc(v)).collect();
+        versions.sort_by(|a, b| super::compare_versions_desc(a, b));
+        versions.dedup();
+        versions.truncate(15);
 
         if versions.is_empty() {
             return Err(upstream("NeoForge Maven listed no usable versions"));
@@ -545,16 +526,44 @@ fn upstream(detail: &str) -> AppError {
 /// every `21.x.y` build and installs a loader for the wrong version, and the
 /// server then refuses to start.
 pub fn neoforge_prefix_for_mc(mc_version: &str) -> Option<String> {
-    let mut parts = mc_version.trim().split('.');
-    if parts.next()? != "1" {
+    let parts: Vec<&str> = mc_version.trim().split('.').collect();
+    let num = |i: usize| -> Option<u32> { parts.get(i)?.parse().ok() };
+    if parts.first() == Some(&"1") {
+        // Old scheme: Minecraft 1.21.4 → NeoForge 21.4.x; 1.21 → 21.0.x.
+        let major = num(1)?;
+        let minor = if parts.len() > 2 { num(2)? } else { 0 };
+        return Some(format!("{major}.{minor}."));
+    }
+    // Year scheme (Minecraft 26.1 and later): NeoForge repeats the game
+    // version and adds its build — 26.1 → 26.1.0.x, 26.1.2 → 26.1.2.x.
+    let major = num(0)?;
+    if major < 25 {
         return None;
     }
-    let major: u32 = parts.next()?.parse().ok()?;
-    let minor: u32 = match parts.next() {
-        Some(value) => value.parse().ok()?,
-        None => 0,
-    };
-    Some(format!("{major}.{minor}."))
+    let minor = num(1)?;
+    let patch = if parts.len() > 2 { num(2)? } else { 0 };
+    Some(format!("{major}.{minor}.{patch}."))
+}
+
+/// The Minecraft version a NeoForge version is built for — the inverse of
+/// [`neoforge_prefix_for_mc`]. `21.4.12` → 1.21.4, `21.0.3` → 1.21,
+/// `26.2.0.24-beta` → 26.2, `26.1.2.7` → 26.1.2.
+pub fn neoforge_to_mc(neoforge: &str) -> Option<String> {
+    let release = neoforge.split('-').next()?;
+    let parts: Vec<u32> = release.split('.').map(|p| p.parse().ok()).collect::<Option<_>>()?;
+    match parts.as_slice() {
+        [major, minor, patch, _build, ..] if *major >= 25 => Some(if *patch == 0 {
+            format!("{major}.{minor}")
+        } else {
+            format!("{major}.{minor}.{patch}")
+        }),
+        [major, minor, _patch] if *major < 25 => Some(if *minor == 0 {
+            format!("1.{major}")
+        } else {
+            format!("1.{major}.{minor}")
+        }),
+        _ => None,
+    }
 }
 
 /// Pull the text of every `<tag>` out of a Maven metadata document.
@@ -594,6 +603,13 @@ mod tests {
     fn neoforge_prefix_rejects_versions_it_cannot_map() {
         assert_eq!(neoforge_prefix_for_mc("24w45a"), None);
         assert_eq!(neoforge_prefix_for_mc("2.0"), None);
+        assert_eq!(neoforge_prefix_for_mc("26.1").as_deref(), Some("26.1.0."));
+        assert_eq!(neoforge_prefix_for_mc("26.1.2").as_deref(), Some("26.1.2."));
+        assert_eq!(neoforge_to_mc("21.4.12").as_deref(), Some("1.21.4"));
+        assert_eq!(neoforge_to_mc("21.0.3-beta").as_deref(), Some("1.21"));
+        assert_eq!(neoforge_to_mc("26.2.0.24-beta").as_deref(), Some("26.2"));
+        assert_eq!(neoforge_to_mc("26.1.2.7").as_deref(), Some("26.1.2"));
+        assert_eq!(neoforge_to_mc("garbage"), None);
     }
 
     #[test]

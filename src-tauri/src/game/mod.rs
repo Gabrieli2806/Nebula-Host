@@ -15,19 +15,30 @@ pub mod minecraft;
 pub mod registry;
 
 pub use manifest::{
-    BackupSpec, ConsoleSpec, Distribution, GameManifest, PlayerSource, PortSpec, RuntimeSpec,
+    BackupSpec, BuiltinCommand, CompletionSpec, ConsoleSpec, Distribution, GameManifest, PlayerSource, PortSpec, RuntimeSpec,
     SettingField, SettingKind, WakeProtocol, WakeSpec,
 };
 pub use registry::{GameAdapter, GameRegistry};
 
 use serde::{Deserialize, Serialize};
 
+/// What every upstream call identifies itself as. Modrinth asks for a
+/// descriptive agent with a contact, and rate-limits generic ones harder.
+pub const USER_AGENT: &str = concat!("NebulaHost/", env!("CARGO_PKG_VERSION"), " (G2806)");
+
 /// One HTTP client for every upstream call: connection reuse, a real user
 /// agent (several of these APIs rate-limit anonymous traffic harder), and
 /// timeouts so a hung CDN cannot wedge an install forever.
+///
+/// Built once: a fresh client per call throws away the connection pool.
 pub fn http_client() -> reqwest::Client {
+    static CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+    CLIENT.get_or_init(build_http_client).clone()
+}
+
+fn build_http_client() -> reqwest::Client {
     reqwest::Client::builder()
-        .user_agent(concat!("NebulaHost/", env!("CARGO_PKG_VERSION")))
+        .user_agent(USER_AGENT)
         .timeout(std::time::Duration::from_secs(120))
         .connect_timeout(std::time::Duration::from_secs(10))
         .build()

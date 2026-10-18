@@ -4,18 +4,22 @@
  * No sign-up wall, because there is nothing to sign up to. The only thing this
  * asks for is a name for the PC, and the only thing it tells you is whether
  * the machine is ready.
+ *
+ * It is the only centred screen. It still has the title bar: the window is
+ * undecorated, so without it there is no way to move or close the window.
  */
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-import { Mark } from "@/app/TitleBar";
-import { keys, useNode, useRequirements } from "@/hooks/useBackend";
+import { TitleBar } from "@/app/TitleBar";
+import { keys, useNode, useNodeHealth, useRequirements } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
+import { formatMegabytes } from "@/lib/format";
 import { api } from "@/lib/ipc";
-import type { Requirement } from "@/types/api";
-import { Button, ErrorNotice, Field, Icon, TextInput } from "@/ui";
+import type { InstanceStatus, Requirement } from "@/types/api";
+import { Button, ErrorNotice, Field, Mark, Skeleton, StatusDot, TextInput } from "@/ui";
 
 const ADVICE: Record<string, string> = {
   java: "firstRun.javaMissing",
@@ -23,6 +27,16 @@ const ADVICE: Record<string, string> = {
   memory: "firstRun.memoryMissing",
   disk: "firstRun.diskMissing",
 };
+
+/** Requirement state as a status lamp: ready is the online dot, optional the
+ *  hollow offline ring, missing the crashed triangle. Shape and word, never colour alone. */
+const LAMP: Record<Requirement["status"], InstanceStatus> = {
+  ready: "online",
+  optional: "offline",
+  missing: "crashed",
+};
+
+const FIRST_RUN_KEY = "nebula.firstRunDone";
 
 export function FirstRun() {
   const { t } = useI18n();
@@ -41,96 +55,121 @@ export function FirstRun() {
       }
     },
     onSuccess: () => {
-      localStorage.setItem("nebula.firstRunDone", "1");
-      navigate("/servers", { replace: true });
+      localStorage.setItem(FIRST_RUN_KEY, "1");
+      // ServersScreen opens the create dialog when it sees create=1.
+      navigate("/servers?create=1", { replace: true });
     },
   });
 
+  const ready =
+    requirements.data !== undefined &&
+    requirements.data.every((requirement) => requirement.status !== "missing");
+
   return (
-    <div className="flex h-full items-center justify-center p-8" style={{ background: "var(--canvas)" }}>
-      <div className="panel flex w-full max-w-[560px] flex-col gap-6 p-8">
-        <div className="flex items-center gap-3">
-          <Mark size={28} />
-          <h1 className="text-[length:var(--text-xl)] font-semibold">{t("firstRun.welcome")}</h1>
+    <div className="flex h-full flex-col">
+      <TitleBar />
+      <main className="first-run min-h-0 flex-1 overflow-auto">
+        <div className="first-run-stage">
+          <Mark size={48} />
+          <h1 className="display first-run-title">
+            {t("firstRun.heading")}
+          </h1>
+          <p className="first-run-intro">{t("firstRun.intro")}</p>
+
+          <section className="first-run-card" aria-label={t("firstRun.welcome")}>
+            <Field label={t("firstRun.nameLabel")} help={t("firstRun.nameHelp")}>
+              <TextInput
+                value={name || (node?.name ?? "")}
+                maxLength={48}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </Field>
+
+            <section className="flex flex-col gap-2" aria-live="polite">
+              <h2 className="label">{ready ? t("firstRun.readyToHost") : t("firstRun.checking")}</h2>
+              <ul className="first-run-requirements">
+                {requirements.data
+                  ? requirements.data.map((requirement) => (
+                      <RequirementRow key={requirement.id} requirement={requirement} />
+                    ))
+                  : requirements.isPending
+                    ? [0, 1, 2, 3].map((index) => (
+                        <li key={index} className="first-run-requirement">
+                          <Skeleton className="h-3 w-full rounded-[var(--radius-sm)]" />
+                        </li>
+                      ))
+                    : null}
+              </ul>
+              {requirements.error ? (
+                <ErrorNotice error={requirements.error} onRetry={() => void requirements.refetch()} />
+              ) : null}
+            </section>
+
+            {finish.error ? <ErrorNotice error={finish.error} /> : null}
+
+            <footer className="first-run-footer">
+              <Button
+                variant="quiet"
+                onClick={() => {
+                  localStorage.setItem(FIRST_RUN_KEY, "1");
+                  navigate("/servers", { replace: true });
+                }}
+              >
+                {t("firstRun.skip")}
+              </Button>
+              <Button variant="primary" disabled={finish.isPending} onClick={() => finish.mutate()}>
+                {t("firstRun.finish")}
+              </Button>
+            </footer>
+          </section>
         </div>
-
-        <p className="text-[color:var(--text-muted)]">{t("firstRun.intro")}</p>
-
-        <Field label={t("firstRun.nameLabel")} help={t("firstRun.nameHelp")}>
-          <TextInput
-            value={name || (node?.name ?? "")}
-            maxLength={48}
-            onChange={(event) => setName(event.target.value)}
-          />
-        </Field>
-
-        <section className="flex flex-col gap-3">
-          <h2 className="label">{t("firstRun.checking")}</h2>
-          <ul className="flex flex-col gap-2">
-            {requirements.data?.map((requirement) => (
-              <RequirementRow key={requirement.id} requirement={requirement} />
-            ))}
-          </ul>
-          {requirements.error ? (
-            <ErrorNotice error={requirements.error} onRetry={() => void requirements.refetch()} />
-          ) : null}
-        </section>
-
-        {finish.error ? <ErrorNotice error={finish.error} /> : null}
-
-        <div className="flex items-center justify-between">
-          <Button
-            variant="quiet"
-            onClick={() => {
-              localStorage.setItem("nebula.firstRunDone", "1");
-              navigate("/servers", { replace: true });
-            }}
-          >
-            {t("firstRun.skip")}
-          </Button>
-          <Button variant="primary" disabled={finish.isPending} onClick={() => finish.mutate()}>
-            {t("firstRun.finish")}
-          </Button>
-        </div>
-      </div>
+      </main>
     </div>
   );
 }
 
 function RequirementRow({ requirement }: { requirement: Requirement }) {
   const { t } = useI18n();
-
-  const colour =
-    requirement.status === "ready"
-      ? "var(--status-online)"
-      : requirement.status === "optional"
-        ? "var(--text-faint)"
-        : "var(--status-crashed)";
+  const adviceKey = ADVICE[requirement.id];
+  const advice = adviceKey ? t(adviceKey) : null;
+  const labelKey = `firstRun.requirement${requirement.id.charAt(0).toUpperCase()}${requirement.id.slice(1)}`;
+  const translated = t(labelKey);
+  // A check the copy does not know yet shows its id, not a raw i18n key.
+  const label = translated === labelKey ? requirement.id : translated;
+  const found = useFoundText(requirement);
 
   return (
-    <li className="flex items-start gap-3 rounded-[var(--radius)] border border-[color:var(--line)] px-3 py-2.5">
-      <span className="mt-0.5 flex-none" style={{ color: colour }}>
-        <Icon name={requirement.status === "ready" ? "check" : "warning"} size={14} />
-      </span>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="flex items-center gap-2">
-          <span className="font-medium">
-            {t(`firstRun.requirement${requirement.id.charAt(0).toUpperCase()}${requirement.id.slice(1)}`)}
-          </span>
-          <span className="text-[length:var(--text-xs)]" style={{ color: colour }}>
-            {t(`firstRun.${requirement.status}`)}
-          </span>
-        </span>
-        <span className="mono text-[length:var(--text-xs)] text-[color:var(--text-faint)]">
-          {requirement.found ??
-            (requirement.status === "ready" ? "" : t(ADVICE[requirement.id] ?? ""))}
-        </span>
-        {requirement.status !== "ready" && requirement.found ? (
-          <span className="text-[length:var(--text-xs)] text-[color:var(--text-muted)]">
-            {t(ADVICE[requirement.id] ?? "")}
+    <li className="first-run-requirement" data-state={requirement.status}>
+      <div className="flex min-w-0 items-center gap-2.5">
+        <StatusDot status={LAMP[requirement.status]} />
+        <span className="font-[var(--weight-control)]">{label}</span>
+        <span className="first-run-requirement-state">{t(`firstRun.${requirement.status}`)}</span>
+        {found ? (
+          <span className="first-run-requirement-found mono selectable" title={found}>
+            {found}
           </span>
         ) : null}
       </div>
+      {requirement.status !== "ready" && advice ? (
+        <p className="first-run-requirement-advice">{advice}</p>
+      ) : null}
     </li>
   );
+}
+
+/**
+ * What a check found, in the UI's language. The backend's `found` is English
+ * ("412 GB free", "32768 MB"), so memory and disk are re-read from the node's
+ * health numbers and formatted here; anything else (a Java version) is shown
+ * as sent.
+ */
+function useFoundText(requirement: Requirement): string | null {
+  const { t } = useI18n();
+  const { data: health } = useNodeHealth();
+  if (health && requirement.id === "memory") return formatMegabytes(health.memory_total_mb);
+  if (health && requirement.id === "disk") {
+    const free = Math.max(0, health.disk_total_gb - health.disk_used_gb);
+    return t("firstRun.diskFree", { free: `${free} GB` });
+  }
+  return requirement.found ?? null;
 }

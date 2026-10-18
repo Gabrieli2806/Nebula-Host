@@ -1,0 +1,159 @@
+/* Remote access card and the UPnP self-test. */
+
+@layer components {
+  .remote-intro {
+    /* Lined up with the rows below it, which carry the panel's side padding themselves. */
+    margin: 0;
+    padding: 14px 20px 0;
+    max-width: 68ch;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .remote-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    /* Rows carry the panel's side padding themselves; match them. */
+    padding: 0 20px 18px;
+  }
+
+  .remote-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .remote-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--status-offline);
+  }
+
+  .remote-status[data-running] .remote-dot {
+    background: var(--status-online);
+  }
+
+  .remote-code-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .remote-code {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .remote-code-digits {
+    color: var(--text-heading, var(--text));
+    font-family: var(--font-mono);
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+  }
+
+  .remote-code-help {
+    color: var(--text-faint);
+    font-size: var(--text-xs);
+  }
+
+  .remote-devices ul {
+    display: flex;
+    flex-direction: column;
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .remote-devices li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .remote-device-name {
+    font-weight: var(--weight-control, 600);
+  }
+
+  .remote-device-date {
+    flex: 1;
+    color: var(--text-faint);
+    font-size: var(--text-xs);
+  }
+
+  .remote-empty {
+    margin: var(--space-2) 0 0;
+    color: var(--text-faint);
+    font-size: var(--text-sm);
+  }
+
+  .upnp-test {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    /* Belongs to the UPnP row above it: same side padding, tucked under it. */
+    margin-top: -6px;
+    padding: 0 20px 16px;
+  }
+
+  .upnp-actions {
+    display: flex;
+  }
+
+  .upnp-note {
+    margin: 0;
+    max-width: 72ch;
+    color: var(--text-faint);
+    font-size: var(--text-xs);
+    line-height: 1.5;
+  }
+
+  .upnp-verdicts {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-sm);
+  }
+
+  .upnp-verdicts li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.45;
+  }
+
+  .upnp-verdicts li svg {
+    flex: none;
+    margin-top: 3px;
+  }
+
+  .upnp-verdicts li[data-tone="ok"] svg {
+    color: var(--status-online);
+  }
+
+  .upnp-verdicts li[data-tone="warn"] svg {
+    color: var(--status-starting);
+  }
+
+  .upnp-verdicts li[data-tone="bad"] svg {
+    color: var(--status-crashed);
+  }
+
+  .upnp-detail {
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+  }
+}

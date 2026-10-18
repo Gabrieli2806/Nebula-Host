@@ -36,6 +36,29 @@ export function formatDateTime(iso: string | null | undefined, locale: string): 
   });
 }
 
+/** "2 h ago" / "hace 2 h": short enough for a one-line caption. */
+export function formatRelative(iso: string | null | undefined, locale: string, now = Date.now()): string {
+  if (!iso) return "—";
+  const time = new Date(iso).getTime();
+  if (Number.isNaN(time)) return "—";
+  const seconds = Math.round((time - now) / 1000);
+  const format = new Intl.RelativeTimeFormat(locale, { numeric: "auto", style: "short" });
+  const steps: [Intl.RelativeTimeFormatUnit, number][] = [
+    ["day", 86400],
+    ["hour", 3600],
+    ["minute", 60],
+  ];
+  for (const [unit, size] of steps) {
+    if (Math.abs(seconds) >= size) {
+      if (unit === "day" && Math.abs(seconds) >= 30 * 86400) {
+        return new Date(time).toLocaleDateString(locale, { day: "numeric", month: "short" });
+      }
+      return format.format(Math.round(seconds / size), unit);
+    }
+  }
+  return format.format(0, "minute");
+}
+
 export function formatTime(iso: string, locale: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";

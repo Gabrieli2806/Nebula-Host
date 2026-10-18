@@ -7,21 +7,46 @@ use regex::Regex;
 
 use crate::error::{AppError, AppResult, ErrorCode};
 use crate::game::manifest::ConsoleSpec;
-use crate::model::ConsoleLevel;
+use crate::model::{ConsoleLevel, ConsoleSpeaker, SpeakerKind};
 
 /// What one line of output turned out to mean.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct LineReading {
     /// Display text, already stripped of in-band formatting.
     pub text: String,
+    /// `text` without the game's own log prefix, when it had one.
+    pub body: Option<String>,
     pub level: ConsoleLevel,
     /// The server just finished starting.
     pub ready: bool,
     pub joined: Option<String>,
     pub left: Option<String>,
     pub tick_rate: Option<f32>,
+    /// `(name, message)` when a player said something.
+    pub chat: Option<(String, String)>,
+    /// `(name, uuid)` when the server announced who a player is.
+    pub identity: Option<(String, String)>,
     /// False when the line is the answer to a poll the user never made.
     pub visible: bool,
+}
+
+impl LineReading {
+    /// The player this line is about, for the console's chat rendering.
+    pub fn speaker(&self) -> Option<ConsoleSpeaker> {
+        if let Some((name, message)) = &self.chat {
+            return Some(ConsoleSpeaker {
+                name: name.clone(),
+                kind: SpeakerKind::Chat,
+                message: Some(message.clone()),
+            });
+        }
+        if let Some(name) = &self.joined {
+            return Some(ConsoleSpeaker { name: name.clone(), kind: SpeakerKind::Join, message: None });
+        }
+        self.left
+            .as_ref()
+            .map(|name| ConsoleSpeaker { name: name.clone(), kind: SpeakerKind::Leave, message: None })
+    }
 }
 
 impl Default for ConsoleLevel {
@@ -36,8 +61,11 @@ pub struct ConsoleParser {
     ready: Regex,
     join: Option<Regex>,
     leave: Option<Regex>,
+    chat: Option<Regex>,
+    identity: Option<Regex>,
     tick_rate: Vec<Regex>,
     suppress: Vec<Regex>,
+    log_prefix: Option<Regex>,
     strip_colour_codes: bool,
 }
 
@@ -47,8 +75,11 @@ impl ConsoleParser {
             ready: compile(&spec.ready_pattern)?,
             join: spec.join_pattern.as_deref().map(compile).transpose()?,
             leave: spec.leave_pattern.as_deref().map(compile).transpose()?,
+            chat: spec.chat_pattern.as_deref().map(compile).transpose()?,
+            identity: spec.identity_pattern.as_deref().map(compile).transpose()?,
             tick_rate: spec.tick_rate_patterns.iter().map(|p| compile(p)).collect::<Result<_, _>>()?,
             suppress: spec.suppress_patterns.iter().map(|p| compile(p)).collect::<Result<_, _>>()?,
+            log_prefix: spec.log_prefix_pattern.as_deref().map(compile).transpose()?,
             strip_colour_codes: spec.strip_colour_codes,
         })
     }
@@ -63,13 +94,36 @@ impl ConsoleParser {
             .and_then(|caps| caps.name("value"))
             .and_then(|m| m.as_str().parse::<f32>().ok());
 
+        let chat = self.chat.as_ref().and_then(|re| {
+            let caps = re.captures(&text)?;
+            Some((
+                caps.name("name")?.as_str().to_string(),
+                caps.name("message").map(|m| m.as_str().to_string()).unwrap_or_default(),
+            ))
+        });
+        let identity = self.identity.as_ref().and_then(|re| {
+            let caps = re.captures(&text)?;
+            Some((caps.name("name")?.as_str().to_string(), caps.name("uuid")?.as_str().to_string()))
+        });
+        // Whatever a player types is theirs: "<Bob> Steve joined the game" is
+        // chat, and must not put a phantom Steve on the online list.
+        let is_chat = chat.is_some();
+        let body = self.log_prefix.as_ref().and_then(|re| {
+            let found = re.find(&text)?;
+            (found.start() == 0 && found.end() > 0 && found.end() < text.len())
+                .then(|| text[found.end()..].to_string())
+        });
+
         LineReading {
             level: classify_level(&text),
-            ready: self.ready.is_match(&text),
-            joined: capture_name(&self.join, &text),
-            left: capture_name(&self.leave, &text),
-            tick_rate,
+            ready: !is_chat && self.ready.is_match(&text),
+            joined: if is_chat { None } else { capture_name(&self.join, &text) },
+            left: if is_chat { None } else { capture_name(&self.leave, &text) },
+            tick_rate: if is_chat { None } else { tick_rate },
+            chat,
+            identity: if is_chat { None } else { identity },
             visible: !self.suppress.iter().any(|re| re.is_match(&text)),
+            body,
             text,
         }
     }
@@ -241,6 +295,70 @@ mod tests {
             assert_eq!(reading.tick_rate, None, "{line}");
             assert!(reading.visible, "{line}");
         }
+    }
+
+    #[test]
+    fn reads_vanilla_and_paper_chat_lines() {
+        let parser = minecraft_parser();
+        let vanilla = parser.read("[12:00:00] [Server thread/INFO]: <Steve> hola a todos");
+        assert_eq!(vanilla.chat, Some(("Steve".into(), "hola a todos".into())));
+        let paper = parser.read("[12:00:00 INFO]: [Async Chat Thread - #0/INFO]: <Alex_2> hi");
+        assert_eq!(paper.chat.as_ref().map(|c| c.0.as_str()), Some("Alex_2"));
+        let unsigned = parser.read("[12:00:00] [Server thread/INFO]: [Not Secure] <Steve> yo");
+        assert_eq!(unsigned.chat, Some(("Steve".into(), "yo".into())));
+        let speaker = vanilla.speaker().expect("a speaker");
+        assert_eq!(speaker.kind, SpeakerKind::Chat);
+        assert_eq!(speaker.message.as_deref(), Some("hola a todos"));
+    }
+
+    #[test]
+    fn display_body_drops_the_game_log_prefix() {
+        let parser = minecraft_parser();
+        let body = |line: &str| parser.read(line).body;
+        assert_eq!(body("[12:00:01] [Server thread/INFO]: Saved the game").as_deref(), Some("Saved the game"));
+        assert_eq!(body("[12:00:01 INFO]: Saved the game").as_deref(), Some("Saved the game"));
+        assert_eq!(
+            body("[12:00:01 WARN]: [EssentialsX] Old config").as_deref(),
+            Some("[EssentialsX] Old config"),
+            "a plugin tag is the message, not the prefix"
+        );
+        assert_eq!(
+            body("[22:41:54] [Server thread/INFO] [minecraft/MinecraftServer]: Overworld ok").as_deref(),
+            Some("Overworld ok")
+        );
+        assert_eq!(body("at java.base/java.lang.Thread.run(Thread.java:1583)"), None);
+        // The level still comes from the raw line.
+        assert_eq!(parser.read("[12:00:01 WARN]: Can't keep up!").level, ConsoleLevel::Warn);
+    }
+
+    #[test]
+    fn chat_that_looks_like_a_join_is_still_chat() {
+        let parser = minecraft_parser();
+        let reading = parser.read("[12:00:00] [Server thread/INFO]: <Bob> Steve joined the game");
+        assert_eq!(reading.joined, None, "a player typed it; nobody joined");
+        assert_eq!(reading.chat.as_ref().map(|c| c.0.as_str()), Some("Bob"));
+        let done = parser.read("[12:00:00] [Server thread/INFO]: <Bob> Done (1.0s)!");
+        assert!(!done.ready, "chat must not mark the server ready");
+    }
+
+    #[test]
+    fn join_and_leave_lines_carry_a_speaker() {
+        let parser = minecraft_parser();
+        let joined = parser.read("[12:00:00] [Server thread/INFO]: Steve joined the game");
+        assert_eq!(joined.speaker().map(|s| s.kind), Some(SpeakerKind::Join));
+        let left = parser.read("[12:00:00] [Server thread/INFO]: Steve left the game");
+        assert_eq!(left.speaker().map(|s| s.kind), Some(SpeakerKind::Leave));
+        assert_eq!(parser.read("[12:00:00] [Server thread/INFO]: Saved the game").speaker(), None);
+    }
+
+    #[test]
+    fn reads_the_uuid_announcement() {
+        let parser = minecraft_parser();
+        let line = "[12:00:00] [User Authenticator #1/INFO]: UUID of player Steve is 8667ba71-b85a-4004-af54-457a9734eed7";
+        assert_eq!(
+            parser.read(line).identity,
+            Some(("Steve".into(), "8667ba71-b85a-4004-af54-457a9734eed7".into()))
+        );
     }
 
     #[test]

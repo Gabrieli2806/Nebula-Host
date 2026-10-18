@@ -1,0 +1,310 @@
+/*
+ * Nebula Host: settings.css. Area styles for the app Settings screen: preference rows, theme / accent / density controls, Java list.
+ * Owner: Settings agent (Build phase). Only that agent edits this file.
+ *
+ * Imported by global.css AFTER the shared primitives, so a rule here at the
+ * same specificity wins over the primitive it extends. Keep every rule inside
+ * @layer components (or @layer base): an unlayered rule would beat every
+ * Tailwind utility. Use tokens from tokens.css; never hard-code colours.
+ */
+
+@layer components {
+  /* == the column ======================================================= */
+
+  /* One left-aligned column of cards. Transparent, so the ambient ground
+     shows through. A container, so rows can stack when it narrows. */
+  .settings-page {
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    max-width: calc(760px + 2 * var(--gutter));
+    padding: var(--gutter);
+    container-type: inline-size;
+    container-name: settings;
+  }
+
+  .settings-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .settings-title {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-display);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    color: var(--text-heading);
+  }
+
+  .settings-subtitle {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+  }
+
+  /* == preference rows ================================================== */
+
+  /* Label and consequence on the left, the control on the right, a hairline
+     between rows (inset to the card's padding). */
+  .settings-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-5);
+    row-gap: var(--space-3);
+    min-height: 64px;
+    padding: 14px 20px;
+  }
+
+  .settings-row + .settings-row::before,
+  .upnp-test + .settings-row::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 20px;
+    right: 20px;
+    height: 1px;
+    background: var(--line);
+    pointer-events: none;
+  }
+
+  /* Paths need the full width: the control goes under the text. */
+  .settings-row[data-wide] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* A switch row: the whole row is the label, so the words flip it too. */
+  .settings-row[data-switch] {
+    display: block;
+    padding: 0;
+  }
+
+  .settings-row-hit {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-5);
+    min-height: 64px;
+    padding: 14px 20px;
+    cursor: pointer;
+  }
+
+  .settings-row-hit:hover .settings-row-label {
+    color: var(--text);
+  }
+
+  /* Compact density tightens the rows along with the controls. */
+  :root[data-density="compact"] .settings-row:not([data-switch]),
+  :root[data-density="compact"] .settings-row-hit {
+    min-height: 52px;
+    padding-block: 10px;
+  }
+
+  .settings-row-text {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .settings-row-label {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    column-gap: var(--space-3);
+    font-size: var(--text-base);
+    font-weight: var(--weight-control);
+    line-height: 1.35;
+    color: var(--text);
+  }
+
+  .settings-row-help {
+    max-width: 54ch;
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    color: var(--text-muted);
+    text-wrap: pretty;
+  }
+
+  /* The one setting that changes who can reach this machine: the words go
+     up a tier in contrast and carry a warning glyph. The text stays out of
+     the status hues, which are reserved for server status. */
+  .settings-row-help[data-warn] {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    color: var(--text);
+  }
+
+  .settings-row-help[data-warn] > svg {
+    flex: none;
+    margin-top: 3px;
+    color: var(--status-starting);
+  }
+
+  .settings-row-control {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .settings-row[data-wide] .settings-row-control {
+    justify-content: stretch;
+  }
+
+  .settings-row[data-wide] .settings-row-control > * {
+    flex: 1;
+  }
+
+  .settings-row-error {
+    grid-column: 1 / -1;
+  }
+
+  .settings-row[data-switch] .settings-row-error {
+    padding: 0 20px 14px;
+  }
+
+  .settings-name-input {
+    width: 232px;
+  }
+
+  .settings-select {
+    width: 196px;
+  }
+
+  /* Narrow window: the control drops under its label. */
+  @container settings (max-width: 600px) {
+    .settings-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .settings-row-control {
+      justify-content: flex-start;
+    }
+
+    .settings-row[data-switch] .settings-row-control {
+      justify-content: flex-end;
+    }
+  }
+
+  /* == the "Saved" tick ================================================= */
+
+  /* Faint, beside the label, so the control never moves. It fades in and
+     back out; the words are announced by a separate polite status. */
+  .settings-saved {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-control);
+    color: var(--text-faint);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity var(--duration) var(--ease);
+  }
+
+  .settings-saved[data-visible] {
+    opacity: 1;
+    transition-duration: var(--duration-fast);
+  }
+
+  .settings-saved > svg {
+    color: var(--status-online);
+  }
+
+  /* == accent swatches ================================================== */
+
+  /* 24px circles, each the colour it names. data-accent on the swatch
+     scopes the derived accent set to it (tokens.css), so --accent here is
+     the swatch's own, in either theme. The chosen one gets a ring in its
+     own colour, separated by a gap of the card surface. */
+  .settings-swatches {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 4px;
+  }
+
+  .settings-swatch {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid rgb(0 0 0 / 18%);
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--text-on-accent);
+    cursor: pointer;
+    transition: box-shadow var(--duration-fast) var(--ease);
+  }
+
+  .settings-swatch:hover:not([aria-checked="true"]) {
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--line-hover);
+  }
+
+  .settings-swatch[aria-checked="true"] {
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+  }
+
+  /* Outside the selection ring, so focus and choice never look alike. */
+  .settings-swatch:focus-visible {
+    outline-offset: 6px;
+  }
+
+  /* == java ============================================================= */
+
+  .settings-java-help {
+    max-width: 62ch;
+    padding: 14px 20px 0;
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    color: var(--text-muted);
+    text-wrap: pretty;
+  }
+
+  .settings-java-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 20px 18px;
+  }
+
+  /* Each installation is a path read off the machine: a sunken field. */
+  .settings-java-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 40px;
+    padding: 4px 4px 4px 8px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--well-fill);
+    box-shadow: var(--shadow-inset);
+  }
+
+  .settings-java-found {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 4px;
+    font-size: var(--text-xs);
+    color: var(--status-online);
+  }
+
+  .settings-java-empty {
+    padding: 10px 20px 18px;
+    font-size: var(--text-sm);
+    color: var(--text-faint);
+  }
+
+  .settings-java-error {
+    padding: 0 20px 18px;
+  }
+}

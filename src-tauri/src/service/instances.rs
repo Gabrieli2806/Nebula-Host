@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use chrono::Utc;
-use tokio::sync::{broadcast, mpsc, RwLock};
+use tokio::sync::{broadcast, mpsc, Mutex, RwLock};
 use tracing::{info, warn};
 
 use crate::error::{AppError, AppResult, ErrorCode};
@@ -23,7 +23,13 @@ use crate::model::{
 use crate::net::{ports, upnp::PortForwarder, wake_proxy};
 use crate::runtime::console::ConsoleParser;
 use crate::runtime::process::{ProcessSupervisor, RuntimeEvent, StartRequest};
+use crate::service::completion::CachedCommands;
+use crate::service::files::DiskUsage;
+use crate::service::import::ImportProgress;
 use crate::store::{settings, InstanceStore};
+
+/// How long a disk-usage answer is reused before the folder is walked again.
+const DISK_USAGE_TTL: chrono::TimeDelta = chrono::TimeDelta::seconds(60);
 
 /// How many console lines are kept per instance. Enough to scroll back through
 /// a startup, small enough that ten idle servers do not cost anything.
@@ -59,6 +65,26 @@ pub enum AppEvent {
         instance_id: String,
         online: Vec<String>,
     },
+    /// A drag-and-drop import moving bytes. Throttled; the last one has
+    /// `done: true`.
+    Import {
+        #[serde(rename = "instanceId")]
+        instance_id: String,
+        progress: ImportProgress,
+    },
+    /// A Java runtime download moving along. Not tied to one server: two
+    /// servers on the same version share the download.
+    JavaDownload {
+        major: u32,
+        progress: crate::runtime::java::JavaDownloadProgress,
+    },
+    /// The queue of addon changes waiting for this server to stop changed
+    /// (something was queued, cancelled, applied or failed).
+    PendingAddons {
+        #[serde(rename = "instanceId")]
+        instance_id: String,
+        pending: Vec<crate::service::pending::PendingAddonChange>,
+    },
 }
 
 /// What the UI sends when the user creates a server.
@@ -88,7 +114,20 @@ pub struct InstanceService {
     states: RwLock<HashMap<String, InstanceState>>,
     consoles: RwLock<HashMap<String, VecDeque<ConsoleLine>>>,
     online_players: RwLock<HashMap<String, Vec<String>>>,
-    events: broadcast::Sender<AppEvent>,
+    /// Per instance: player name → account UUID, as announced on join.
+    identities: RwLock<HashMap<String, HashMap<String, String>>>,
+    /// Per instance: the server's own command list, until restart.
+    completions: RwLock<HashMap<String, CachedCommands>>,
+    /// Per instance: serialises its `help` captures (one console, one at a
+    /// time) without holding up the other servers.
+    completion_fetch: Mutex<HashMap<String, Arc<Mutex<()>>>>,
+    disk_usage: RwLock<HashMap<String, DiskUsage>>,
+    /// Per instance: Modrinth project id → installed file name.
+    pub(crate) addon_index: RwLock<HashMap<String, HashMap<String, String>>>,
+    pub(crate) events: broadcast::Sender<AppEvent>,
+    /// Serialises applying queued addon changes, so a stop and the start
+    /// right after it (a restart) never move the same jars twice.
+    pub(crate) pending_lock: Mutex<()>,
 }
 
 impl InstanceService {
@@ -104,7 +143,13 @@ impl InstanceService {
             states: RwLock::new(HashMap::new()),
             consoles: RwLock::new(HashMap::new()),
             online_players: RwLock::new(HashMap::new()),
+            identities: RwLock::new(HashMap::new()),
+            completions: RwLock::new(HashMap::new()),
+            completion_fetch: Mutex::new(HashMap::new()),
+            disk_usage: RwLock::new(HashMap::new()),
+            addon_index: RwLock::new(HashMap::new()),
             events,
+            pending_lock: Mutex::new(()),
         });
         Ok(service)
     }
@@ -129,6 +174,26 @@ impl InstanceService {
         Ok(node.clone())
     }
 
+    /// Record a newly paired device on the node (public info only).
+    pub async fn add_paired_device(&self, device: crate::model::PairedDevice) -> AppResult<Node> {
+        let mut node = self.node.write().await;
+        node.paired_devices.retain(|d| d.id != device.id);
+        node.paired_devices.push(device);
+        crate::store::nodes::save(&node)?;
+        Ok(node.clone())
+    }
+
+    /// Forget a paired device: its token stops working at once.
+    pub async fn remove_paired_device(&self, device_id: &str) -> AppResult<Node> {
+        let mut node = self.node.write().await;
+        node.paired_devices.retain(|d| d.id != device_id);
+        crate::store::nodes::save(&node)?;
+        let mut creds = crate::store::devices::load()?;
+        creds.retain(|c| c.device_id != device_id);
+        crate::store::devices::save(&creds)?;
+        Ok(node.clone())
+    }
+
     // -- reading -----------------------------------------------------------
 
     pub async fn list(&self) -> AppResult<Vec<InstanceView>> {
@@ -148,7 +213,9 @@ impl InstanceService {
                         .unwrap_or_default();
                     format!("{ip}:{port}")
                 });
-                InstanceView { instance, state, address }
+                let icon_spec = self.registry.manifest(&instance.game).ok().and_then(|m| m.server_icon);
+                let icon_url = crate::service::icon::icon_data_url(&instance.path, icon_spec.as_ref());
+                InstanceView { instance, state, address, icon_url }
             })
             .collect())
     }
@@ -156,7 +223,9 @@ impl InstanceService {
     pub async fn view(&self, instance_id: &str) -> AppResult<InstanceView> {
         let instance = self.store.get(instance_id).await?;
         let state = self.state_of(instance_id).await;
-        Ok(InstanceView { instance, state, address: None })
+        let icon_spec = self.registry.manifest(&instance.game).ok().and_then(|m| m.server_icon);
+        let icon_url = crate::service::icon::icon_data_url(&instance.path, icon_spec.as_ref());
+        Ok(InstanceView { instance, state, address: None, icon_url })
     }
 
     pub async fn state_of(&self, instance_id: &str) -> InstanceState {
@@ -171,6 +240,92 @@ impl InstanceService {
 
     pub async fn online_players(&self, instance_id: &str) -> Vec<String> {
         self.online_players.read().await.get(instance_id).cloned().unwrap_or_default()
+    }
+
+    /// Player name → UUID for this instance: what the game's own files say
+    /// (lists, name cache), overlaid with what the server announced this
+    /// session. Names are as the game spells them; compare case-insensitively.
+    pub async fn player_identities(&self, instance_id: &str) -> AppResult<HashMap<String, String>> {
+        let instance = self.store.get(instance_id).await?;
+        let manifest = self.registry.manifest(&instance.game)?;
+        let root = instance.path.clone();
+        let source = manifest.players.clone();
+        let mut out = tokio::task::spawn_blocking(move || crate::service::players::read_identities(&root, &source))
+            .await
+            .map_err(AppError::unexpected)?;
+        if let Some(seen) = self.identities.read().await.get(instance_id) {
+            out.extend(seen.iter().map(|(k, v)| (k.clone(), v.clone())));
+        }
+        Ok(out)
+    }
+
+    /// Bytes the instance folder takes. Walked off the async runtime and
+    /// reused for a minute unless `refresh` is set.
+    pub async fn disk_usage(&self, instance_id: &str, refresh: bool) -> AppResult<DiskUsage> {
+        let instance = self.store.get(instance_id).await?;
+        if !refresh {
+            if let Some(cached) = self.disk_usage.read().await.get(instance_id) {
+                if Utc::now().signed_duration_since(cached.computed_at) < DISK_USAGE_TTL {
+                    return Ok(cached.clone());
+                }
+            }
+        }
+        let root = instance.path.clone();
+        let usage = tokio::task::spawn_blocking(move || crate::service::files::usage(&root))
+            .await
+            .map_err(AppError::unexpected)??;
+        self.disk_usage.write().await.insert(instance_id.to_string(), usage.clone());
+        Ok(usage)
+    }
+
+    /// Copy dropped paths into the instance, reporting progress as events.
+    pub async fn import_files(
+        &self,
+        instance_id: &str,
+        target: String,
+        sources: Vec<String>,
+        policy: crate::service::import::ConflictPolicy,
+        import_id: String,
+    ) -> AppResult<crate::service::import::ImportSummary> {
+        let instance = self.store.get(instance_id).await?;
+        let events = self.events.clone();
+        let id = instance_id.to_string();
+        let root = instance.path.clone();
+        let summary = tokio::task::spawn_blocking(move || {
+            crate::service::import::import(&root, &target, &sources, policy, &import_id, &|progress| {
+                let _ = events.send(AppEvent::Import { instance_id: id.clone(), progress });
+            })
+        })
+        .await
+        .map_err(AppError::unexpected)??;
+        self.disk_usage.write().await.remove(instance_id);
+        // Dropping jars into mods/ or plugins/ changes what is installed.
+        self.addon_index.write().await.remove(instance_id);
+        Ok(summary)
+    }
+
+    /// Something outside the addon calls changed the instance folder (the
+    /// Files panel, a restore): forget what was measured or identified there.
+    pub async fn after_folder_change(&self, instance_id: &str) {
+        self.disk_usage.write().await.remove(instance_id);
+        self.after_addon_change(instance_id).await;
+    }
+
+    /// The lock that serialises one server's `help` captures.
+    pub(crate) async fn completion_lock(&self, instance_id: &str) -> Arc<Mutex<()>> {
+        self.completion_fetch.lock().await.entry(instance_id.to_string()).or_default().clone()
+    }
+
+    pub(crate) async fn cached_completions(&self, instance_id: &str) -> Option<CachedCommands> {
+        self.completions.read().await.get(instance_id).cloned()
+    }
+
+    pub(crate) async fn store_completions(&self, instance_id: &str, cached: CachedCommands) {
+        self.completions.write().await.insert(instance_id.to_string(), cached);
+    }
+
+    pub async fn invalidate_completions(&self, instance_id: &str) {
+        self.completions.write().await.remove(instance_id);
     }
 
     // -- creating ----------------------------------------------------------
@@ -271,6 +426,14 @@ impl InstanceService {
             return Err(AppError::new(ErrorCode::InstanceAlreadyRunning).with("instance", instance_id));
         }
 
+        // Addon changes queued while it last ran go in before it loads its
+        // jars. Normally the stop already did this; this catches a queue left
+        // by an app that closed with the server still up. A change that fails
+        // stays queued and visible, and does not keep the server down.
+        if let Err(error) = self.apply_pending_addons(instance_id).await {
+            warn!(instance_id, %error, "pending addon changes were not applied before start");
+        }
+
         // Hand the port back before trying to bind it as the server.
         if self.wake.stop(instance_id).await {
             wake_proxy::wait_for_port_release(instance_id, instance.primary_port(&self.registry.manifest(&instance.game)?)).await;
@@ -296,11 +459,7 @@ impl InstanceService {
         self.set_status(instance_id, InstanceStatus::Starting).await;
         self.push_console(
             instance_id,
-            ConsoleLine {
-                timestamp: Utc::now(),
-                level: ConsoleLevel::System,
-                message: format!("Starting {}…", instance.name),
-            },
+            ConsoleLine::new(ConsoleLevel::System, format!("Starting {}…", instance.name)),
         )
         .await;
 
@@ -365,11 +524,7 @@ impl InstanceService {
     pub async fn send_command(&self, instance_id: &str, command: &str) -> AppResult<()> {
         self.push_console(
             instance_id,
-            ConsoleLine {
-                timestamp: Utc::now(),
-                level: ConsoleLevel::System,
-                message: format!("> {command}"),
-            },
+            ConsoleLine::new(ConsoleLevel::System, format!("> {command}")),
         )
         .await;
         self.processes.send_command(instance_id, command).await
@@ -399,25 +554,28 @@ impl InstanceService {
             }),
             on_log: Arc::new(move |id, level, message| {
                 let service = log_service.clone();
-                let line = ConsoleLine {
-                    timestamp: Utc::now(),
-                    level: if level == "WARN" { ConsoleLevel::Warn } else { ConsoleLevel::System },
+                let line = ConsoleLine::new(
+                    if level == "WARN" { ConsoleLevel::Warn } else { ConsoleLevel::System },
                     message,
-                };
+                );
                 tokio::spawn(async move {
                     service.push_console(&id, line).await;
                 });
             }),
         };
 
-        // Loopback unless the user opened this node to the LAN: the wake
-        // listener stands in for the server, and it must not be reachable more
-        // widely than the server itself was.
-        let bind = if settings::load()?.listen_on_lan {
-            IpAddr::V4(Ipv4Addr::UNSPECIFIED)
-        } else {
-            IpAddr::V4(Ipv4Addr::LOCALHOST)
-        };
+        // The wake listener stands in for the server, so it must be exactly as
+        // reachable as the server itself — no more, no less. Players connect
+        // to the address the UI shows (the LAN IP); a loopback-only stand-in
+        // made a sleeping server look offline ("Connection refused") to all of
+        // them. So: the interface the server is pinned to by its own config,
+        // or every interface when unpinned, which is what the server does.
+        let bind = spec
+            .bind_setting
+            .as_deref()
+            .and_then(|key| crate::service::properties::get(&instance.path, key).ok().flatten())
+            .and_then(|value| value.trim().parse::<IpAddr>().ok())
+            .unwrap_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED));
 
         self.wake
             .spawn(
@@ -445,6 +603,7 @@ impl InstanceService {
         }
         self.wake.stop(instance_id).await;
         self.forwarder.release(instance_id).await;
+        self.drop_pending_addons(instance_id).await;
         self.states.write().await.remove(instance_id);
         self.consoles.write().await.remove(instance_id);
         self.store.remove(instance_id, delete_files).await
@@ -487,6 +646,9 @@ impl InstanceService {
                         self.mark_player_activity(&id).await;
                         self.emit(AppEvent::Players { instance_id: id, online });
                     }
+                    RuntimeEvent::PlayerIdentified(id, name, uuid) => {
+                        self.identities.write().await.entry(id).or_default().insert(name, uuid);
+                    }
                     RuntimeEvent::TickRate(id, rate) => {
                         let mut states = self.states.write().await;
                         states.entry(id).or_default().tick_rate = Some(rate);
@@ -507,19 +669,24 @@ impl InstanceService {
             Err(_) => return,
         };
 
+        // The jars are free now: put queued addon changes in place, before a
+        // crash restart or a wake-on-join could load the old set again.
+        if let Err(error) = self.apply_pending_addons(instance_id).await {
+            warn!(instance_id, %error, "pending addon changes were not applied after stop");
+        }
+
         if !expected {
             info!(instance_id, ?code, "server exited unexpectedly");
             self.set_status(instance_id, InstanceStatus::Crashed).await;
             self.push_console(
                 instance_id,
-                ConsoleLine {
-                    timestamp: Utc::now(),
-                    level: ConsoleLevel::Error,
-                    message: match code {
+                ConsoleLine::new(
+                    ConsoleLevel::Error,
+                    match code {
                         Some(code) => format!("Server stopped unexpectedly (exit code {code})."),
                         None => "Server stopped unexpectedly.".to_string(),
                     },
-                },
+                ),
             )
             .await;
 
@@ -545,11 +712,7 @@ impl InstanceService {
         self.set_status(instance_id, InstanceStatus::Offline).await;
         self.push_console(
             instance_id,
-            ConsoleLine {
-                timestamp: Utc::now(),
-                level: ConsoleLevel::System,
-                message: "Server stopped.".to_string(),
-            },
+            ConsoleLine::new(ConsoleLevel::System, "Server stopped.".to_string()),
         )
         .await;
 
@@ -576,9 +739,18 @@ impl InstanceService {
         {
             let mut states = self.states.write().await;
             let state = states.entry(instance_id.to_string()).or_default();
+            let previous = state.status;
             state.status = status;
-            if status == InstanceStatus::Online && state.last_player_seen_at.is_none() {
+            // Every fresh start gets a full idle grace period. Keeping the
+            // timestamp from the previous run made sleep-when-empty stop a
+            // just-woken server one tick after it came online — before the
+            // player who woke it could reconnect.
+            if status == InstanceStatus::Online && previous != InstanceStatus::Online {
                 state.last_player_seen_at = Some(Utc::now());
+            }
+            if !matches!(status, InstanceStatus::Online | InstanceStatus::Stopping) {
+                // A restarted server may have different plugins loaded.
+                self.completions.write().await.remove(instance_id);
             }
             if !status.expects_process() {
                 state.uptime_seconds = None;
@@ -611,7 +783,7 @@ impl InstanceService {
         states.entry(instance_id.to_string()).or_default().last_player_seen_at = Some(Utc::now());
     }
 
-    async fn push_console(&self, instance_id: &str, line: ConsoleLine) {
+    pub(crate) async fn push_console(&self, instance_id: &str, line: ConsoleLine) {
         {
             let mut consoles = self.consoles.write().await;
             let buffer = consoles.entry(instance_id.to_string()).or_default();
@@ -675,5 +847,86 @@ mod tests {
         assert_eq!(slug("My SMP Server"), "my-smp-server");
         assert_eq!(slug("¡¡¡!!!"), "server");
         assert_eq!(slug("Sky   Block 2"), "sky-block-2");
+    }
+}
+
+// -- editing ------------------------------------------------------------------
+
+/// Everything on the instance a user can change from the UI. Absent fields are
+/// left alone, so the UI can send one edit at a time.
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstancePatch {
+    pub name: Option<String>,
+    pub memory_mb: Option<u32>,
+    pub port: Option<u16>,
+    pub runtime_kind: Option<RuntimeKind>,
+    pub runtime_path: Option<String>,
+    pub extra_args: Option<Vec<String>>,
+    pub sleep_when_empty: Option<bool>,
+    pub sleep_after_minutes: Option<u32>,
+    pub wake_on_join: Option<bool>,
+    pub restart_after_crash: Option<bool>,
+    pub track_latest_version: Option<bool>,
+    pub schedules: Option<Vec<crate::model::ScheduleRule>>,
+}
+
+impl InstanceService {
+    pub async fn apply_patch(&self, instance_id: &str, patch: InstancePatch) -> AppResult<Instance> {
+    // Validate before touching the stored record: a rejected port must not
+    // leave a half-applied edit behind.
+    if let Some(port) = patch.port {
+        crate::net::ports::validate(port)?;
+    }
+
+    let manifest = {
+        let instance = self.store.get(instance_id).await?;
+        self.registry.manifest(&instance.game)?
+    };
+
+    self
+        .store
+        .update(instance_id, move |instance| {
+            if let Some(name) = patch.name {
+                instance.name = name;
+            }
+            if let Some(memory_mb) = patch.memory_mb {
+                instance.resources.memory_mb = memory_mb;
+            }
+            if let Some(port) = patch.port {
+                if let Some(spec) = manifest.primary_port() {
+                    instance.ports.insert(spec.key.clone(), port);
+                }
+            }
+            if let Some(runtime_kind) = patch.runtime_kind {
+                instance.runtime_kind = runtime_kind;
+            }
+            if let Some(runtime_path) = patch.runtime_path {
+                instance.resources.runtime_path =
+                    Some(runtime_path).filter(|path| !path.trim().is_empty());
+            }
+            if let Some(extra_args) = patch.extra_args {
+                instance.resources.extra_args = extra_args;
+            }
+            if let Some(value) = patch.sleep_when_empty {
+                instance.automation.sleep_when_empty = value;
+            }
+            if let Some(value) = patch.sleep_after_minutes {
+                instance.automation.sleep_after_minutes = value.max(1);
+            }
+            if let Some(value) = patch.wake_on_join {
+                instance.automation.wake_on_join = value;
+            }
+            if let Some(value) = patch.restart_after_crash {
+                instance.automation.restart_after_crash = value;
+            }
+            if let Some(value) = patch.track_latest_version {
+                instance.track_latest_version = value;
+            }
+            if let Some(schedules) = patch.schedules {
+                instance.automation.schedules = schedules;
+            }
+        })
+        .await
     }
 }

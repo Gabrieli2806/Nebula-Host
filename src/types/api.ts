@@ -69,6 +69,8 @@ export interface InstanceView extends Instance {
   tick_rate?: number | null;
   last_player_seen_at?: string | null;
   address?: string | null;
+  /** The game's server-list icon as a `data:` URL, when the server has one. */
+  icon_url?: string | null;
 }
 
 export type ConsoleLevel = "info" | "warn" | "error" | "system";
@@ -76,7 +78,25 @@ export type ConsoleLevel = "info" | "warn" | "error" | "system";
 export interface ConsoleLine {
   timestamp: string;
   level: ConsoleLevel;
+  /** The raw line (colour codes stripped). */
   message: string;
+  /**
+   * The line without the game's own time/level prefix, for display; the
+   * console gutter already shows the time. Absent when there was no prefix.
+   */
+  body?: string | null;
+  /** Present when the line is something a player did (chat, join, leave). */
+  speaker?: ConsoleSpeaker | null;
+}
+
+export type SpeakerKind = "chat" | "join" | "leave";
+
+export interface ConsoleSpeaker {
+  /** Player name as the game spells it. */
+  name: string;
+  kind: SpeakerKind;
+  /** What they said; only for `chat`. */
+  message?: string | null;
 }
 
 // -- game manifests ---------------------------------------------------------
@@ -84,10 +104,14 @@ export interface ConsoleLine {
 export interface Distribution {
   id: string;
   name: string;
+  /** Identity colour from the manifest, `#rrggbb`. */
+  accent?: string | null;
   summary_key: string;
   has_loader_version: boolean;
   addon_loaders?: string[];
   addon_dir?: string | null;
+  /** `mod` or `plugin`, for distributions that take addons. */
+  addon_project_type?: string | null;
   tick_rate_command?: string | null;
 }
 
@@ -120,6 +144,10 @@ export interface GameManifest {
   ports: { key: string; default: number; protocol: string; primary: boolean }[];
   settings: SettingField[];
   wake?: { protocol: string; sleeping_motd: string } | null;
+  /** The game's server-list icon file, when it has one. */
+  server_icon?: { file: string; size: number } | null;
+  /** The game's own log files, when it writes any. */
+  logs?: { latest: string; crash_dir?: string | null } | null;
 }
 
 export interface VersionInfo {
@@ -230,6 +258,329 @@ export interface AddonMeta {
   update_available: boolean;
 }
 
+// -- addons (round 3: Modrinth, hash-identified) ---------------------------
+
+export interface AddonContext {
+  /** False for distributions that take no addons (Vanilla). */
+  supported: boolean;
+  project_type?: "mod" | "plugin" | string | null;
+  /** Loader tags in priority order, e.g. `["purpur","paper","spigot","bukkit"]`. */
+  loaders: string[];
+  game_version: string;
+  /** Folder relative to the instance root (`mods` / `plugins`). */
+  addon_dir?: string | null;
+}
+
+export type AddonSort = "relevance" | "downloads" | "follows" | "newest" | "updated";
+
+export interface AddonBrowseRequest {
+  query?: string;
+  /** Default `relevance`; an empty query with `relevance` is sent as `downloads`. */
+  sort?: AddonSort;
+  offset?: number;
+  /** 1–100, default 20. */
+  limit?: number;
+  /** Extra Modrinth category tags to require (`utility`, `worldgen`, …). */
+  categories?: string[];
+}
+
+export interface AddonHit {
+  project_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  author: string;
+  icon_url?: string | null;
+  downloads: number;
+  follows: number;
+  /** Display categories, loader tags removed. */
+  categories: string[];
+  date_modified?: string | null;
+  project_type: string;
+  client_side?: string | null;
+  server_side?: string | null;
+  /** A jar of this project is already in the server's addon folder. */
+  installed: boolean;
+}
+
+export interface AddonBrowseResult {
+  hits: AddonHit[];
+  total_hits: number;
+  offset: number;
+  limit: number;
+}
+
+export interface AddonFile {
+  url: string;
+  file_name: string;
+  size: number;
+  sha1?: string | null;
+  sha512?: string | null;
+}
+
+export interface AddonDependencyRef {
+  project_id?: string | null;
+  version_id?: string | null;
+  file_name?: string | null;
+  dependency_type: "required" | "optional" | "incompatible" | "embedded" | string;
+}
+
+export interface AddonVersion {
+  id: string;
+  project_id: string;
+  name: string;
+  version_number: string;
+  version_type: "release" | "beta" | "alpha" | string;
+  date_published?: string | null;
+  downloads: number;
+  game_versions: string[];
+  loaders: string[];
+  /** Primary file — what an install downloads. */
+  file: AddonFile;
+  dependencies: AddonDependencyRef[];
+  /** Runs on this server: exact game version and an accepted loader. */
+  compatible: boolean;
+}
+
+export interface AddonProjectSummary {
+  project_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  icon_url?: string | null;
+  project_type: string;
+  client_side?: string | null;
+  server_side?: string | null;
+}
+
+export interface ModrinthMatch {
+  project: AddonProjectSummary;
+  installed_version: AddonVersion;
+  latest_version?: AddonVersion | null;
+  update_available: boolean;
+}
+
+export interface InstalledAddonEntry {
+  /** Exact file name on disk, including `.disabled` when disabled. Use it as the id. */
+  file_name: string;
+  /** File name without `.jar` / `.jar.disabled`; the fallback title. */
+  display_name: string;
+  enabled: boolean;
+  size_bytes: number;
+  modified?: string | null;
+  sha1: string;
+  /** Absent for jars Modrinth does not know (CurseForge, custom builds). */
+  modrinth?: ModrinthMatch | null;
+}
+
+export interface InstalledAddonsReport {
+  addons: InstalledAddonEntry[];
+  /** `unavailable`: Modrinth unreachable — jars still listed, no metadata. */
+  modrinth_status: "ok" | "unavailable";
+  unknown_count: number;
+  updates_available: number;
+}
+
+export interface AddonDependency {
+  project_id: string;
+  dependency_type: "required" | "optional" | "incompatible" | "embedded" | string;
+  project?: AddonProjectSummary | null;
+  installed: boolean;
+  /** Best compatible version (resolved for required/optional deps only). */
+  version?: AddonVersion | null;
+}
+
+export interface AddonInstallResult {
+  file_name: string;
+  project_id: string;
+  version_id: string;
+  version_number: string;
+  /** The old jar removed because this one replaces it. */
+  replaced?: string | null;
+  /** The server was running: downloaded, queued until it stops. */
+  pending?: boolean;
+}
+
+// -- addon changes waiting for the server to stop ----------------------------
+
+export type PendingAddonAction =
+  | {
+      action: "install";
+      file_name: string;
+      staged: string;
+      project_id?: string | null;
+      version_number?: string | null;
+      /** The jar on disk this one replaces (an update or version switch). */
+      replace?: string | null;
+      disabled: boolean;
+    }
+  | { action: "remove"; file_name: string }
+  | { action: "set_enabled"; file_name: string; enabled: boolean };
+
+export type PendingAddonChange = PendingAddonAction & {
+  id: string;
+  queued_at: string;
+  title?: string | null;
+  /** The last attempt to apply it failed; render like any backend error. */
+  error?: { code: string; params?: Record<string, string>; detail?: string } | null;
+};
+
+// -- files: drag-and-drop import, disk usage --------------------------------
+
+export type ConflictPolicy = "overwrite" | "keep_both" | "skip";
+
+export interface ImportItem {
+  name: string;
+  isDir: boolean;
+  exists: boolean;
+  /**
+   * What exists is the other kind (file vs folder). Overwrite cannot merge
+   * those, so the backend keeps both instead.
+   */
+  typeMismatch?: boolean;
+  files: number;
+  bytes: number;
+}
+
+export interface ImportCheck {
+  items: ImportItem[];
+  /** Names (from `items`) that already exist in the target folder. */
+  conflicts: string[];
+  totalFiles: number;
+  totalBytes: number;
+}
+
+export interface ImportProgress {
+  importId: string;
+  copiedFiles: number;
+  totalFiles: number;
+  copiedBytes: number;
+  totalBytes: number;
+  /** Instance-relative path being copied. */
+  current?: string | null;
+  done: boolean;
+}
+
+export interface ImportSummary {
+  importId: string;
+  copiedFiles: number;
+  copiedBytes: number;
+  imported: { sourceName: string; path: string; renamed: boolean }[];
+  skipped: string[];
+  /** `code` is an AppError code (translate like any error). */
+  failed: { path: string; code: string }[];
+}
+
+export interface DiskUsage {
+  totalBytes: number;
+  fileCount: number;
+  /** Biggest top-level entries, largest first (max 10). */
+  largest: { name: string; isDir: boolean; bytes: number }[];
+  computedAt: string;
+}
+
+/** A native (OS) drag over the window, positions in CSS pixels. */
+export type WindowDragDrop =
+  | { type: "enter"; paths: string[]; position: { x: number; y: number } }
+  | { type: "over"; position: { x: number; y: number } }
+  | { type: "drop"; paths: string[]; position: { x: number; y: number } }
+  | { type: "leave" };
+
+// -- console autocomplete ---------------------------------------------------
+
+export interface CommandSuggestion {
+  /** Without the leading slash (`gamemode`, `essentials:home`, `/wand`). */
+  name: string;
+  /** Argument syntax after the name (`<targets> [<reason>]`). */
+  usage?: string | null;
+  /** One-line description (Bukkit-style help), when the server gave one. */
+  description?: string | null;
+  source: "builtin" | "server";
+  /** Zero-based argument index that takes a player name. */
+  player_arg?: number | null;
+}
+
+export interface CompletionSet {
+  /** Sorted by name, de-duplicated. */
+  commands: CommandSuggestion[];
+  /** Online players now. */
+  players: string[];
+  /** True when the running server contributed its own list. */
+  from_server: boolean;
+  fetched_at?: string | null;
+}
+
+/** Player name → UUID. Keys keep the game's spelling; compare case-insensitively. */
+export type PlayerIdentities = Record<string, string>;
+
+// -- Java runtimes -----------------------------------------------------------
+
+export type JavaSource =
+  | "nebula"
+  | "settings"
+  | "java_home"
+  | "path"
+  | "registry"
+  | "system"
+  | "minecraft_launcher"
+  | "modrinth_app"
+  | "curse_forge"
+  | "prism_launcher"
+  | "dev_tools";
+
+export interface JavaInstallation {
+  path: string;
+  major: number;
+  version: string;
+  from_path: boolean;
+  vendor?: string | null;
+  /** `x86_64`, `aarch64`, `x86`… */
+  arch?: string | null;
+  source?: JavaSource | null;
+}
+
+export interface JavaRuntimes {
+  /** False for games that do not run on a JVM. */
+  applies: boolean;
+  recommended_major?: number | null;
+  /** The JVM this server is pinned to; absent = automatic. */
+  selected?: string | null;
+  /** What automatic resolves to right now. */
+  automatic?: string | null;
+  installations: JavaInstallation[];
+  can_download: boolean;
+}
+
+export type JavaDownloadProgress =
+  | { phase: "resolving" }
+  | { phase: "downloading"; received: number; total?: number | null }
+  | { phase: "extracting" }
+  | { phase: "done"; path: string }
+  | { phase: "failed"; code: string };
+
+// -- log sharing (mclo.gs) ----------------------------------------------------
+
+export type LogSource = { kind: "console" } | { kind: "latest" } | { kind: "crash_report"; name: string };
+
+export interface LogFile {
+  name: string;
+  size_bytes: number;
+  modified?: string | null;
+}
+
+export interface LogFiles {
+  latest?: LogFile | null;
+  crash_reports: LogFile[];
+}
+
+export interface SharedLog {
+  id: string;
+  url: string;
+  raw?: string | null;
+  /** Oldest lines left out to fit mclo.gs's limits. */
+  omitted_lines: number;
+}
+
 export interface AppSettings {
   language: string;
   /** Accent id the UI themes itself with: `cyan`, `amber`, `emerald`, … */
@@ -264,4 +615,41 @@ export type AppEvent =
   | { type: "console"; instanceId: string; line: ConsoleLine }
   | { type: "install"; instanceId: string; progress: InstallProgress }
   | { type: "stats"; instanceId: string; state: Omit<InstanceView, keyof Instance> }
-  | { type: "players"; instanceId: string; online: string[] };
+  | { type: "players"; instanceId: string; online: string[] }
+  | { type: "import"; instanceId: string; progress: ImportProgress }
+  | { type: "javaDownload"; major: number; progress: JavaDownloadProgress }
+  | { type: "pendingAddons"; instanceId: string; pending: PendingAddonChange[] };
+
+// -- AI assistants (MCP) ------------------------------------------------------
+
+export interface McpStatus {
+  enabled: boolean;
+  running: boolean;
+  readOnly: boolean;
+  port: number;
+  url: string;
+  token?: string | null;
+  error?: string | null;
+}
+
+// -- remote access + UPnP -----------------------------------------------------
+
+export interface RemoteStatus {
+  enabled: boolean;
+  running: boolean;
+  port: number;
+  addresses: string[];
+  error?: string | null;
+}
+
+export interface UpnpCheck {
+  routerFound: boolean;
+  routerAddress?: string | null;
+  externalIp?: string | null;
+  /** public | private (double NAT) | cgnat */
+  externalKind?: string | null;
+  mappingWorks: boolean;
+  localIp?: string | null;
+  failedStep?: string | null;
+  detail?: string | null;
+}

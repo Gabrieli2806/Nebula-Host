@@ -36,6 +36,19 @@ pub struct AppSettings {
     /// Answer requests from other machines on the LAN. Loopback-only until the
     /// user turns this on knowingly; see the security notes in the README.
     pub listen_on_lan: bool,
+    /// Serve the local MCP endpoint so AI assistants can manage servers.
+    /// Off until the user turns it on; loopback-only and token-protected.
+    pub mcp_enabled: bool,
+    /// Loopback port for the MCP endpoint.
+    pub mcp_port: u16,
+    /// Bearer token MCP clients must send. Generated on first enable.
+    pub mcp_token: Option<String>,
+    /// Let MCP clients read, but refuse every tool that changes something.
+    pub mcp_read_only: bool,
+    /// Let other devices on the LAN pair with and control this machine.
+    pub remote_enabled: bool,
+    /// Port for the remote API.
+    pub remote_port: u16,
 }
 
 impl Default for AppSettings {
@@ -51,6 +64,12 @@ impl Default for AppSettings {
             run_in_tray: true,
             allow_upnp: false,
             listen_on_lan: false,
+            mcp_enabled: false,
+            mcp_port: 47391,
+            mcp_token: None,
+            mcp_read_only: false,
+            remote_enabled: false,
+            remote_port: crate::remote::DEFAULT_PORT,
         }
     }
 }

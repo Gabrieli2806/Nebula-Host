@@ -35,6 +35,26 @@ pub fn backups_dir() -> AppResult<PathBuf> {
     Ok(dir)
 }
 
+/// Java runtimes the app downloaded itself. Kept apart from the system's
+/// own JVMs so removing the app (or this folder) never breaks a Java the
+/// user installed.
+pub fn runtimes_dir() -> AppResult<PathBuf> {
+    let dir = dirs::data_dir()
+        .ok_or_else(|| AppError::new(ErrorCode::IoFailed).detail("no data directory on this OS"))?
+        .join(APP_DIR)
+        .join("runtimes");
+    std::fs::create_dir_all(&dir)?;
+    Ok(dir)
+}
+
+/// Addon changes waiting for a server to stop: the queue files and the jars
+/// already downloaded for them.
+pub fn pending_dir() -> AppResult<PathBuf> {
+    let dir = config_dir()?.join("pending-addons");
+    std::fs::create_dir_all(&dir)?;
+    Ok(dir)
+}
+
 /// Resolve `relative` against `root`, refusing anything that escapes it.
 ///
 /// This is the only way user-supplied paths reach the filesystem. The backend

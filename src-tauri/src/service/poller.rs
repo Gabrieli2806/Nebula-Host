@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::{Timelike, Utc};
-use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
+use sysinfo::{CpuRefreshKind, Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 use tracing::warn;
 
 use crate::model::{InstanceStatus, ScheduleAction};
@@ -61,12 +61,22 @@ async fn refresh_resources(service: &Arc<InstanceService>, system: &mut System) 
         ProcessRefreshKind::nothing().with_cpu().with_memory(),
     );
 
+    // sysinfo reports per-core percent (400% = four cores busy). The UI shows
+    // a share of the whole machine, the same scale as the node's own CPU.
+    // Divide by the CPU count sysinfo itself multiplied by (not
+    // available_parallelism, which follows the affinity mask and, past 64
+    // logical CPUs on Windows, counts only one processor group).
+    if system.cpus().is_empty() {
+        system.refresh_cpu_list(CpuRefreshKind::nothing());
+    }
+    let cores = system.cpus().len().max(1) as f32;
+
     for (instance_id, pid) in running {
         if let Some(process) = system.process(Pid::from_u32(pid)) {
             service.processes.set_resources(
                 &instance_id,
                 ProcessResources {
-                    cpu_percent: process.cpu_usage(),
+                    cpu_percent: (process.cpu_usage() / cores).clamp(0.0, 100.0),
                     memory_used_mb: process.memory() / 1024 / 1024,
                 },
             );

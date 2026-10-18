@@ -9,8 +9,10 @@ pub mod backups;
 pub mod files;
 pub mod games;
 pub mod instances;
+pub mod mcp;
 pub mod node;
 pub mod players;
+pub mod remote;
 pub mod settings;
 
 use std::sync::Arc;
@@ -50,9 +52,14 @@ macro_rules! ipc_handlers {
             $crate::ipc::instances::instance_delete,
             $crate::ipc::instances::instance_command,
             $crate::ipc::instances::instance_console,
+            $crate::ipc::instances::console_completions,
             $crate::ipc::instances::instance_update,
             $crate::ipc::instances::instance_forward_port,
             $crate::ipc::instances::instance_release_port,
+            $crate::ipc::instances::instance_icon_set,
+            $crate::ipc::instances::instance_icon_clear,
+            $crate::ipc::instances::instance_log_files,
+            $crate::ipc::instances::instance_log_share,
             // files
             $crate::ipc::files::files_list,
             $crate::ipc::files::file_read,
@@ -61,6 +68,18 @@ macro_rules! ipc_handlers {
             $crate::ipc::files::file_rename,
             $crate::ipc::files::folder_create,
             $crate::ipc::files::instance_reveal,
+            $crate::ipc::files::files_import_check,
+            $crate::ipc::files::files_import,
+            $crate::ipc::files::instance_disk_usage,
+            // mcp
+            $crate::ipc::mcp::mcp_status,
+            $crate::ipc::mcp::mcp_configure,
+            $crate::ipc::mcp::mcp_regenerate_token,
+            // remote + upnp
+            $crate::ipc::remote::remote_status,
+            $crate::ipc::remote::remote_configure,
+            $crate::ipc::remote::node_forget_device,
+            $crate::ipc::remote::upnp_check,
             // backups
             $crate::ipc::backups::backups_list,
             $crate::ipc::backups::backup_create,
@@ -70,18 +89,31 @@ macro_rules! ipc_handlers {
             $crate::ipc::players::players_online,
             $crate::ipc::players::players_lists,
             $crate::ipc::players::players_write_list,
+            $crate::ipc::players::players_identities,
             // addons
             $crate::ipc::addons::addons_search,
             $crate::ipc::addons::addons_installed,
             $crate::ipc::addons::addon_install,
             $crate::ipc::addons::addon_set_enabled,
             $crate::ipc::addons::addon_remove,
+            $crate::ipc::addons::addons_context,
+            $crate::ipc::addons::addons_list,
+            $crate::ipc::addons::addons_browse,
+            $crate::ipc::addons::addon_versions,
+            $crate::ipc::addons::addon_dependencies,
+            $crate::ipc::addons::addon_install_version,
+            $crate::ipc::addons::addon_update,
+            $crate::ipc::addons::addons_pending,
+            $crate::ipc::addons::addon_pending_cancel,
+            $crate::ipc::addons::addons_pending_apply,
             // settings
             $crate::ipc::settings::settings_get,
             $crate::ipc::settings::settings_set,
             $crate::ipc::settings::instance_settings_get,
             $crate::ipc::settings::instance_settings_set,
             $crate::ipc::settings::java_probe,
+            $crate::ipc::settings::java_runtimes,
+            $crate::ipc::settings::java_download,
         ]
     };
 }

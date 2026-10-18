@@ -26,13 +26,25 @@ const CATALOGUES = { en, es } as const;
 
 type Params = Record<string, string | number>;
 
+/**
+ * Walk a dotted key. A level may also hold a literal dotted property (the
+ * game manifests use `"seed.help"` next to `seed`), so the rest of the key is
+ * tried whole before descending another level.
+ */
 function resolve(catalogue: unknown, key: string): unknown {
-  return key.split(".").reduce<unknown>((node, part) => {
-    if (node && typeof node === "object" && part in node) {
-      return (node as Record<string, unknown>)[part];
+  const parts = key.split(".");
+  let node = catalogue;
+  for (const [i, part] of parts.entries()) {
+    if (!node || typeof node !== "object") return undefined;
+    const level = node as Record<string, unknown>;
+    if (i < parts.length - 1) {
+      const rest = parts.slice(i).join(".");
+      if (rest in level) return level[rest];
     }
-    return undefined;
-  }, catalogue);
+    if (!(part in level)) return undefined;
+    node = level[part];
+  }
+  return node;
 }
 
 function interpolate(template: string, params?: Params): string {
@@ -59,6 +71,11 @@ function systemLanguage(): Language {
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
+    // Development only: `?lang=es|en` pins the language for previews.
+    if (import.meta.env.DEV) {
+      const flag = new URLSearchParams(window.location.search).get("lang");
+      if (flag === "es" || flag === "en") return flag;
+    }
     const stored = readStoredLanguage();
     return stored === "system" || stored === null ? systemLanguage() : stored;
   });
@@ -86,8 +103,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const describeError = useCallback(
     (error: AppError) => {
+      // A `reason` param can name a more precise entry (`io_failed_in_use`).
+      const reason = error.params?.reason;
+      const precise = reason ? `errors.${error.code}_${reason}` : null;
       const base = `errors.${error.code}`;
-      const known = resolve(CATALOGUES[language], base) ?? resolve(en, base);
+      const known =
+        (precise ? resolve(CATALOGUES[language], precise) ?? resolve(en, precise) : undefined) ??
+        resolve(CATALOGUES[language], base) ??
+        resolve(en, base);
       const source = (known ?? resolve(en, "errors.unexpected")) as {
         title: string;
         cause: string;

@@ -321,6 +321,11 @@ pub fn list_installed(dir: &Path) -> AppResult<Vec<InstalledAddon>> {
     Ok(addons)
 }
 
+/// True for a jar that was switched off (renamed with the disabled suffix).
+pub fn is_disabled_name(file_name: &str) -> bool {
+    file_name.ends_with(DISABLED_SUFFIX)
+}
+
 /// Toggle an addon by renaming it, so disabling never loses the file.
 pub fn set_enabled(dir: &Path, file_name: &str, enabled: bool) -> AppResult<String> {
     let current = crate::store::paths::resolve_inside(dir, file_name)?;

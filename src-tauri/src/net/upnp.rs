@@ -104,6 +104,103 @@ impl PortForwarder {
     }
 }
 
+/// Result of the UPnP self-test shown in Settings.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpnpCheck {
+    /// A UPnP router answered on the LAN.
+    pub router_found: bool,
+    pub router_address: Option<String>,
+    /// The address the router says it has on the internet side.
+    pub external_ip: Option<String>,
+    /// `public`, `private` (double NAT: another router in front) or `cgnat`
+    /// (the provider shares one public IP between customers).
+    pub external_kind: Option<String>,
+    /// A test mapping was created and removed successfully.
+    pub mapping_works: bool,
+    pub local_ip: Option<String>,
+    /// Error code of the step that failed, if any.
+    pub failed_step: Option<String>,
+    pub detail: Option<String>,
+}
+
+fn classify(ip: std::net::IpAddr) -> &'static str {
+    match ip {
+        std::net::IpAddr::V4(v4) => {
+            let [a, b, ..] = v4.octets();
+            if a == 100 && (64..=127).contains(&b) {
+                "cgnat"
+            } else if v4.is_private() || v4.is_loopback() || v4.is_link_local() || v4.is_unspecified() {
+                "private"
+            } else {
+                "public"
+            }
+        }
+        std::net::IpAddr::V6(_) => "public",
+    }
+}
+
+/// Self-test: find the router, ask for its external address, and create then
+/// delete a short-lived test mapping. Never leaves anything behind for long:
+/// the test lease is 60 seconds even if the delete fails.
+pub async fn check() -> UpnpCheck {
+    let local = lan::primary_address();
+    let mut result = UpnpCheck {
+        router_found: false,
+        router_address: None,
+        external_ip: None,
+        external_kind: None,
+        mapping_works: false,
+        local_ip: local.map(|ip| ip.to_string()),
+        failed_step: None,
+        detail: None,
+    };
+    let gateway = match gateway().await {
+        Ok(gateway) => gateway,
+        Err(error) => {
+            result.failed_step = Some("router_not_found".into());
+            result.detail = error.detail;
+            return result;
+        }
+    };
+    result.router_found = true;
+    result.router_address = Some(gateway.addr.to_string());
+
+    match gateway.get_external_ip().await {
+        Ok(ip) => {
+            result.external_ip = Some(ip.to_string());
+            result.external_kind = Some(classify(ip).to_string());
+        }
+        Err(error) => result.detail = Some(error.to_string()),
+    }
+
+    let Some(local) = local else {
+        result.failed_step = Some("no_lan_address".into());
+        return result;
+    };
+    let test_port: u16 = 49_000 + (std::process::id() % 1000) as u16;
+    match gateway
+        .add_port(
+            PortMappingProtocol::TCP,
+            test_port,
+            SocketAddr::V4(SocketAddrV4::new(local, test_port)),
+            60,
+            "Nebula Host UPnP test",
+        )
+        .await
+    {
+        Ok(()) => {
+            result.mapping_works = true;
+            let _ = gateway.remove_port(PortMappingProtocol::TCP, test_port).await;
+        }
+        Err(error) => {
+            result.failed_step = Some("mapping_refused".into());
+            result.detail = Some(error.to_string());
+        }
+    }
+    result
+}
+
 /// The router's external address, when it will tell us.
 pub async fn external_address() -> AppResult<std::net::IpAddr> {
     gateway()

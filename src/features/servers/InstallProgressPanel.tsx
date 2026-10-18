@@ -1,7 +1,10 @@
 /**
- * Installing takes 30–90 seconds for a modded server. That wait gets a
+ * Installing takes 30 to 90 seconds for a modded server. That wait gets a
  * designed surface: the real phases, in order, with the one in progress named
- * — never an unlabelled spinner that leaves someone wondering if it hung.
+ * (never an unlabelled spinner that leaves someone wondering if it hung).
+ *
+ * Each phase row carries its state as `data-state` (done / active / failed /
+ * pending); the lamp, check and weight are CSS (servers.css).
  */
 
 import { useInstallProgress } from "@/hooks/useBackend";
@@ -20,6 +23,8 @@ const LABEL: Record<Phase, string> = {
   ready: "install.ready",
 };
 
+type RowState = "done" | "active" | "failed" | "pending";
+
 export function InstallProgressPanel({
   instanceId,
   error,
@@ -37,39 +42,39 @@ export function InstallProgressPanel({
         ? "resolving"
         : ((progress?.phase ?? "resolving") as Phase);
   const currentIndex = PHASES.indexOf(current);
+  const failed = progress?.phase === "failed" || Boolean(error);
+  const ready = progress?.phase === "ready";
 
   return (
     <div className="flex flex-col gap-4">
-      <ol className="flex flex-col gap-2.5">
+      <ol className="install-phases">
         {PHASES.map((phase, index) => {
-          const done = index < currentIndex || progress?.phase === "ready";
-          const active = index === currentIndex && progress?.phase !== "ready";
+          const state: RowState =
+            index < currentIndex || ready
+              ? "done"
+              : index === currentIndex
+                ? failed
+                  ? "failed"
+                  : "active"
+                : "pending";
 
           return (
-            <li key={phase} className="flex items-start gap-3">
-              <span
-                className="mt-[3px] flex h-4 w-4 flex-none items-center justify-center rounded-full border"
-                style={{
-                  borderColor: done || active ? "var(--accent)" : "var(--line-strong)",
-                  background: done ? "var(--accent)" : "transparent",
-                  color: "var(--text-on-accent)",
-                }}
-              >
-                {done ? <Icon name="check" size={10} /> : null}
+            <li
+              key={phase}
+              className="install-phase"
+              data-state={state}
+              aria-current={state === "active" ? "step" : undefined}
+            >
+              <span className="install-phase-mark" aria-hidden="true">
+                {state === "done" ? <Icon name="check" size={10} /> : null}
               </span>
 
-              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                <span
-                  className="text-[length:var(--text-sm)]"
-                  style={{
-                    color: active ? "var(--text)" : "var(--text-muted)",
-                    fontWeight: active ? 600 : 400,
-                  }}
-                >
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <span className="install-phase-label">
                   {t(LABEL[phase], phaseParams(progress))}
                 </span>
 
-                {active && progress?.phase === "downloading" && progress.total ? (
+                {state === "active" && progress?.phase === "downloading" && progress.total ? (
                   <Meter
                     value={progress.received}
                     max={progress.total}
@@ -82,8 +87,15 @@ export function InstallProgressPanel({
         })}
       </ol>
 
-      {progress?.phase === "failed" || error ? (
-        <ErrorNotice error={error ?? { code: progress?.phase === "failed" ? progress.code : "unexpected", params: {} }} />
+      {failed ? (
+        <ErrorNotice
+          error={
+            error ?? {
+              code: progress?.phase === "failed" ? progress.code : "unexpected",
+              params: {},
+            }
+          }
+        />
       ) : null}
     </div>
   );

@@ -1,238 +1,101 @@
-/** Mods and plugins: what is installed, and what could be. */
+/**
+ * Mods and plugins: what is installed (identified on Modrinth by file hash),
+ * and what could be (Modrinth search narrowed to this server's loader and
+ * game version). Cards or list, remembered.
+ */
 
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { keys, useGames } from "@/hooks/useBackend";
-import { useI18n } from "@/i18n";
-import { api } from "@/lib/ipc";
-import { formatBytes, formatCount } from "@/lib/format";
+import { useAddonContext } from "@/hooks/useBackend";
 import type { InstanceView } from "@/types/api";
-import { Button, EmptyState, ErrorNotice, Panel, Tabs, TextInput } from "@/ui";
+import { EmptyState, ErrorNotice, Panel, Segmented, Skeleton, Tabs } from "@/ui";
+
+import { BrowseTab } from "./addons/BrowseTab";
+import { InstalledTab } from "./addons/InstalledTab";
+import { ProjectDialog, type ProjectTarget } from "./addons/ProjectDialog";
+import { primaryLoader, useAddonCopy, useAddonView, type AddonView } from "./addons/util";
+import "./AddonsPanel.css";
 
 type Mode = "installed" | "browse";
 
 export function AddonsPanel({ instance }: { instance: InstanceView }) {
-  const { t } = useI18n();
-  const { data: games } = useGames();
+  const { t } = useAddonCopy();
+  const context = useAddonContext(instance.id);
   const [mode, setMode] = useState<Mode>("installed");
+  const [view, setView] = useAddonView();
+  const [detail, setDetail] = useState<ProjectTarget | null>(null);
 
-  const distribution = games
-    ?.find((game) => game.id === instance.game)
-    ?.distributions.find((candidate) => candidate.id === instance.build.distribution);
+  if (context.error) {
+    return <ErrorNotice error={context.error} onRetry={() => void context.refetch()} />;
+  }
 
-  if (distribution && !distribution.addon_dir) {
+  if (!context.data) {
     return (
-      <Panel title={t("addons.title")}>
-        <EmptyState icon="puzzle" title={t("addons.unsupported")} />
+      <div className="flex flex-col gap-3" aria-hidden="true">
+        <Skeleton className="h-9 w-64" />
+        <Skeleton className="h-40 rounded-[var(--radius-lg)]" />
+      </div>
+    );
+  }
+
+  const ctx = context.data;
+
+  if (!ctx.supported) {
+    return (
+      <Panel>
+        <EmptyState icon="puzzle" title={t("addons.unsupported")} hint={t("addons.unsupportedHint")} />
       </Panel>
     );
   }
 
-  return (
-    <div className="flex flex-col gap-4">
-      <Tabs<Mode>
-        active={mode}
-        onChange={setMode}
-        tabs={[
-          { id: "installed", label: t("addons.installed") },
-          { id: "browse", label: t("addons.browse") },
-        ]}
-      />
-      {mode === "installed" ? <Installed instance={instance} /> : <Browse instance={instance} />}
-    </div>
-  );
-}
-
-function Installed({ instance }: { instance: InstanceView }) {
-  const { t } = useI18n();
-  const client = useQueryClient();
-
-  const installed = useQuery({
-    queryKey: keys.addons(instance.id),
-    queryFn: () => api.addons.installed(instance.id),
-  });
-
-  const invalidate = () => client.invalidateQueries({ queryKey: keys.addons(instance.id) });
-
-  const toggle = useMutation({
-    mutationFn: ({ fileName, enabled }: { fileName: string; enabled: boolean }) =>
-      api.addons.setEnabled(instance.id, fileName, enabled),
-    onSuccess: invalidate,
-  });
-  const remove = useMutation({
-    mutationFn: (fileName: string) => api.addons.remove(instance.id, fileName),
-    onSuccess: invalidate,
-  });
-  const update = useMutation({
-    mutationFn: ({ url, fileName, old }: { url: string; fileName: string; old: string }) =>
-      api.addons.remove(instance.id, old).then(() => api.addons.install(instance.id, url, fileName)),
-    onSuccess: invalidate,
-  });
-
-  const [entries = [], meta = []] = installed.data ?? [];
-
-  if (installed.error) {
-    return <ErrorNotice error={installed.error} onRetry={() => void installed.refetch()} />;
-  }
-
-  if (entries.length === 0) {
-    return (
-      <Panel title={t("addons.installed")}>
-        <EmptyState icon="puzzle" title={t("addons.none")} hint={t("addons.noneHint")} />
-      </Panel>
-    );
-  }
+  const kind = ctx.project_type === "plugin" ? "plugin" : "mod";
 
   return (
-    <Panel title={t("addons.installed")}>
-      <ul>
-        {entries.map((entry) => {
-          const known = meta.find((candidate) => candidate.file_name === entry.file_name);
-          return (
-            <li
-              key={entry.id}
-              className="flex items-center gap-3 border-b border-[color:var(--line)] px-4 py-3 last:border-0"
-            >
-              {known?.icon_url ? (
-                <img src={known.icon_url} alt="" width={32} height={32} className="flex-none rounded-[var(--radius-sm)]" />
-              ) : (
-                <span className="h-8 w-8 flex-none rounded-[var(--radius-sm)]" style={{ background: "var(--surface-raised)" }} />
-              )}
+    <div className="addons flex flex-col gap-4">
+      <div className="addons-bar">
+        <Tabs<Mode>
+          label={t("addons.title")}
+          active={mode}
+          onChange={setMode}
+          tabs={[
+            { id: "installed", label: t("addons.installed") },
+            { id: "browse", label: t("addons.browse"), icon: "search" },
+          ]}
+        />
+        <p className="addons-target">
+          {t(`addons.target_${kind}`, {
+            loader: primaryLoader(ctx),
+            version: ctx.game_version,
+          })}
+          {ctx.addon_dir ? <span className="mono">{ctx.addon_dir}/</span> : null}
+        </p>
+        <Segmented<AddonView>
+          label={t("addons.viewLabel")}
+          size="sm"
+          value={view}
+          onChange={setView}
+          options={[
+            { id: "cards", label: t("servers.densityCards") },
+            { id: "list", label: t("servers.densityList") },
+          ]}
+        />
+      </div>
 
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium" style={{ opacity: entry.enabled ? 1 : 0.55 }}>
-                  {known?.title ?? entry.name}
-                </p>
-                <p className="mono truncate text-[length:var(--text-xs)] text-[color:var(--text-faint)]">
-                  {known?.installed_version_number ?? entry.file_name}
-                </p>
-              </div>
-
-              {known?.update_available && known.latest_download_url && known.latest_file_name ? (
-                <Button
-                  size="sm"
-                  disabled={update.isPending}
-                  onClick={() =>
-                    update.mutate({
-                      url: known.latest_download_url!,
-                      fileName: known.latest_file_name!,
-                      old: entry.file_name,
-                    })
-                  }
-                >
-                  {t("addons.update", { version: known.latest_version_number ?? "" })}
-                </Button>
-              ) : null}
-
-              <Button
-                size="sm"
-                variant="quiet"
-                onClick={() => toggle.mutate({ fileName: entry.file_name, enabled: !entry.enabled })}
-              >
-                {entry.enabled ? t("addons.disable") : t("addons.enable")}
-              </Button>
-              <Button
-                size="sm"
-                variant="quiet"
-                icon="trash"
-                iconOnly
-                onClick={() => remove.mutate(entry.file_name)}
-              >
-                {t("actions.delete")}
-              </Button>
-            </li>
-          );
-        })}
-      </ul>
-    </Panel>
-  );
-}
-
-function Browse({ instance }: { instance: InstanceView }) {
-  const { t, language } = useI18n();
-  const client = useQueryClient();
-  const [query, setQuery] = useState("");
-  const [submitted, setSubmitted] = useState("");
-
-  const results = useQuery({
-    queryKey: ["addons", instance.id, "search", submitted],
-    queryFn: () => api.addons.search(instance.id, submitted),
-  });
-
-  const install = useMutation({
-    mutationFn: ({ url, fileName }: { url: string; fileName: string }) =>
-      api.addons.install(instance.id, url, fileName),
-    onSuccess: () => client.invalidateQueries({ queryKey: keys.addons(instance.id) }),
-  });
-
-  return (
-    <Panel
-      title={t("addons.browse")}
-      actions={
-        <div className="flex gap-2">
-          <TextInput
-            value={query}
-            placeholder={t("addons.searchPlaceholder")}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => event.key === "Enter" && setSubmitted(query)}
+      <div role="tabpanel" aria-label={mode === "installed" ? t("addons.installed") : t("addons.browse")}>
+        {mode === "installed" ? (
+          <InstalledTab
+            instance={instance}
+            context={ctx}
+            view={view}
+            onOpenProject={setDetail}
+            onBrowse={() => setMode("browse")}
           />
-          <Button size="sm" icon="search" onClick={() => setSubmitted(query)}>
-            {t("actions.search")}
-          </Button>
-        </div>
-      }
-    >
-      {results.error ? (
-        <div className="p-4">
-          <ErrorNotice error={results.error} onRetry={() => void results.refetch()} />
-        </div>
-      ) : null}
+        ) : (
+          <BrowseTab instance={instance} context={ctx} view={view} onOpenProject={setDetail} />
+        )}
+      </div>
 
-      {install.error ? (
-        <div className="p-4">
-          <ErrorNotice error={install.error} compact />
-        </div>
-      ) : null}
-
-      <ul>
-        {results.data?.entries.map((entry) => (
-          <li
-            key={entry.project_id}
-            className="flex items-start gap-3 border-b border-[color:var(--line)] px-4 py-3 last:border-0"
-          >
-            {entry.icon_url ? (
-              <img src={entry.icon_url} alt="" width={40} height={40} className="flex-none rounded-[var(--radius-sm)]" />
-            ) : (
-              <span className="h-10 w-10 flex-none rounded-[var(--radius-sm)]" style={{ background: "var(--surface-raised)" }} />
-            )}
-
-            <div className="min-w-0 flex-1">
-              <p className="font-medium">{entry.title}</p>
-              <p className="line-clamp-2 text-[length:var(--text-sm)] text-[color:var(--text-muted)]">
-                {entry.description}
-              </p>
-              <p className="mono text-[length:var(--text-xs)] text-[color:var(--text-faint)]">
-                {t("addons.downloads", { count: formatCount(entry.downloads, language) })} ·{" "}
-                {formatBytes(entry.featured_version.file_size)}
-              </p>
-            </div>
-
-            <Button
-              size="sm"
-              disabled={install.isPending}
-              onClick={() =>
-                install.mutate({
-                  url: entry.featured_version.download_url,
-                  fileName: entry.featured_version.file_name,
-                })
-              }
-            >
-              {install.isPending ? t("addons.installing") : t("addons.install")}
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </Panel>
+      <ProjectDialog instance={instance} context={ctx} target={detail} onClose={() => setDetail(null)} />
+    </div>
   );
 }

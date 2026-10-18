@@ -25,7 +25,10 @@ pub async fn backup_restore(
     instance_id: String,
     backup_id: String,
 ) -> AppResult<()> {
-    backups::restore(state.inner(), &instance_id, &backup_id).await
+    backups::restore(state.inner(), &instance_id, &backup_id).await?;
+    // The folder is now the backup's: its size and its addons changed.
+    state.after_folder_change(&instance_id).await;
+    Ok(())
 }
 
 #[tauri::command]

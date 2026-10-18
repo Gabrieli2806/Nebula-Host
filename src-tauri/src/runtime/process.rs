@@ -8,11 +8,12 @@ use std::collections::HashMap;
 use std::io::{BufReader, Write};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, RwLock as StdRwLock};
+use std::sync::{Arc, Mutex as StdMutex, RwLock as StdRwLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use chrono::{DateTime, Utc};
+use regex::Regex;
 use tokio::sync::{mpsc, RwLock};
 
 use crate::error::{AppError, AppResult, ErrorCode};
@@ -34,6 +35,8 @@ pub enum RuntimeEvent {
     Status(String, InstanceStatus),
     PlayerJoined(String, String),
     PlayerLeft(String, String),
+    /// `(instance, name, uuid)`: the server said who a connecting player is.
+    PlayerIdentified(String, String, String),
     TickRate(String, f32),
     /// The process ended. `expected` is false for a crash.
     Exited { instance_id: String, expected: bool, code: Option<i32> },
@@ -78,6 +81,75 @@ pub struct ProcessSupervisor {
     /// Per-instance deadline until which console output is swallowed, set when
     /// the app issues a background command. Commands the user typed set none.
     silence_until: Arc<StdRwLock<HashMap<String, Instant>>>,
+    /// Active output captures, at most one per instance. See [`Capture`].
+    captures: Arc<StdMutex<HashMap<String, CaptureSink>>>,
+}
+
+/// Where captured lines go while a [`Capture`] is open.
+struct CaptureSink {
+    matches: Arc<Vec<Regex>>,
+    tx: mpsc::UnboundedSender<String>,
+    /// Shared with the [`Capture`]; set when the user's own command closed
+    /// it, and used to tell this sink from a later one for the same server.
+    interrupted: Arc<AtomicBool>,
+}
+
+/// An open capture of one server's output.
+///
+/// While it is open, every stdout line matching one of its patterns is handed
+/// to the capture *instead of* the console. That is how the app asks the
+/// server something (`help`) without the answer landing in front of the user.
+/// Lines that do not match flow to the console as usual, so a player joining
+/// mid-capture is never lost. Dropping the capture closes it.
+///
+/// A command the user types closes any open capture at once: from then on
+/// the output is the user's answer and must reach the console, even if it
+/// looks like the one the app was waiting for (they may have typed `help`).
+/// The capture then reports [`Capture::interrupted`].
+pub struct Capture {
+    instance_id: String,
+    captures: Arc<StdMutex<HashMap<String, CaptureSink>>>,
+    rx: mpsc::UnboundedReceiver<String>,
+    interrupted: Arc<AtomicBool>,
+}
+
+impl Capture {
+    /// Collect lines until the output goes quiet for `idle`, or `max` passes.
+    /// Waits up to `first` for the first line: a busy server answers late.
+    pub async fn collect(&mut self, first: Duration, idle: Duration, max: Duration) -> Vec<String> {
+        let started = Instant::now();
+        let mut lines = Vec::new();
+        loop {
+            let wait = if lines.is_empty() { first } else { idle };
+            let remaining = max.saturating_sub(started.elapsed());
+            if remaining.is_zero() {
+                break;
+            }
+            match tokio::time::timeout(wait.min(remaining), self.rx.recv()).await {
+                Ok(Some(line)) => lines.push(line),
+                Ok(None) | Err(_) => break,
+            }
+        }
+        lines
+    }
+
+    /// The user sent a command while this was open, so it closed early and
+    /// what it collected may be incomplete.
+    pub fn interrupted(&self) -> bool {
+        self.interrupted.load(Ordering::SeqCst)
+    }
+}
+
+impl Drop for Capture {
+    fn drop(&mut self) {
+        if let Ok(mut map) = self.captures.lock() {
+            // Only our own sink: an interrupted capture's slot may already
+            // belong to a newer one.
+            if map.get(&self.instance_id).is_some_and(|sink| Arc::ptr_eq(&sink.interrupted, &self.interrupted)) {
+                map.remove(&self.instance_id);
+            }
+        }
+    }
 }
 
 impl ProcessSupervisor {
@@ -146,6 +218,7 @@ impl ProcessSupervisor {
         let parser = request.parser.clone();
         let tick_rates = self.tick_rates.clone();
         let silence_until = self.silence_until.clone();
+        let captures = self.captures.clone();
 
         thread::spawn(move || {
             let mut reader = BufReader::new(stdout);
@@ -166,6 +239,13 @@ impl ProcessSupervisor {
                     let _ = events_tx
                         .blocking_send(RuntimeEvent::PlayerLeft(instance_id.clone(), name.clone()));
                 }
+                if let Some((name, uuid)) = &reading.identity {
+                    let _ = events_tx.blocking_send(RuntimeEvent::PlayerIdentified(
+                        instance_id.clone(),
+                        name.clone(),
+                        uuid.clone(),
+                    ));
+                }
                 if let Some(rate) = reading.tick_rate {
                     if let Ok(mut map) = tick_rates.write() {
                         map.insert(instance_id.clone(), rate);
@@ -179,11 +259,21 @@ impl ProcessSupervisor {
                     .and_then(|map| map.get(&instance_id).copied())
                     .is_some_and(|deadline| Instant::now() < deadline);
 
-                if reading.visible && !(silenced && reading.tick_rate.is_some()) {
+                let captured = captures.lock().ok().is_some_and(|map| {
+                    map.get(&instance_id).is_some_and(|sink| {
+                        sink.matches.iter().any(|re| re.is_match(&reading.text))
+                            && sink.tx.send(reading.text.clone()).is_ok()
+                    })
+                });
+
+                if !captured && reading.visible && !(silenced && reading.tick_rate.is_some()) {
+                    let speaker = reading.speaker();
                     let _ = console_tx.blocking_send(ConsoleLine {
                         timestamp: Utc::now(),
                         level: reading.level,
                         message: reading.text,
+                        body: reading.body,
+                        speaker,
                     });
                 }
             }
@@ -201,6 +291,11 @@ impl ProcessSupervisor {
         let processes = self.processes.clone();
         let tick_rates = self.tick_rates.clone();
         let resources = self.resources.clone();
+        // Captured here, on the async caller: the reaper below is a plain OS
+        // thread with no runtime context, so `Handle::try_current()` inside it
+        // always failed and the exited server stayed registered as running —
+        // every later start (and every wake-on-join) then hit "already running".
+        let runtime = tokio::runtime::Handle::try_current().ok();
 
         thread::spawn(move || {
             let status = child.wait();
@@ -216,12 +311,19 @@ impl ProcessSupervisor {
                 map.remove(&instance_id);
             }
 
-            let cleanup_id = instance_id.clone();
-            tokio::runtime::Handle::try_current().ok().map(|handle| {
-                handle.spawn(async move {
-                    processes.write().await.remove(&cleanup_id);
-                })
-            });
+            // Deregister BEFORE reporting the exit, so whoever reacts to
+            // `Exited` (auto-restart, wake-on-join, a user pressing Start)
+            // already sees the server as not running.
+            match &runtime {
+                Some(handle) => handle.block_on(async {
+                    processes.write().await.remove(&instance_id);
+                }),
+                None => {
+                    if let Ok(mut map) = processes.try_write() {
+                        map.remove(&instance_id);
+                    }
+                }
+            }
 
             let _ = events_tx.blocking_send(RuntimeEvent::Exited { instance_id, expected, code });
         });
@@ -249,8 +351,14 @@ impl ProcessSupervisor {
         Ok(())
     }
 
-    /// Send a command the user typed.
+    /// Send a command the user typed. Closes any open capture first, so the
+    /// answer is shown rather than swallowed.
     pub async fn send_command(&self, instance_id: &str, command: &str) -> AppResult<()> {
+        if let Ok(mut map) = self.captures.lock() {
+            if let Some(sink) = map.remove(instance_id) {
+                sink.interrupted.store(true, Ordering::SeqCst);
+            }
+        }
         self.write_command(instance_id, command, false).await
     }
 
@@ -279,6 +387,25 @@ impl ProcessSupervisor {
         writeln!(stdin, "{command}")?;
         stdin.flush()?;
         Ok(())
+    }
+
+    /// Open a capture of this server's output for lines matching `matches`.
+    /// Refused while another capture of the same server is open.
+    pub fn capture(&self, instance_id: &str, matches: Vec<Regex>) -> AppResult<Capture> {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let mut map = self
+            .captures
+            .lock()
+            .map_err(|_| AppError::unexpected("capture registry poisoned"))?;
+        if map.contains_key(instance_id) {
+            return Err(AppError::new(ErrorCode::NodeBusy).with("instance", instance_id));
+        }
+        let interrupted = Arc::new(AtomicBool::new(false));
+        map.insert(
+            instance_id.to_string(),
+            CaptureSink { matches: Arc::new(matches), tx, interrupted: interrupted.clone() },
+        );
+        Ok(Capture { instance_id: instance_id.to_string(), captures: self.captures.clone(), rx, interrupted })
     }
 
     pub async fn is_running(&self, instance_id: &str) -> bool {
@@ -368,11 +495,7 @@ fn pump_stderr(
         let mut reader = BufReader::new(stderr);
         let mut buf = Vec::new();
         while let Some(line) = read_line_lossy(&mut reader, &mut buf) {
-            let _ = console_tx.blocking_send(ConsoleLine {
-                timestamp: Utc::now(),
-                level: ConsoleLevel::Error,
-                message: line,
-            });
+            let _ = console_tx.blocking_send(ConsoleLine::new(ConsoleLevel::Error, line));
         }
     });
 }
@@ -388,6 +511,47 @@ mod tests {
         assert_eq!(err.code, ErrorCode::InstanceNotRunning);
     }
 
+    /// Regression: the reaper thread had no runtime context, so an exited
+    /// server stayed registered and every later start or wake-on-join failed
+    /// with "already running".
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn an_exited_process_is_no_longer_running_when_exit_is_reported() {
+        let supervisor = ProcessSupervisor::new();
+        let (program, args) = if cfg!(windows) {
+            ("cmd".to_string(), vec!["/C".to_string(), "exit 0".to_string()])
+        } else {
+            ("sh".to_string(), vec!["-c".to_string(), "exit 0".to_string()])
+        };
+        let request = StartRequest {
+            instance_id: "short".into(),
+            instance_name: "short".into(),
+            plan: LaunchPlan { program, args, working_dir: std::env::temp_dir(), env: Default::default() },
+            runtime_kind: RuntimeKind::HostProcess,
+            parser: Arc::new(
+                ConsoleParser::new(&crate::game::minecraft::manifest().console).expect("patterns compile"),
+            ),
+            stop_command: "stop".into(),
+            container_image: None,
+            port: 0,
+        };
+        let (console_tx, _console_rx) = mpsc::channel(64);
+        let (events_tx, mut events_rx) = mpsc::channel(64);
+        supervisor.start(request, console_tx, events_tx).await.expect("starts");
+
+        let exited = tokio::time::timeout(Duration::from_secs(10), async {
+            while let Some(event) = events_rx.recv().await {
+                if matches!(event, RuntimeEvent::Exited { .. }) {
+                    return true;
+                }
+            }
+            false
+        })
+        .await
+        .expect("exit reported in time");
+        assert!(exited);
+        assert!(!supervisor.is_running("short").await, "deregistered before Exited is sent");
+    }
+
     #[tokio::test]
     async fn commands_to_a_stopped_server_are_refused() {
         let supervisor = ProcessSupervisor::new();
@@ -401,6 +565,51 @@ mod tests {
         let resources = supervisor.resources("missing");
         assert_eq!(resources.cpu_percent, 0.0);
         assert_eq!(resources.memory_used_mb, 0);
+    }
+
+    #[tokio::test]
+    async fn one_capture_per_instance_and_dropping_closes_it() {
+        let supervisor = ProcessSupervisor::new();
+        let first = supervisor.capture("a", vec![]).expect("first capture");
+        assert!(supervisor.capture("a", vec![]).is_err(), "second capture refused");
+        assert!(supervisor.capture("b", vec![]).is_ok(), "other instances unaffected");
+        drop(first);
+        assert!(supervisor.capture("a", vec![]).is_ok(), "reopened after drop");
+    }
+
+    #[tokio::test]
+    async fn a_user_command_closes_an_open_capture() {
+        let supervisor = ProcessSupervisor::new();
+        let mut capture = supervisor.capture("a", vec![]).expect("capture");
+        // Refused (nothing is running), but the capture must close anyway.
+        let _ = supervisor.send_command("a", "help").await;
+        assert!(capture.interrupted());
+        assert!(supervisor.captures.lock().expect("lock").get("a").is_none());
+        let lines = capture
+            .collect(Duration::from_secs(5), Duration::from_millis(20), Duration::from_secs(5))
+            .await;
+        assert!(lines.is_empty(), "closed at once, no waiting");
+        // A newer capture is not torn down when the interrupted one drops.
+        let newer = supervisor.capture("a", vec![]).expect("reopen");
+        drop(capture);
+        assert!(supervisor.captures.lock().expect("lock").get("a").is_some());
+        drop(newer);
+    }
+
+    #[tokio::test]
+    async fn a_capture_collects_until_quiet() {
+        let supervisor = ProcessSupervisor::new();
+        let mut capture = supervisor.capture("a", vec![]).expect("capture");
+        {
+            let map = supervisor.captures.lock().expect("lock");
+            let sink = map.get("a").expect("registered");
+            sink.tx.send("one".into()).expect("send");
+            sink.tx.send("two".into()).expect("send");
+        }
+        let lines = capture
+            .collect(Duration::from_millis(50), Duration::from_millis(20), Duration::from_secs(1))
+            .await;
+        assert_eq!(lines, vec!["one".to_string(), "two".to_string()]);
     }
 
     #[test]

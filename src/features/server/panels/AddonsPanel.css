@@ -1,0 +1,701 @@
+/*
+ * Nebula Host: AddonsPanel.css. Mods & plugins panel (installed, browse,
+ * project dialog). Owner: Addons agent. Extends .addon-icon from panels.css.
+ */
+
+@layer components {
+  /* == top bar: tabs · target · view ================================== */
+
+  .addons-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-4);
+  }
+
+  .addons-target {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+  }
+
+  .addons-target .mono {
+    font-size: var(--text-xs);
+    color: var(--text-faint);
+  }
+
+  /* == toolbar: search, sort, summary ================================== */
+
+  .addons-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    min-height: 36px;
+  }
+
+  .addons-search {
+    position: relative;
+    display: flex;
+    flex: 0 1 280px;
+    min-width: 200px;
+    align-items: center;
+  }
+
+  .addons-search-wide {
+    flex-basis: 420px;
+  }
+
+  .addons-search > svg {
+    position: absolute;
+    left: 10px;
+    color: var(--text-faint);
+    pointer-events: none;
+  }
+
+  .addons-search .field {
+    width: 100%;
+    padding-left: 32px;
+  }
+
+  .addons-sort {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .addons-sort .field {
+    width: auto;
+    min-width: 168px;
+  }
+
+  .addons-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .addons-toolbar .addons-summary {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .addons-summary-end {
+    justify-content: flex-end;
+  }
+
+  .addons-summary-accent {
+    color: var(--accent-ink);
+    font-weight: var(--weight-control);
+  }
+
+  /* "N updates available" filters the list to those; pressed = filtering. */
+  .addons-summary-filter {
+    padding: 0 2px;
+    border-radius: var(--radius-sm);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+    text-underline-offset: 3px;
+    transition: text-decoration-color var(--duration) var(--ease);
+  }
+
+  .addons-summary-filter:hover,
+  .addons-summary-filter[aria-pressed="true"] {
+    text-decoration-color: currentColor;
+  }
+
+  /* A switched-off addon: the switch says it; the row only steps back. */
+  .addons-row[data-disabled] .addons-meta,
+  .addons-card[data-disabled] .addons-meta,
+  .addons-card[data-disabled] .addons-desc {
+    opacity: 0.7;
+  }
+
+  /* A quiet, non-error notice (Modrinth unreachable, partial failures). */
+  .addons-note {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid color-mix(in srgb, var(--status-starting) 35%, transparent);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--status-starting) 7%, transparent);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+  }
+
+  .addons-note > svg {
+    flex: none;
+    color: var(--status-starting);
+  }
+
+  .addons-note > span {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* == collection: list (rows in one card) or cards (grid) ============= */
+
+  .addons-collection {
+    transition: opacity var(--duration-fast) var(--ease);
+  }
+
+  .addons-collection[data-busy] {
+    opacity: 0.6;
+  }
+
+  .addons-collection[data-view="cards"] {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(272px, 1fr));
+    gap: var(--space-3);
+  }
+
+  .addons-collection[data-view="list"] {
+    overflow: hidden;
+    background: var(--card-wash), var(--surface-card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+  }
+
+  .addons-name {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: var(--weight-strong);
+    color: var(--text-heading);
+    text-align: left;
+  }
+
+  .addons-name-link {
+    border-radius: 4px;
+    cursor: pointer;
+    transition: color var(--duration-fast) var(--ease);
+  }
+
+  .addons-name-link:hover {
+    color: var(--accent-ink);
+  }
+
+  .addons-name-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .addons-author {
+    font-size: var(--text-xs);
+    color: var(--text-faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .addons-meta {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-1) var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--text-faint);
+  }
+
+  .addons-meta > span {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .addons-meta > .truncate {
+    display: block;
+  }
+
+  .addons-desc {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: var(--text-sm);
+    line-height: var(--leading-body, 1.5);
+    color: var(--text-muted);
+  }
+
+  .addons-desc-line {
+    -webkit-line-clamp: 1;
+  }
+
+  .addons-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .addons-actions {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .addons-installed {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-control);
+    color: var(--status-online);
+  }
+
+  /* -- list rows -- */
+
+  .addons-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 60px;
+    padding: var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--line);
+    transition: background-color var(--duration-fast) var(--ease);
+  }
+
+  .addons-row:last-child {
+    border-bottom: 0;
+  }
+
+  .addons-row:hover {
+    background-color: var(--quiet-hover);
+  }
+
+  .addons-row-hit {
+    min-height: 72px;
+  }
+
+  .addons-row-body {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .addons-row-head {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .addons-row-head .addons-name {
+    flex: 0 1 auto;
+  }
+
+  .addons-row-head .tag,
+  .addons-row-head .addons-author {
+    flex: none;
+  }
+
+  /* -- cards -- */
+
+  .addons-card {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--card-wash), var(--surface-card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    transition:
+      border-color var(--duration-fast) var(--ease),
+      background-color var(--duration-fast) var(--ease);
+  }
+
+  .addons-card:hover {
+    border-color: var(--line-strong);
+    background-color: var(--surface-card-hover);
+  }
+
+  .addons-card-head {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .addons-card-head .addons-meta,
+  .addons-card-head .addons-author {
+    margin-top: 2px;
+  }
+
+  .addons-card .addons-desc {
+    min-height: calc(2 * 1.5em);
+  }
+
+  .addons-card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-top: auto;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--line);
+  }
+
+  .addons-card-foot > .addons-actions {
+    width: 100%;
+  }
+
+  /* Installed cards: update on the left, toggle and remove on the right. */
+  .addons-card-foot > .addons-actions > .toggle {
+    margin-left: auto;
+  }
+
+  .addons-card-hit .addons-card-foot {
+    min-height: 45px;
+  }
+
+  /* Disabled addons go quiet; names stay readable. */
+  [data-disabled] > .addons-row-body .addons-name,
+  .addons-card[data-disabled] .addons-name {
+    color: var(--text-muted);
+  }
+
+  [data-disabled] .addon-icon {
+    opacity: 0.5;
+    filter: grayscale(1);
+  }
+
+  /* == pager =========================================================== */
+
+  .addons-pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    padding-top: var(--space-1);
+  }
+
+  /* == project dialog ================================================== */
+
+  .addons-project {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  .addons-project-head {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .addons-project-by {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--text-faint);
+  }
+
+  .addons-project-desc {
+    margin-top: var(--space-1);
+    color: var(--text-muted);
+  }
+
+  .addons-project-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .addons-project-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .addons-section-title {
+    font-size: var(--text-base);
+    font-weight: var(--weight-display);
+    color: var(--text-heading);
+  }
+
+  .addons-versions {
+    display: flex;
+    max-height: 232px;
+    flex-direction: column;
+    overflow-y: auto;
+    background: var(--well-fill);
+    border-radius: var(--radius);
+    box-shadow:
+      inset 0 0 0 1px var(--line),
+      var(--shadow-inset);
+  }
+
+  .addons-version {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease);
+  }
+
+  .addons-version:last-child {
+    border-bottom: 0;
+  }
+
+  .addons-version:hover {
+    background-color: var(--quiet-hover);
+  }
+
+  .addons-version[data-selected] {
+    background-color: var(--accent-wash);
+  }
+
+  .addons-version:has(:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  .addons-version-mark {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--line-hover);
+    border-radius: 50%;
+    transition: border-color var(--duration-fast) var(--ease);
+  }
+
+  .addons-version[data-selected] .addons-version-mark {
+    border: 4px solid var(--accent);
+  }
+
+  .addons-version-number {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-heading);
+  }
+
+  .addons-version-meta {
+    display: flex;
+    gap: var(--space-3);
+    margin-left: auto;
+    font-size: var(--text-xs);
+    color: var(--text-faint);
+  }
+
+  .addons-deps {
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  .addons-dep {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 48px;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .addons-dep:last-child {
+    border-bottom: 0;
+  }
+
+  .addons-check {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  .addons-check input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  /* The footer rides the dialog body's bottom edge while it scrolls. Its
+     side bleed is painted with shadows (they add no scroll overflow): the
+     surface first, then the hairline peeking out 1px above it. */
+  .addons-project-foot {
+    --bleed: var(--space-5);
+    position: sticky;
+    bottom: calc(-1 * var(--bleed));
+    margin-bottom: calc(-1 * var(--bleed));
+    padding: var(--space-3) 0 var(--space-4);
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow:
+      calc(-1 * var(--bleed)) 0 0 0 var(--surface),
+      var(--bleed) 0 0 0 var(--surface),
+      calc(-1 * var(--bleed)) -1px 0 0 var(--line),
+      var(--bleed) -1px 0 0 var(--line);
+  }
+
+  @media (max-width: 720px) {
+    .addons-target {
+      order: 3;
+      flex-basis: 100%;
+    }
+
+    .addons-version-meta {
+      flex-basis: 100%;
+      margin-left: 22px;
+    }
+
+    .addons-row {
+      flex-wrap: wrap;
+    }
+
+    .addons-row > .addons-actions {
+      margin-left: 48px;
+    }
+  }
+
+  /* == pending changes (server running) ================================ */
+
+  /* The queue of changes waiting for the server to stop: an accent frame
+     while it simply waits, the warning tone once something failed. */
+  .addons-pending {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: 12px 14px;
+    border: 1px solid var(--accent-line);
+    border-radius: var(--radius-lg);
+    background: var(--accent-wash);
+  }
+
+  .addons-pending[data-failed] {
+    border-color: color-mix(in srgb, var(--status-starting) 45%, transparent);
+    background: var(--status-starting-dim);
+  }
+
+  .addons-pending-head {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .addons-pending-head > svg {
+    flex: none;
+    margin-top: 3px;
+    color: var(--accent-ink);
+  }
+
+  .addons-pending[data-failed] .addons-pending-head > svg {
+    color: var(--status-starting);
+  }
+
+  .addons-pending-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .addons-pending-hint {
+    margin-top: 2px;
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+  }
+
+  .addons-pending-list {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  .addons-pending-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: 8px 10px;
+  }
+
+  .addons-pending-row + .addons-pending-row {
+    border-top: 1px solid var(--line);
+  }
+
+  .addons-pending-kind {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin-top: 1px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-raised);
+    color: var(--accent-ink);
+  }
+
+  .addons-pending-kind[data-action="remove"] {
+    color: var(--status-crashed);
+  }
+
+  .addons-pending-what {
+    display: flex;
+    min-width: 0;
+    align-items: baseline;
+    gap: 6px;
+    font-size: var(--text-sm);
+    color: var(--text);
+  }
+
+  .addons-pending-verb {
+    flex: none;
+    font-weight: 600;
+  }
+
+  .addons-pending-file {
+    font-size: var(--text-xs);
+    color: var(--text-faint);
+  }
+
+  /* The badge on an installed jar with a change queued, and the row itself
+     marked so the eye finds what is about to change. */
+  .addons-pending-tag {
+    gap: 4px;
+  }
+
+  .addons-row[data-pending],
+  .addons-card[data-pending] {
+    box-shadow: inset 2px 0 0 var(--accent-line);
+  }
+
+  .addons-queued {
+    color: var(--accent-ink);
+  }
+}
+

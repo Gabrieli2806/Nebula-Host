@@ -1,33 +1,66 @@
 /**
  * The console.
  *
- * Follows new output while you are at the bottom and stops the moment you
- * scroll up — reading back through a crash while the view yanks you away is
- * the fastest way to make a log useless.
+ * A deep, inset console window inside a card, dark in both themes. It follows new output
+ * while you are at the bottom and stops the moment you scroll up: reading
+ * back through a crash while the view yanks you away is the fastest way to
+ * make a log useless. While follow is broken, a "Jump to latest" button counts
+ * what arrived below.
+ *
+ * The card takes the rest of the ServerScreen column (flex-1, at least
+ * 360px), so its height never depends on the header above it.
  */
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { useConsole } from "@/hooks/useBackend";
+import { keys, useConsole, useConsoleCompletions, usePlayerIdentities } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { api } from "@/lib/ipc";
-import { formatTime } from "@/lib/format";
-import type { InstanceView } from "@/types/api";
-import { Button, EmptyState, ErrorNotice, Panel, TextInput } from "@/ui";
+import type { ConsoleLine, InstanceView } from "@/types/api";
+import { Button, EmptyState, ErrorNotice, Icon, Panel } from "@/ui";
+
+import { CommandPrompt } from "./console/CommandPrompt";
+import { ConsoleLineView } from "./console/ConsoleLineView";
+import { ShareLog } from "./console/ShareLog";
+import "./ConsolePanel.css";
+
+/** How close to the bottom (px) still counts as "at the bottom". */
+const FOLLOW_THRESHOLD = 24;
 
 export function ConsolePanel({ instance }: { instance: InstanceView }) {
   const { t, language } = useI18n();
+  const client = useQueryClient();
   const { data: lines = [] } = useConsole(instance.id);
-  const [command, setCommand] = useState("");
   const [following, setFollowing] = useState(true);
-  const [history, setHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
+  /** The last line on screen when follow broke; everything after it is new. */
+  const [lastSeen, setLastSeen] = useState<ConsoleLine | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const latest = useRef<ConsoleLine[]>(lines);
+
+  const running = instance.status === "online" || instance.status === "starting";
+  // Suggestions: the builtin list right away, the server's own once it has
+  // answered `help` (the hook refetches when the status changes).
+  const { data: completions, isFetching: loadingCompletions } = useConsoleCompletions(
+    instance.id,
+    running,
+  );
+  const { data: identities } = usePlayerIdentities(instance.id);
+  /** Lower-cased name → UUID, built once per identities change. */
+  const uuids = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const [name, uuid] of Object.entries(identities ?? {})) map.set(name.toLowerCase(), uuid);
+    return map;
+  }, [identities]);
+  const uuidOf = useCallback((name: string) => uuids.get(name.toLowerCase()), [uuids]);
 
   const send = useMutation({
     mutationFn: (value: string) => api.instances.command(instance.id, value),
   });
+
+  useEffect(() => {
+    latest.current = lines;
+  }, [lines]);
 
   useLayoutEffect(() => {
     if (!following) return;
@@ -40,86 +73,128 @@ export function ConsolePanel({ instance }: { instance: InstanceView }) {
     if (!element) return;
     const onScroll = () => {
       const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
-      setFollowing(distance < 24);
+      const atBottom = distance < FOLLOW_THRESHOLD;
+      setFollowing(atBottom);
+      setLastSeen((previous) =>
+        atBottom ? null : (previous ?? latest.current[latest.current.length - 1] ?? null),
+      );
     };
     element.addEventListener("scroll", onScroll);
     return () => element.removeEventListener("scroll", onScroll);
   }, []);
 
-  const submit = () => {
-    const value = command.trim();
-    if (!value) return;
-    send.mutate(value);
-    setHistory((previous) => [value, ...previous].slice(0, 50));
-    setHistoryIndex(-1);
-    setCommand("");
+  const unseen = following ? 0 : countUnseen(lines, lastSeen);
+
+  const jumpToLatest = () => {
+    setLastSeen(null);
+    setFollowing(true);
   };
 
-  const running = instance.status === "online" || instance.status === "starting";
+  const clear = () => {
+    client.setQueryData<ConsoleLine[]>(keys.console(instance.id), []);
+    jumpToLatest();
+  };
+
 
   return (
     <Panel
-      title={t("console.title")}
-      className="h-[calc(100vh-190px)] min-h-[340px]"
-      bodyClassName="flex flex-col"
+      title={
+        lines.length ? (
+          <span className="panel-count">
+            {lines.length === 1
+              ? t("console.lineCount_one")
+              : t("console.lineCount", { count: lines.length.toLocaleString(language) })}
+          </span>
+        ) : undefined
+      }
+      className="console-plate"
+      bodyClassName="console-plate-body"
       actions={
-        !following ? (
-          <Button size="sm" icon="chevron-down" onClick={() => setFollowing(true)}>
-            {t("console.follow")}
+        <>
+          <ShareLog instanceId={instance.id} consoleLines={lines.length} />
+          <Button variant="quiet" size="sm" disabled={!lines.length} onClick={clear}>
+            {t("console.clear")}
           </Button>
-        ) : null
+        </>
       }
     >
-      <div ref={scroller} className="console selectable min-h-0 flex-1 overflow-auto py-2">
-        {lines.length === 0 ? (
-          <EmptyState icon="terminal" title={t("console.empty")} />
-        ) : (
-          lines.map((line, index) => (
-            <div key={`${line.timestamp}-${index}`} className={`console-line console-${line.level}`}>
-              <span className="flex-none text-[color:var(--text-faint)]">
-                {formatTime(line.timestamp, language)}
-              </span>
-              <span>{line.message}</span>
-            </div>
-          ))
-        )}
+      <div className="console-window">
+        <div
+          ref={scroller}
+          className="console selectable h-full overflow-auto py-2"
+          role="log"
+          aria-label={t("console.title")}
+          tabIndex={0}
+        >
+          {lines.length === 0 ? (
+            <EmptyState icon="terminal" title={t("console.empty")} className="console-empty" />
+          ) : (
+            lines.map((line) => (
+              <ConsoleLineView
+                key={lineKey(line)}
+                line={line}
+                language={language}
+                uuid={line.speaker ? uuidOf(line.speaker.name) : undefined}
+              />
+            ))
+          )}
+        </div>
+
+        {!following ? (
+          <button type="button" className="console-jump console-jump-pos" onClick={jumpToLatest}>
+            <Icon name="arrow-down" size={13} />
+            {unseen > 0
+              ? t("console.jumpToLatest", { count: unseen })
+              : t("console.jumpToLatestPlain")}
+          </button>
+        ) : null}
       </div>
 
-      <div className="flex flex-none items-center gap-2 border-t border-[color:var(--line)] p-3">
-        <TextInput
-          className="mono"
-          value={command}
-          disabled={!running}
-          placeholder={t("console.placeholder")}
-          onChange={(event) => setCommand(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              submit();
-            } else if (event.key === "ArrowUp" && history.length) {
-              // Command history: the last thing you typed is nearly always the
-              // thing you want to type again.
-              event.preventDefault();
-              const next = Math.min(historyIndex + 1, history.length - 1);
-              setHistoryIndex(next);
-              setCommand(history[next] ?? "");
-            } else if (event.key === "ArrowDown") {
-              event.preventDefault();
-              const next = historyIndex - 1;
-              setHistoryIndex(next);
-              setCommand(next >= 0 ? (history[next] ?? "") : "");
-            }
-          }}
-        />
-        <Button disabled={!running || !command.trim()} onClick={submit}>
-          {t("actions.next")}
-        </Button>
-      </div>
+      <CommandPrompt
+        running={running}
+        online={instance.status === "online"}
+        completions={completions}
+        loadingCompletions={loadingCompletions}
+        uuidOf={uuidOf}
+        onSubmit={(value) => send.mutate(value)}
+      />
 
       {send.error ? (
-        <div className="p-3 pt-0">
+        <div className="px-4 pb-4">
           <ErrorNotice error={send.error} compact />
         </div>
       ) : null}
     </Panel>
   );
+}
+
+/**
+ * Lines that arrived after `lastSeen`, the line on screen when follow broke.
+ * Once the cache is trimmed to CONSOLE_LIMIT that object can fall out of the
+ * buffer; then count by timestamp instead of reporting the whole buffer.
+ */
+function countUnseen(lines: ConsoleLine[], lastSeen: ConsoleLine | null): number {
+  if (!lastSeen) return lines.length;
+  const index = lines.lastIndexOf(lastSeen);
+  if (index >= 0) return lines.length - 1 - index;
+  const seenAt = Date.parse(lastSeen.timestamp);
+  if (Number.isNaN(seenAt)) return 0;
+  return lines.filter((line) => Date.parse(line.timestamp) > seenAt).length;
+}
+
+/**
+ * A stable key per line object. The buffer drops its oldest line once full,
+ * so an index-based key would change for every row on every new line and
+ * remount them all (heads included). Line objects keep their identity
+ * across those slices, so a sequence number handed out on first sight holds.
+ */
+const lineIds = new WeakMap<ConsoleLine, number>();
+let nextLineId = 0;
+function lineKey(line: ConsoleLine): number {
+  let id = lineIds.get(line);
+  if (id === undefined) {
+    id = nextLineId++;
+    lineIds.set(line, id);
+  }
+  return id;
 }

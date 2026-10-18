@@ -27,6 +27,12 @@ pub struct GameManifest {
     pub backup: BackupSpec,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub wake: Option<WakeSpec>,
+    /// Where the game writes its own log files, for sharing them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub logs: Option<LogSpec>,
+    /// The picture the game shows for this server in its server list.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_icon: Option<ServerIconSpec>,
 }
 
 impl GameManifest {
@@ -57,10 +63,19 @@ pub struct Distribution {
     /// Where addons are installed relative to the instance root.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub addon_dir: Option<String>,
+    /// What the addon catalogue calls this flavour's addons (`mod`,
+    /// `plugin`). Drives the catalogue's project-type facet.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub addon_project_type: Option<String>,
     /// Console command that asks for the tick rate. Distribution-level because
     /// Forge answers `forge tps` and NeoForge only answers `neoforge tps`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tick_rate_command: Option<String>,
+    /// Identity colour, `#rrggbb`. The UI stripes a server with it so a shelf
+    /// of ten instances is scannable by flavour. Distinct from status colour,
+    /// which means something entirely different and is never mixed with this.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub accent: Option<String>,
 }
 
 /// What the host needs before this game can run.
@@ -130,6 +145,69 @@ pub struct ConsoleSpec {
     /// Strips in-band formatting before display (Minecraft's `§` codes).
     #[serde(default)]
     pub strip_colour_codes: bool,
+    /// Captures `name` and `message` when a player says something in chat.
+    /// Checked before the join/leave patterns, so a player typing "Steve
+    /// joined the game" is chat, not a join.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chat_pattern: Option<String>,
+    /// Captures `name` and `uuid` when the server announces who a connecting
+    /// player is, so faces can be looked up by account rather than by name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub identity_pattern: Option<String>,
+    /// How to ask the running server which commands it knows, for console
+    /// autocomplete. Absent means "only the builtin list".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completion: Option<CompletionSpec>,
+    /// Matches the game's own log prefix (its timestamp and thread/level tag)
+    /// at the start of a line. The console already shows Nebula's time in
+    /// its gutter, so the line's display body drops this; the raw line is
+    /// kept as `message`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub log_prefix_pattern: Option<String>,
+}
+
+/// Console autocomplete, as data.
+///
+/// The running server is asked for its command list with `help_command`
+/// (hidden from the user's console), and the answer is read with
+/// `entry_pattern`. A paginated answer is detected with `page_pattern` and the
+/// remaining pages fetched with `page_command`. `builtin` is the fallback for
+/// when the server is not running, and is merged with whatever it reports.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompletionSpec {
+    pub help_command: String,
+    /// `{page}` is substituted with the page number.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page_command: Option<String>,
+    /// Captures `page` and `pages` from a page header.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page_pattern: Option<String>,
+    /// Captures `command`, and optionally `description` or `usage`.
+    pub entry_pattern: String,
+    /// Other lines of the help answer that must stay out of the console.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub noise_patterns: Vec<String>,
+    #[serde(default = "default_max_pages")]
+    pub max_pages: u32,
+    /// Usage tokens that stand for a player name (`<targets>`), so the UI can
+    /// offer online players for that argument.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub player_placeholders: Vec<String>,
+    /// Commands every server of this game understands.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub builtin: Vec<BuiltinCommand>,
+}
+
+fn default_max_pages() -> u32 {
+    20
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BuiltinCommand {
+    pub name: String,
+    /// Argument syntax, without the command name (`<targets> [<reason>]`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub usage: Option<String>,
 }
 
 /// Where the online-player list comes from.
@@ -144,6 +222,10 @@ pub enum PlayerSource {
     Files {
         #[serde(default)]
         lists: BTreeMap<String, String>,
+        /// A name → account-id cache the game keeps (`usercache.json`), used
+        /// to put faces on players who are not on any list.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        identity_file: Option<String>,
     },
 }
 
@@ -217,6 +299,25 @@ pub struct BackupSpec {
     pub flush_command: Option<String>,
 }
 
+/// The game's log files, relative to the instance root.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LogSpec {
+    /// The log of the current (or last) run, e.g. `logs/latest.log`.
+    pub latest: String,
+    /// A folder of crash reports, newest by modification time.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub crash_dir: Option<String>,
+}
+
+/// A server-list icon the game reads from the instance folder.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServerIconSpec {
+    /// File relative to the instance root, always written as PNG.
+    pub file: String,
+    /// Square side in pixels; the game ignores any other size.
+    pub size: u32,
+}
+
 /// Wake-on-join support: answer the server-list ping while asleep, start the
 /// real server when someone actually tries to connect.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -225,6 +326,11 @@ pub struct WakeSpec {
     /// Shown in the server browser while asleep; `{name}` is substituted.
     #[serde(default = "default_sleeping_motd")]
     pub sleeping_motd: String,
+    /// The game setting that pins the server to one interface (`server-ip`
+    /// for Minecraft). The sleeping stand-in listens exactly where the server
+    /// itself would: that interface when set, every interface when empty.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bind_setting: Option<String>,
 }
 
 fn default_sleeping_motd() -> String {
@@ -261,6 +367,10 @@ mod tests {
                 suppress_patterns: vec![],
                 stop_command: "stop".into(),
                 strip_colour_codes: false,
+                chat_pattern: None,
+                identity_pattern: None,
+                completion: None,
+                log_prefix_pattern: None,
             },
             players: PlayerSource::Console,
             settings: vec![],
@@ -271,6 +381,8 @@ mod tests {
                 flush_command: None,
             },
             wake: None,
+            logs: None,
+            server_icon: None,
         }
     }
 
@@ -288,6 +400,18 @@ mod tests {
     fn primary_port_falls_back_to_the_first() {
         let manifest = manifest_with_ports(vec![port("game", false), port("query", false)]);
         assert_eq!(manifest.primary_port().expect("a port").key, "game");
+    }
+
+    #[test]
+    fn every_distribution_has_an_identity_colour() {
+        for dist in crate::game::minecraft::manifest().distributions {
+            let accent = dist.accent.unwrap_or_default();
+            assert!(
+                accent.starts_with('#') && accent.len() == 7,
+                "{} needs a #rrggbb accent, got {accent:?}",
+                dist.id
+            );
+        }
     }
 
     #[test]

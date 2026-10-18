@@ -1,0 +1,584 @@
+/*
+ * Nebula Host: shell.css. Area styles for the app frame: title bar, sidebar (AppNav/ServerNav, collapsible), machine block, server page title, first run.
+ * Owner: Shell agent (Build phase). Only that agent edits this file.
+ *
+ * Imported by global.css AFTER the shared primitives, so a rule here at the
+ * same specificity wins over the primitive it extends. Keep every rule inside
+ * @layer components (or @layer base): an unlayered rule would beat every
+ * Tailwind utility. Use tokens from tokens.css; never hard-code colours.
+ */
+
+@layer components {
+  /* == title bar ======================================================= */
+
+  .titlebar {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--titlebar-height);
+    padding-left: var(--space-4);
+    background: color-mix(in srgb, var(--canvas) 88%, transparent);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .titlebar-brand {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .titlebar .mark {
+    color: var(--accent-ink);
+  }
+
+  .titlebar .wordmark {
+    font-size: var(--text-sm);
+  }
+
+  .titlebar-sep {
+    color: var(--text-faint);
+    font-size: var(--text-sm);
+  }
+
+  .titlebar-node {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-text);
+    color: var(--text-muted);
+  }
+
+  /* The sidebar's collapse toggle: first thing in the title bar, over the
+     rail it controls. Quiet, like the window keys. */
+  .titlebar-toggle {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-left: -6px;
+    margin-right: 2px;
+    border-radius: var(--radius);
+    color: var(--text-faint);
+    transition:
+      background-color var(--duration-fast) var(--ease),
+      color var(--duration-fast) var(--ease);
+  }
+
+  .titlebar-toggle:hover {
+    color: var(--text);
+    background: var(--quiet-hover);
+  }
+
+  .titlebar-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  /* == sidebar ========================================================= */
+
+  /* A floating card, as in the classic app: inset from the window edge,
+     translucent navy, hairline border. Collapsed, it narrows to an icon rail;
+     icons keep their x position (12px inset) so nothing slides sideways. */
+  .rail {
+    --rail-collapsed: 64px;
+    --rail-inner: calc(var(--sidebar-width) - 2px - 2 * var(--space-3));
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    width: var(--sidebar-width);
+    min-height: 0;
+    margin: var(--space-4) 0 var(--space-4) var(--space-4);
+    background: var(--card-wash), var(--surface-card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    transition: width var(--duration) var(--ease);
+  }
+
+  .rail[data-collapsed] {
+    width: var(--rail-collapsed);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rail {
+      transition: none;
+    }
+  }
+
+  .rail-body {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-direction: column;
+    gap: var(--space-4);
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: var(--space-3);
+    scrollbar-width: none;
+  }
+
+  /* The one content scroller; transparent so the ambient ground shows. */
+  .app-main {
+    background: transparent;
+    scrollbar-gutter: stable;
+  }
+
+  .rail-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: var(--control-height);
+    padding: 0 12px;
+    overflow: hidden;
+    border-radius: var(--radius);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-control);
+    color: var(--text-muted);
+    white-space: nowrap;
+    transition:
+      background-color var(--duration-fast) var(--ease),
+      color var(--duration-fast) var(--ease);
+  }
+
+  .rail-item > svg {
+    flex: none;
+    color: var(--text-faint);
+    transition: color var(--duration-fast) var(--ease);
+  }
+
+  .rail-item:hover {
+    color: var(--text);
+    background: var(--quiet-hover);
+  }
+
+  .rail-item:hover > svg {
+    color: var(--text-muted);
+  }
+
+  .rail-item[data-active] {
+    color: var(--accent-ink);
+    background: var(--accent-wash);
+  }
+
+  .rail-item[data-active] > svg {
+    color: var(--accent-ink);
+  }
+
+  .rail-label {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: clip;
+  }
+
+  /* Collapsed: the name leaves the layout but stays the accessible name; the
+     shared tooltip shows it on hover and keyboard focus. */
+  .rail[data-collapsed] .rail-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .rail-group {
+    padding: var(--space-1) 12px 6px;
+    white-space: nowrap;
+    transition: color var(--duration-fast) var(--ease);
+  }
+
+  /* Collapsed: the group name becomes a short hairline at the same height. */
+  .rail[data-collapsed] .rail-group {
+    color: transparent;
+    background: linear-gradient(var(--line-strong), var(--line-strong)) 12px 55% / 16px 1px
+      no-repeat;
+  }
+
+  .rail-rule {
+    height: 1px;
+    flex: none;
+    background: var(--line);
+  }
+
+  /* Collapsed, the first group's hairline already separates the keys. */
+  .rail[data-collapsed] .rail-rule {
+    display: none;
+  }
+
+  .rail-back {
+    display: flex;
+    align-self: flex-start;
+    align-items: center;
+    gap: 8px;
+    height: var(--control-height-sm);
+    padding: 0 10px 0 13px;
+    overflow: hidden;
+    border-radius: var(--radius);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-control);
+    color: var(--text-faint);
+    white-space: nowrap;
+    transition:
+      color var(--duration-fast) var(--ease),
+      background-color var(--duration-fast) var(--ease);
+  }
+
+  .rail-back > svg {
+    flex: none;
+  }
+
+  .rail-back:hover {
+    color: var(--text);
+    background: var(--quiet-hover);
+  }
+
+  .rail[data-collapsed] .rail-back {
+    align-self: stretch;
+  }
+
+  /* The open server's Start / Stop / Restart. Fixed at the expanded inner
+     width so expanding reveals it instead of reflowing it. */
+  .rail-control {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: var(--space-2);
+    width: var(--rail-inner);
+  }
+
+  .rail-control[data-collapsed] {
+    width: auto;
+    gap: 6px;
+  }
+
+  .rail-key {
+    width: 100%;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .rail-key-alert {
+    display: inline-flex;
+    align-items: center;
+    height: var(--control-height-sm);
+    border: 1px solid var(--status-crashed-line);
+    border-radius: var(--radius);
+    background: var(--status-crashed-dim);
+    color: var(--status-crashed);
+    cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease);
+  }
+
+  .rail-key-alert:hover {
+    background: color-mix(in srgb, var(--status-crashed) 22%, transparent);
+  }
+
+  .rail-key-alert:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* One tooltip for the collapsed rail, drawn in a portal at the item's
+     right edge. Solid surface, hairline, a short fade and nothing else. */
+  .rail-tooltip {
+    position: fixed;
+    z-index: 60;
+    translate: 0 -50%;
+    max-width: 280px;
+    padding: 5px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow-pop);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-control);
+    line-height: 1.4;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    animation: nebula-fade var(--duration-fast) var(--ease);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rail-tooltip {
+      animation: none;
+    }
+  }
+
+  /* == machine block =================================================== */
+
+  .node-block {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: var(--space-3);
+    width: var(--rail-inner);
+    margin-top: auto;
+    padding: var(--space-3) 14px 14px;
+    background: var(--well-fill);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+  }
+
+  .node-rings {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    justify-items: center;
+    gap: var(--space-1);
+  }
+
+  .node-block-address {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+  }
+
+  .node-block-address[data-empty] {
+    font-family: var(--font-sans);
+    color: var(--text-faint);
+  }
+
+  /* Collapsed: the lamp and three small dials in a sunken column. */
+  .node-mini {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: auto;
+    padding: 10px 0 12px;
+    background: var(--well-fill);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+  }
+
+  .node-mini > span {
+    display: inline-flex;
+    justify-content: center;
+  }
+
+  .node-mini-lamp {
+    padding: 2px 0;
+  }
+
+  .node-mini .meter-ring {
+    gap: 0;
+  }
+
+  .node-mini .meter-ring-label,
+  .node-mini .meter-ring-detail {
+    display: none;
+  }
+
+  /* The rounded value inside each small dial, so the three can be read (and
+     told apart by their tooltips) without hovering every one. */
+  .node-mini .meter-ring-readout {
+    font-size: 9px;
+    letter-spacing: -0.02em;
+  }
+
+  /* == server page title (every panel but Overview) ==================== */
+
+  /* Light: the panel's name, then the server's name and state, small, once. */
+  .server-pagehead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px var(--space-3);
+    min-width: 0;
+    margin-bottom: calc(var(--space-1) * -1);
+    padding: 0 2px;
+  }
+
+  .server-pagehead-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-display);
+    letter-spacing: -0.01em;
+    line-height: var(--leading-tight);
+    color: var(--text-heading);
+  }
+
+  .server-pagehead-server {
+    display: inline-flex;
+    min-width: 0;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-control);
+    color: var(--text-faint);
+  }
+
+  .server-pagehead-name {
+    min-width: 0;
+    max-width: 36ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-muted);
+  }
+
+  .server-pagehead-status {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    align-self: center;
+  }
+
+  /* == first run ======================================================= */
+
+  .first-run {
+    background: transparent;
+  }
+
+  .first-run-stage {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-6) var(--gutter) var(--space-7);
+  }
+
+  .first-run-stage > .mark {
+    margin-bottom: var(--space-4);
+    color: var(--accent-ink);
+  }
+
+  .first-run-stage > h1 {
+    margin: 0;
+  }
+
+  .first-run-title {
+    font-size: var(--text-2xl);
+    text-align: center;
+  }
+
+  .first-run-intro {
+    max-width: 52ch;
+    margin: var(--space-2) 0 var(--space-6);
+    text-align: center;
+    color: var(--text-muted);
+    text-wrap: pretty;
+  }
+
+  .first-run-card {
+    display: flex;
+    width: 100%;
+    max-width: 560px;
+    flex-direction: column;
+    gap: var(--space-5);
+    padding: 24px;
+    background: var(--card-wash), var(--surface-card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+  }
+
+  .first-run-requirements {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0 var(--space-3);
+    list-style: none;
+    background: var(--well-fill);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  .first-run-requirement {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    min-height: var(--row-height);
+    padding: var(--space-2) 2px;
+  }
+
+  .first-run-requirement + .first-run-requirement {
+    border-top: 1px solid var(--line);
+  }
+
+  .first-run-requirement-state {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-control);
+    color: var(--text-faint);
+  }
+
+  .first-run-requirement[data-state="ready"] .first-run-requirement-state {
+    color: var(--status-online);
+  }
+
+  .first-run-requirement[data-state="missing"] .first-run-requirement-state {
+    color: var(--status-crashed);
+  }
+
+  .first-run-requirement-found {
+    min-width: 0;
+    margin-left: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--text-xs);
+    color: var(--text-faint);
+  }
+
+  .first-run-requirement-advice {
+    margin: 0;
+    padding-left: calc(8px + 10px);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+  }
+
+  .first-run-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--line);
+  }
+
+  @media (max-height: 760px) {
+    .first-run-stage {
+      padding-block: var(--space-4);
+    }
+
+    .first-run-stage > .mark {
+      width: 36px;
+      height: 36px;
+      margin-bottom: var(--space-3);
+    }
+
+    .first-run-title {
+      font-size: var(--text-xl);
+    }
+
+    .first-run-intro {
+      margin: var(--space-2) 0 var(--space-4);
+    }
+
+    .first-run-card {
+      gap: var(--space-4);
+      padding: 20px;
+    }
+
+    .first-run-requirement {
+      min-height: 32px;
+      padding-block: 4px;
+    }
+  }
+}

@@ -31,7 +31,10 @@ pub fn suggested_name() -> String {
 }
 
 fn hostname() -> Option<String> {
-    let raw = std::env::var("COMPUTERNAME").or_else(|_| std::env::var("HOSTNAME")).ok()?;
+    let raw = std::env::var("COMPUTERNAME")
+        .or_else(|_| std::env::var("HOSTNAME"))
+        .ok()
+        .or_else(|| std::fs::read_to_string("/etc/hostname").ok())?;
     let trimmed = raw.trim();
     (!trimmed.is_empty()).then(|| trimmed.to_string())
 }

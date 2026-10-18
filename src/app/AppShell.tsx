@@ -1,24 +1,51 @@
 /**
- * The frame every screen sits in.
+ * The frame every screen sits in: the title bar, a floating sidebar card on
+ * the left and the main column to its right.
  *
- * One sidebar, and it belongs to whatever you are looking at: the app's own
- * navigation on the server list, and **the server's own navigation** once you
- * open one — its name, its state, its start button, then its panels. The node
- * panel stays pinned at the bottom throughout, because the machine is the
- * identity here and it never stops being relevant.
+ * The sidebar shows the app's navigation and the machine block on the server
+ * list, and once a server is open: a way back, that server's Start / Stop /
+ * Restart control and its panels. Everything that describes the server (name,
+ * state, numbers) lives in the page, never here, so nothing is said twice.
+ *
+ * The sidebar collapses to an icon rail (title bar toggle or Ctrl+B). The
+ * choice persists in localStorage; collapsed items keep their names for
+ * assistive tech and show them as a tooltip on hover or keyboard focus.
  */
 
-import { useEffect } from "react";
-import { NavLink, Outlet, useMatch, useNavigate } from "react-router-dom";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type PointerEvent,
+} from "react";
+import { createPortal } from "react-dom";
+import { NavLink, Outlet, useLocation, useMatch, useNavigate } from "react-router-dom";
 
-import { useBackendEvents, useInstance, useInstanceActions, useInstances, useNode, useNodeHealth } from "@/hooks/useBackend";
+import {
+  useBackendEvents,
+  useInstance,
+  useInstanceActions,
+  useInstances,
+  useNode,
+  useNodeHealth,
+} from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { formatMegabytes } from "@/lib/format";
-import { Button, Icon, Ring, StatusDot, type IconName } from "@/ui";
+import { toAppError } from "@/lib/ipc";
+import type { InstanceView } from "@/types/api";
+import { Button, ErrorNotice, Icon, Ring, StatusDot, type IconName } from "@/ui";
 import { TitleBar } from "./TitleBar";
 
 /** The panels a server has, in the order they are worked through. */
-export const SERVER_PANELS: { id: string; icon: IconName; labelKey: string; group: "operate" | "manage" }[] = [
+export const SERVER_PANELS: {
+  id: string;
+  icon: IconName;
+  labelKey: string;
+  group: "operate" | "manage";
+}[] = [
   { id: "overview", icon: "servers", labelKey: "overview.title", group: "operate" },
   { id: "console", icon: "terminal", labelKey: "console.title", group: "operate" },
   { id: "files", icon: "folder", labelKey: "files.title", group: "operate" },
@@ -28,14 +55,65 @@ export const SERVER_PANELS: { id: string; icon: IconName; labelKey: string; grou
   { id: "settings", icon: "sliders", labelKey: "settings.title", group: "manage" },
 ];
 
+const COLLAPSED_KEY = "nebula.sidebarCollapsed";
+const RAIL_ID = "app-sidebar";
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function AppShell() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const { data: node, isSuccess } = useNode();
   const { data: instances } = useInstances();
   const match = useMatch("/servers/:instanceId/:panel");
   const instanceId = match?.params.instanceId ?? null;
 
   useBackendEvents();
+
+  const [collapsed, setCollapsed] = useState(readCollapsed);
+  const toggleSidebar = useCallback(() => setCollapsed((value) => !value), []);
+  const expandSidebar = useCallback(() => setCollapsed(false), []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLLAPSED_KEY, collapsed ? "1" : "0");
+    } catch {
+      // Storage blocked: the choice simply lasts for this session.
+    }
+  }, [collapsed]);
+
+  // Ctrl+B (Cmd+B), the common sidebar shortcut. Nothing in the app binds it.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (
+        (event.ctrlKey || event.metaKey) &&
+        !event.altKey &&
+        !event.shiftKey &&
+        event.key.toLowerCase() === "b"
+      ) {
+        event.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggleSidebar]);
+
+  const tooltip = useRailTooltip(collapsed);
+
+  // One scroller (main) serves every route, so a new page must not inherit
+  // the last page's offset.
+  const { pathname } = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    mainRef.current?.scrollTo({ top: 0 });
+  }, [pathname]);
 
   useEffect(() => {
     // A node that has never been named and has no servers is a first run.
@@ -47,23 +125,105 @@ export function AppShell() {
 
   return (
     <div className="flex h-full flex-col">
-      <TitleBar />
+      <TitleBar sidebar={{ collapsed, onToggle: toggleSidebar, controls: RAIL_ID }} />
       <div className="flex min-h-0 flex-1">
         <nav
-          className="flex flex-none flex-col gap-3 overflow-y-auto border-r border-[color:var(--line)] p-3"
-          style={{ width: "var(--sidebar-width)", background: "var(--surface-sunken)" }}
+          id={RAIL_ID}
+          className="rail"
+          data-collapsed={collapsed ? "" : undefined}
+          aria-label={t("nav.sidebar")}
+          {...tooltip.handlers}
         >
-          {instanceId ? <ServerNav instanceId={instanceId} /> : <AppNav />}
-          <div className="flex-1" />
-          <NodePanel />
+          {/* The machine block scrolls with the nav: it sits at the foot when
+              there is room (margin-top: auto) and never covers a panel link on
+              a short window. */}
+          <div className="rail-body" onScroll={tooltip.hide}>
+            {instanceId ? (
+              <ServerNav
+                key={instanceId}
+                instanceId={instanceId}
+                collapsed={collapsed} onExpand={expandSidebar} />
+            ) : (
+              <>
+                <AppNav />
+                {collapsed ? <NodeMini /> : <NodeBlock />}
+              </>
+            )}
+          </div>
         </nav>
 
-        <main className="min-w-0 flex-1 overflow-auto" style={{ background: "var(--canvas)" }}>
+        <main ref={mainRef} className="app-main min-w-0 flex-1 overflow-auto">
           <Outlet />
         </main>
       </div>
+      {tooltip.element}
     </div>
   );
+}
+
+/**
+ * Names for the collapsed rail. One tooltip for the whole sidebar, driven by
+ * `data-tip` on whatever the pointer or keyboard focus is on. It is drawn in a
+ * portal so the rail's overflow cannot clip it, and is decorative (the items
+ * keep their own accessible names).
+ */
+function useRailTooltip(enabled: boolean) {
+  const [tip, setTip] = useState<{ label: string; top: number; left: number } | null>(null);
+  const hide = useCallback(() => setTip(null), []);
+
+  const showFor = useCallback(
+    (target: EventTarget | null) => {
+      if (!enabled || !(target instanceof Element)) return;
+      const anchor = target.closest<HTMLElement>("[data-tip]");
+      const label = anchor?.dataset.tip;
+      if (!anchor || !label) {
+        setTip(null);
+        return;
+      }
+      const rect = anchor.getBoundingClientRect();
+      setTip({ label, top: rect.top + rect.height / 2, left: rect.right + 12 });
+    },
+    [enabled],
+  );
+
+  const visible = enabled && tip !== null;
+
+  // WCAG 1.4.13: a tooltip must be dismissible without moving the pointer.
+  useEffect(() => {
+    if (!visible) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setTip(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [visible]);
+
+  return {
+    hide,
+    handlers: {
+      onPointerOver: (event: PointerEvent) => showFor(event.target),
+      onPointerLeave: hide,
+      onFocus: (event: FocusEvent) => {
+        if (event.target instanceof Element && event.target.matches(":focus-visible")) {
+          showFor(event.target);
+        }
+      },
+      onBlur: hide,
+    },
+    element:
+      visible && tip
+        ? createPortal(
+            <div
+              className="rail-tooltip"
+              aria-hidden="true"
+              style={{ top: tip.top, left: tip.left }}
+            >
+              {tip.label}
+            </div>,
+            document.body,
+          )
+        : null,
+  };
 }
 
 function AppNav() {
@@ -76,155 +236,302 @@ function AppNav() {
   );
 }
 
-/** The sidebar a server owns while it is open. */
-function ServerNav({ instanceId }: { instanceId: string }) {
+/** The rail a server owns while it is open: back, its control, its panels. */
+function ServerNav({
+  instanceId,
+  collapsed,
+  onExpand,
+}: {
+  instanceId: string;
+  collapsed: boolean;
+  onExpand: () => void;
+}) {
   const { t } = useI18n();
   const instance = useInstance(instanceId);
-  const actions = useInstanceActions();
 
   if (!instance) return <AppNav />;
 
-  const running = instance.status === "online" || instance.status === "starting";
-  const busy = actions.start.isPending || actions.stop.isPending;
+  const back = t("nav.backToServers");
 
   return (
-    <div className="flex flex-col gap-4">
-      <NavLink
-        to="/servers"
-        className="flex items-center gap-2 px-1 text-[length:var(--text-xs)] text-[color:var(--text-faint)] hover:text-[color:var(--text)]"
-      >
-        <Icon name="chevron-left" size={13} />
-        {t("nav.backToServers")}
+    <div className="flex flex-col gap-3">
+      <NavLink to="/servers" className="rail-back" data-tip={back}>
+        <Icon name="chevron-left" size={14} />
+        <span className="rail-label">{back}</span>
       </NavLink>
 
-      <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[color:var(--line)] p-3">
-        <div className="flex items-start gap-2.5">
-          <span className="mt-1.5">
-            <StatusDot status={instance.status} />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate font-semibold leading-tight">{instance.name}</p>
-            <p className="text-[length:var(--text-xs)] text-[color:var(--text-muted)]">
-              {t(`status.${instance.status}`)}
-            </p>
+      <ServerControl instance={instance} collapsed={collapsed} onExpand={onExpand} />
+
+      <div className="rail-rule" aria-hidden="true" />
+
+      <div className="flex flex-col gap-3">
+        {(["operate", "manage"] as const).map((group) => (
+          <div key={group} className="flex flex-col gap-0.5">
+            <p className="label rail-group">{t(`nav.${group}`)}</p>
+            {SERVER_PANELS.filter((panel) => panel.group === group).map((panel) => (
+              <NavItem
+                key={panel.id}
+                to={`/servers/${instanceId}/${panel.id}`}
+                icon={panel.icon}
+                label={t(panel.labelKey)}
+              />
+            ))}
           </div>
-        </div>
-
-        <div className="flex gap-2">
-          {running ? (
-            <Button
-              size="sm"
-              icon="stop"
-              className="flex-1"
-              disabled={busy}
-              onClick={() => actions.stop.mutate(instance.id)}
-            >
-              {t("actions.stop")}
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              variant="primary"
-              icon="play"
-              className="flex-1"
-              disabled={busy}
-              onClick={() => actions.start.mutate(instance.id)}
-            >
-              {instance.status === "sleeping" ? t("actions.wake") : t("actions.start")}
-            </Button>
-          )}
-          {running ? (
-            <Button
-              size="sm"
-              icon="restart"
-              iconOnly
-              disabled={busy}
-              onClick={() => actions.restart.mutate(instance.id)}
-            >
-              {t("actions.restart")}
-            </Button>
-          ) : null}
-        </div>
+        ))}
       </div>
-
-      {(["operate", "manage"] as const).map((group) => (
-        <div key={group} className="flex flex-col gap-0.5">
-          <p className="label px-3 pb-1">{t(`nav.${group}`)}</p>
-          {SERVER_PANELS.filter((panel) => panel.group === group).map((panel) => (
-            <NavItem
-              key={panel.id}
-              to={`/servers/${instanceId}/${panel.id}`}
-              icon={panel.icon}
-              label={t(panel.labelKey)}
-            />
-          ))}
-        </div>
-      ))}
     </div>
   );
 }
 
+/**
+ * Start / Stop / Restart for the open server. The state itself is shown by
+ * the page; the keys only offer what makes sense for it. Their failures are
+ * shown here, under the keys (collapsed: a warning key that opens the rail).
+ */
+function ServerControl({
+  instance,
+  collapsed,
+  onExpand,
+}: {
+  instance: InstanceView;
+  collapsed: boolean;
+  onExpand: () => void;
+}) {
+  const { t, describeError } = useI18n();
+  const actions = useInstanceActions();
+
+  const running = instance.status === "online" || instance.status === "starting";
+  // A server that is still shutting down takes no keys (same rule as the
+  // dashboard card and row).
+  const busy =
+    actions.start.isPending ||
+    actions.stop.isPending ||
+    actions.restart.isPending ||
+    instance.status === "stopping";
+
+  // Only the most recently pressed key speaks: a stale start error should not
+  // linger after a successful stop.
+  const latest = [actions.start, actions.stop, actions.restart].reduce((a, b) =>
+    b.submittedAt > a.submittedAt ? b : a,
+  );
+  const failure = latest.error;
+
+  const startLabel = instance.status === "sleeping" ? t("actions.wake") : t("actions.start");
+  const start = () => actions.start.mutate(instance.id);
+  const stop = () => actions.stop.mutate(instance.id);
+  const restart = () => actions.restart.mutate(instance.id);
+
+  if (collapsed) {
+    const failureTitle = failure ? describeError(toAppError(failure)).title : "";
+    return (
+      <section className="rail-control" data-collapsed="" aria-label={instance.name}>
+        {running ? (
+          <>
+            <RailKey icon="stop" label={t("actions.stop")} disabled={busy} onClick={stop} />
+            <RailKey icon="restart" label={t("actions.restart")} disabled={busy} onClick={restart} />
+          </>
+        ) : (
+          <RailKey
+            icon="play"
+            label={startLabel}
+            primary
+            disabled={busy}
+            onClick={start}
+          />
+        )}
+        {failure ? (
+          <button
+            type="button"
+            className="rail-key rail-key-alert"
+            data-tip={failureTitle}
+            aria-label={failureTitle}
+            onClick={onExpand}
+          >
+            <Icon name="warning" />
+          </button>
+        ) : null}
+      </section>
+    );
+  }
+
+  return (
+    <section className="rail-control" aria-label={instance.name}>
+      <div className="flex gap-2">
+        {running ? (
+          <Button size="sm" icon="stop" className="flex-1" disabled={busy} onClick={stop}>
+            {t("actions.stop")}
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="primary"
+            icon="play"
+            className="flex-1"
+            disabled={busy}
+            onClick={start}
+          >
+            {startLabel}
+          </Button>
+        )}
+        {running ? (
+          <Button size="sm" icon="restart" className="flex-1" disabled={busy} onClick={restart}>
+            {t("actions.restart")}
+          </Button>
+        ) : null}
+      </div>
+
+      {failure ? <ErrorNotice error={failure} compact /> : null}
+    </section>
+  );
+}
+
+/** An icon-only key for the collapsed rail; its name shows as the tooltip. */
+function RailKey({
+  icon,
+  label,
+  primary = false,
+  disabled,
+  onClick,
+}: {
+  icon: IconName;
+  label: string;
+  primary?: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`btn btn-sm rail-key ${primary ? "btn-primary" : ""}`}
+      data-tip={label}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <Icon name={icon} />
+    </button>
+  );
+}
+
 function NavItem({ to, icon, label }: { to: string; icon: IconName; label: string }) {
+  // Same rule NavLink uses (prefix match), surfaced as an attribute so the
+  // active look is a CSS concern.
+  const active = useMatch({ path: to, end: false }) !== null;
   return (
     <NavLink
       to={to}
-      className="flex h-9 items-center gap-3 rounded-[var(--radius)] px-3 text-[length:var(--text-sm)] transition-colors"
-      style={({ isActive }) =>
-        isActive
-          ? { background: "var(--accent-dim)", color: "var(--accent)", fontWeight: 600 }
-          : { color: "var(--text-muted)" }
-      }
+      data-active={active ? "" : undefined}
+      data-tip={label}
+      className={({ isActive }) => `rail-item ${isActive ? "active" : ""}`}
     >
       <Icon name={icon} />
-      {label}
+      <span className="rail-label">{label}</span>
     </NavLink>
   );
 }
 
 /** The machine, its load, and how to reach it. */
-function NodePanel() {
+function NodeBlock() {
   const { t } = useI18n();
-  const { data: node } = useNode();
   const { data: health } = useNodeHealth();
 
   return (
-    <div className="panel flex flex-none flex-col gap-3 p-3.5">
-      <div className="flex items-center justify-between">
+    <section className="node-block" aria-label={t("node.thisMachine")}>
+      <div className="flex items-center justify-between gap-2">
         <span className="label">{t("node.thisMachine")}</span>
-        <span
-          className="h-1.5 w-1.5 rounded-full"
-          style={{ background: health ? "var(--status-online)" : "var(--status-offline)" }}
+        <StatusDot
+          status={health ? "online" : "offline"}
+          size={7}
+          label={t(health ? "status.online" : "status.offline")}
         />
       </div>
 
-      <p className="truncate text-[length:var(--text-sm)] font-medium">{node?.name ?? "…"}</p>
-
       {health ? (
-        <div className="flex flex-col gap-3">
-          <div className="flex items-start justify-between gap-1">
-            <Ring label={t("node.cpu")} value={health.cpu_percent} />
+        <>
+          <div className="node-rings">
+            <Ring size={52} label={t("node.cpu")} value={health.cpu_percent} />
             <Ring
+              size={52}
               label={t("node.memory")}
               value={health.memory_used_mb}
               max={health.memory_total_mb}
               detail={formatMegabytes(health.memory_total_mb)}
             />
             <Ring
+              size={52}
               label={t("node.disk")}
               value={health.disk_used_gb}
               max={health.disk_total_gb}
               detail={`${health.disk_total_gb} GB`}
-              colour="var(--accent-line)"
             />
           </div>
-          <div className="flex items-center justify-between pt-0.5 text-[length:var(--text-xs)]">
-            <span className="text-[color:var(--text-faint)]">{t("node.address")}</span>
-            <span className="mono selectable text-[color:var(--text-muted)]">
+
+          <div className="divider" aria-hidden="true" />
+
+          <div className="flex items-center justify-between gap-2">
+            <span className="label">{t("node.address")}</span>
+            <span
+              className="node-block-address readout readout-fit selectable"
+              data-empty={health.lan_address ? undefined : ""}
+            >
               {health.lan_address ?? t("node.offline")}
             </span>
           </div>
-        </div>
+        </>
       ) : null}
-    </div>
+    </section>
+  );
+}
+
+/** The machine block, folded into the collapsed rail: three small dials. */
+function NodeMini() {
+  const { t } = useI18n();
+  const { data: node } = useNode();
+  const { data: health } = useNodeHealth();
+
+  const name = node?.name ?? t("node.thisMachine");
+  const where = health ? (health.lan_address ?? t("node.offline")) : t("status.offline");
+
+  return (
+    <section className="node-mini" aria-label={t("node.thisMachine")}>
+      <span className="node-mini-lamp" data-tip={`${name} · ${where}`}>
+        <StatusDot
+          status={health ? "online" : "offline"}
+          size={7}
+          label={t(health ? "status.online" : "status.offline")}
+        />
+      </span>
+      {health ? (
+        <>
+          <span data-tip={`${t("node.cpu")} ${Math.round(health.cpu_percent)}%`}>
+            <Ring size={30} stroke={3} label={t("node.cpu")} value={health.cpu_percent} />
+          </span>
+          <span
+            data-tip={`${t("node.memory")} ${formatMegabytes(health.memory_used_mb)} / ${formatMegabytes(
+              health.memory_total_mb,
+            )}`}
+          >
+            <Ring
+              size={30}
+              stroke={3}
+              label={t("node.memory")}
+              value={health.memory_used_mb}
+              max={health.memory_total_mb}
+            />
+          </span>
+          <span
+            data-tip={`${t("node.disk")} ${Math.round(health.disk_used_gb)} / ${health.disk_total_gb} GB`}
+          >
+            <Ring
+              size={30}
+              stroke={3}
+              label={t("node.disk")}
+              value={health.disk_used_gb}
+              max={health.disk_total_gb}
+            />
+          </span>
+        </>
+      ) : null}
+    </section>
   );
 }

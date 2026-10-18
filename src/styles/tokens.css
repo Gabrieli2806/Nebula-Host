@@ -1,94 +1,151 @@
 /*
- * Design tokens.
+ * Nebula Host: design tokens.
  *
- * Everything visual resolves to a variable declared here, which is what makes
- * swapping the whole look a one-file change rather than a sweep through the
- * components.
+ * Nebula classic, formal. A deep navy ground with one soft glow of the accent
+ * at the top of the window and a faint 40px grid that fades out below it.
+ * Content sits on translucent navy cards: a blue-tinted hairline, a very faint
+ * diagonal tint of the accent, an inset top highlight and a soft dark shadow.
+ * Inputs, addresses and the console are sunken wells. That is the whole
+ * vocabulary: ground, cards, wells, controls, lamps.
  *
- * The ground is ink: a near-black blue-grey, hairline borders, and one accent
- * used sparingly enough to still mean something. The accent is the user's
- * choice — every accent-derived value is computed from a single base colour,
- * so adding one is one line.
+ * One accent, the user's choice (cyan by default), derived from a single base
+ * colour. Status colours are their own scale: they carry meaning, never
+ * decorate, never follow the accent, and are always lamp + shape + word.
  *
- * Status colours are their own scale. They carry meaning, so they never double
- * as decoration and never follow the accent.
+ * This file declares custom properties only. It is imported unlayered, which
+ * is safe for exactly that reason. Do not add rules with real properties here.
+ *
+ * Fonts are bundled through fontsource (the CSP blocks remote fonts), see
+ * src/main.tsx:
+ *   @fontsource-variable/quicksand/wght.css       (wght 300-700)
+ *   @fontsource-variable/jetbrains-mono/wght.css  (wght 100-800)
  */
 
 :root {
   color-scheme: dark;
 
-  /* -- ground ----------------------------------------------------------- */
-  --ink-900: #07090e;
-  --ink-850: #0a0d14;
-  --ink-800: #0e121a;
-  --ink-750: #131822;
-  --ink-700: #1a202c;
-  --ink-600: #232a38;
+  /* -- ground: navy ----------------------------------------------------- */
+  --ink-900: #050810; /* the window ground */
+  --ink-850: #080c16; /* well floor: fields, readouts, sunken boxes */
+  --ink-800: #0c1220; /* solid surface: rail, dialogs, sticky bars */
+  --ink-750: #101828; /* raised: secondary buttons, tiles, selected segment */
+  --ink-700: #152036; /* hover on a raised control */
+  --ink-600: #1c2942; /* pressed / toggle track off */
 
   --surface: var(--ink-800);
   --surface-raised: var(--ink-750);
   --surface-sunken: var(--ink-850);
   --canvas: var(--ink-900);
 
-  /* Hairlines, not boxes. Borders carry the structure so shadows do not
-     have to, which keeps ten cards on screen from turning into soup. */
-  --line: rgb(255 255 255 / 7%);
-  --line-strong: rgb(255 255 255 / 13%);
+  /* The card: translucent navy over the ground, so the ambient glow and grid
+     read faintly through it. Plus a diagonal accent tint (<= 4%). */
+  --surface-card: rgb(10 16 28 / 82%);
+  --surface-card-hover: rgb(14 22 38 / 88%);
+  --card-tint: 3.5%;
+  --card-wash: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent-base) var(--card-tint), transparent),
+    transparent 45%
+  );
+  /* Wells: the legacy input/console gradient, a touch darker at the top. */
+  --well-fill: linear-gradient(180deg, rgb(0 0 0 / 22%), rgb(0 0 0 / 8%)), rgb(6 10 18 / 72%);
+
+  /* Hairlines are blue-tinted, the classic Nebula edge. */
+  --line: rgb(100 160 255 / 10%);
+  --line-strong: rgb(100 160 255 / 18%);
+  --line-hover: rgb(100 160 255 / 28%);
+  /* Hover fill for quiet (borderless) controls and rows. */
+  --quiet-hover: rgb(255 255 255 / 5%);
+  --scrollbar-thumb: rgb(255 255 255 / 9%);
+  --scrollbar-thumb-hover: rgb(255 255 255 / 16%);
+  /* Shadow edge: the dark side of a divider or a sunken edge. Kept for area
+     files that pair it with --line. */
+  --groove: rgb(0 0 0 / 35%);
+
+  /* -- text ------------------------------------------------------------- */
+  --text: #e6ebf2;       /* 15.6:1 on surface */
+  --text-muted: #aeb8c8; /* 9.4:1 */
+  --text-faint: #8b95a7; /* 6.2:1 on surface, 5.6:1 on raised */
+  --text-heading: #f1f5f9;
 
   /* -- type ------------------------------------------------------------- */
-  --text: #e6e8ec;
-  --text-muted: #9aa1ad;
-  --text-faint: #6b7280;
-  /* 4.6:1 on --surface: the faintest text allowed to carry meaning. */
+  /* Quicksand carries the interface and the headings; headings are the same
+     face at 700. JetBrains Mono is for things read off the machine:
+     addresses, numbers, logs, paths. */
+  --font-sans: "Quicksand Variable", Quicksand, "Segoe UI Variable Text", "Segoe UI", system-ui,
+    sans-serif;
+  --font-display: var(--font-sans);
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", "Cascadia Mono", "Cascadia Code", Consolas,
+    ui-monospace, monospace;
+  --font-readout: var(--font-mono);
 
-  --font-sans: "Inter var", Inter, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "Cascadia Mono", "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
+  /* Neither face has a width axis; kept so existing rules stay valid. */
+  --display-stretch: 100%;
+  --readout-stretch: 100%;
 
-  --text-xs: 0.6875rem;
-  --text-sm: 0.8125rem;
-  --text-base: 0.875rem;
-  --text-lg: 1rem;
-  --text-xl: 1.25rem;
-  --text-2xl: 1.75rem;
-  --text-display: 2.25rem;
+  /* 12 13 14 16 20 28 36. */
+  --text-xs: 0.75rem;       /* 12: labels, help, tags */
+  --text-sm: 0.8125rem;     /* 13: controls, rows, rail, console */
+  --text-base: 0.875rem;    /* 14: body */
+  --text-lg: 1rem;          /* 16: card titles, panel titles */
+  --text-xl: 1.25rem;       /* 20: screen, dialog and empty-state titles */
+  --text-2xl: 1.75rem;      /* 28: server name on its own screen, big readouts */
+  --text-display: 2.25rem;  /* 36: node name on the server list, first run */
 
-  --tracking-label: 0.08em;
+  --leading-tight: 1.15;
+  --leading-body: 1.5;
+  --leading-log: 1.6;
+
+  --tracking-label: 0.005em;
+  --tracking-display: -0.015em;
+  --tracking-readout: 0;
+
+  /* Quicksand is light-bodied; 500 is the reading weight on navy. */
+  --weight-text: 500;
+  --weight-control: 600;
+  --weight-strong: 650;
+  --weight-display: 700;
 
   /* -- accent ----------------------------------------------------------- */
-  /* One base colour per theme; everything else is derived from it, so a new
-     accent is a single declaration in the block below. */
   --accent-base: #22d3ee;
-  --accent: var(--accent-base);
-  --accent-bright: color-mix(in oklab, var(--accent-base) 72%, white);
-  --accent-dim: color-mix(in srgb, var(--accent-base) 14%, transparent);
-  --accent-line: color-mix(in srgb, var(--accent-base) 34%, transparent);
-  /* The wash that gives a panel a lit edge instead of a flat fill. Kept under
-     5%: the previous app's version of this was a neon halo, and that is the
-     single loudest thing separating "designed" from "generated". */
-  --accent-wash: color-mix(in srgb, var(--accent-base) 4%, transparent);
-  /* Ink laid on top of a filled accent. Every accent here is light enough at
-     400-level that one dark neutral clears AA on all of them. */
-  --text-on-accent: #071016;
+  --text-on-accent: #04121a; /* >= 6.5:1 on every dark-theme accent */
 
   /* -- status ----------------------------------------------------------- */
-  --status-offline: #6b7280;
-  --status-sleeping: #7c8ec7;
-  --status-starting: #d99b3f;
-  --status-online: #5fbf8f;
-  --status-stopping: #a1846b;
-  --status-crashed: #d9614f;
+  /* Lamp colours tuned for AA on navy (chip text on its own dim over the
+     surface >= 4.5:1). Starting is orange, not the amber accent; crashed is
+     red, not the rose accent; the lamp shape separates them again. */
+  --status-offline: #8b95a7;
+  --status-sleeping: #a3b0f5;
+  --status-starting: #f3a35a;
+  --status-online: #4fd18b;
+  --status-stopping: #cfae8c;
+  --status-crashed: #f87171;
 
-  --status-offline-dim: rgb(107 114 128 / 16%);
-  --status-sleeping-dim: rgb(124 142 199 / 16%);
-  --status-starting-dim: rgb(217 155 63 / 16%);
-  --status-online-dim: rgb(95 191 143 / 16%);
-  --status-stopping-dim: rgb(161 132 107 / 16%);
-  --status-crashed-dim: rgb(217 97 79 / 16%);
+  --status-mix: 14%;
+  --status-offline-dim: color-mix(in srgb, var(--status-offline) var(--status-mix), transparent);
+  --status-sleeping-dim: color-mix(in srgb, var(--status-sleeping) var(--status-mix), transparent);
+  --status-starting-dim: color-mix(in srgb, var(--status-starting) var(--status-mix), transparent);
+  --status-online-dim: color-mix(in srgb, var(--status-online) var(--status-mix), transparent);
+  --status-stopping-dim: color-mix(in srgb, var(--status-stopping) var(--status-mix), transparent);
+  --status-crashed-dim: color-mix(in srgb, var(--status-crashed) var(--status-mix), transparent);
+  --status-crashed-line: color-mix(in srgb, var(--status-crashed) 45%, transparent);
+
+  /* The lamp. Only online gets a halo, and a small one (<= 6px). */
+  --lamp-size: 8px;
+  --lamp-ring-width: 0px;
+  --lamp-halo-blur: 6px;
+  --lamp-halo-alpha: 45%;
+  --lamp-lens: linear-gradient(transparent, transparent);
 
   /* -- shape ------------------------------------------------------------ */
-  --radius-sm: 4px;
+  /* 6 chips/tags, 8 controls, 12 cards/panels, 14 dialogs. Pills only for
+     toggles and status chips. */
+  --radius-sm: 6px;
   --radius: 8px;
   --radius-lg: 12px;
+  --radius-xl: 14px;
+  --radius-hero: 14px;
+  --radius-pill: 999px;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -98,77 +155,250 @@
   --space-6: 32px;
   --space-7: 48px;
 
-  --shadow-panel: 0 1px 2px rgb(0 0 0 / 40%);
-  --shadow-pop: 0 12px 32px -8px rgb(0 0 0 / 60%);
-  /* Sunken surfaces (the console) get depth from an inset, not a border. */
-  --shadow-inset: inset 0 2px 10px rgb(0 0 0 / 45%);
+  /* -- depth ------------------------------------------------------------ */
+  /* The inset top highlight every card and raised control carries. */
+  --bevel-top: inset 0 1px 0 rgb(255 255 255 / 4%);
+  --edge-bottom: 0 1px 0 rgb(0 0 0 / 30%);
+  --shadow-card: var(--bevel-top), 0 2px 12px rgb(0 0 0 / 35%);
+  --shadow-card-hover: var(--bevel-top), 0 4px 16px rgb(0 0 0 / 40%);
+  --shadow-panel: var(--bevel-top), 0 4px 20px rgb(0 0 0 / 35%);
+  /* A well: shade along the top inner edge. */
+  --shadow-inset: inset 0 1px 4px rgb(0 0 0 / 35%);
+  /* Raised controls (secondary buttons, segments, tiles). No travel on press. */
+  --shadow-key: var(--bevel-top), 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-key-pressed: inset 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-key-accent: inset 0 1px 0 rgb(255 255 255 / 22%), 0 1px 2px rgb(0 0 0 / 30%);
+  --key-travel: 0px;
+  --shadow-pop: inset 0 1px 0 rgb(255 255 255 / 6%), 0 0 0 1px rgb(0 0 0 / 30%),
+    0 24px 60px rgb(0 0 0 / 50%);
+
+  /* Retired (the old perforated texture). `none` keeps old rules valid. */
+  --texture-grille: none;
+
+  /* -- ambient ---------------------------------------------------------- */
+  /* The essence, painted once on body: a navy vertical gradient, ONE soft
+     radial glow of the accent at the top of the main area, and the masked
+     40px grid fading out from the top. Nothing else glows. */
+  --ambient-ground: linear-gradient(180deg, #040610 0%, #050812 38%, #04060d 100%);
+  --ambient-glow-strength: 11%;
+  --ambient-glow: radial-gradient(
+    56% 46% at 60% 0%,
+    color-mix(in srgb, var(--accent-base) var(--ambient-glow-strength), transparent),
+    transparent 100%
+  );
+  --ambient-grid-line: rgb(255 255 255 / 1.5%);
+  --ambient-grid-size: 40px;
+  --ambient-grid-mask: linear-gradient(180deg, #000 0%, transparent 30%);
+
+  /* -- screen ----------------------------------------------------------- */
+  /* The console window: deeper than a well, slightly darker, inset. NOT
+     redeclared in the light theme: the console stays dark. */
+  --screen-bg: #04070d;
+  --screen-fill: linear-gradient(180deg, rgb(0 0 0 / 36%), rgb(0 0 0 / 12%)), var(--screen-bg);
+  --screen-text: #d6dde8;   /* 14:1 */
+  --screen-faint: #7f8a9d;  /* 5.5:1: timestamps */
+  --screen-hover: rgb(255 255 255 / 3%);
+  --screen-line: rgb(255 255 255 / 6%);
+  --screen-accent: color-mix(in oklab, var(--accent-base) 86%, white);
+  --screen-warn: #f2b45c;
+  --screen-error: #f87171;
+  --screen-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%), inset 0 2px 8px rgb(0 0 0 / 45%);
+
+  --scrim: rgb(2 4 10 / 66%);
+
+  /* Window controls: the Windows convention. White on #c42b1c is 5.7:1. */
+  --window-hover: rgb(255 255 255 / 7%);
+  --window-close-hover: #c42b1c;
+  --window-close-text: #ffffff;
 
   /* -- motion ----------------------------------------------------------- */
+  /* Colour, border and opacity only, 120-200ms. */
   --ease: cubic-bezier(0.2, 0, 0, 1);
+  --ease-press: var(--ease);
+  --duration-press: 120ms;
   --duration-fast: 120ms;
+  --duration-dialog: 160ms;
   --duration: 200ms;
+  /* Retired alias; nothing new should use it. */
 
   /* -- layout ----------------------------------------------------------- */
-  --titlebar-height: 38px;
-  --sidebar-width: 232px;
+  --titlebar-height: 40px;
+  --sidebar-width: 240px;
+  --gutter: 28px;
+  --content-max: 1320px;
+  --control-height: 34px;
+  --control-height-sm: 28px;
+  --row-height: 40px;
+
+
+  /* Ring meter (the machine block). */
+  --ring-size: 56px;
+  --ring-stroke: 3px;
+  --ring-track: rgb(100 160 255 / 12%);
+}
+
+/* -- density ------------------------------------------------------------ */
+:root[data-density="compact"] {
+  --text-base: 0.8125rem; /* 13 */
+  --text-sm: 0.78125rem;  /* 12.5 */
+  --control-height: 32px;
+  --control-height-sm: 26px;
+  --row-height: 34px;
+  --gutter: 20px;
 }
 
 /* -- accents ------------------------------------------------------------ */
-/* Stamped on <html> by the app, and on individual swatches by the settings
-   picker — hence `[data-accent]` rather than `:root[data-accent]`, so a
-   preview swatch can carry its own accent without theming the whole page. */
+/* Stamped on <html> by AccentSync and on individual swatches by the picker.
+   Retuned for the navy ground; ids are unchanged. Each keeps clear of the
+   status hues: emerald leans teal (off online), rose leans pink (off
+   crashed), amber leans yellow (off starting), violet and blue stay apart
+   from the sleeping indigo by lightness and hue. */
 [data-accent="cyan"] { --accent-base: #22d3ee; }
-[data-accent="amber"] { --accent-base: #e8b44a; }
-[data-accent="emerald"] { --accent-base: #34d399; }
-[data-accent="violet"] { --accent-base: #a78bfa; }
-[data-accent="blue"] { --accent-base: #60a5fa; }
-[data-accent="rose"] { --accent-base: #fb7185; }
+[data-accent="amber"] { --accent-base: #f5c451; }
+[data-accent="emerald"] { --accent-base: #2dd4aa; }
+[data-accent="violet"] { --accent-base: #b197fc; }
+[data-accent="blue"] { --accent-base: #5ea8ff; }
+[data-accent="rose"] { --accent-base: #f472b6; }
 
-/* A light theme exists because a machine in a bright room is a real place to
-   run a server from. Only the tokens change. */
+/* The derived set lives on every element that sets an accent, not only on
+   :root, so a swatch that changes --accent-base previews its own colour. */
+:root,
+[data-accent] {
+  --accent: var(--accent-base);
+  --accent-bright: color-mix(in oklab, var(--accent-base) 84%, white); /* hover fill */
+  --accent-dim: color-mix(in srgb, var(--accent-base) 14%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent-base) 36%, transparent);
+  --accent-wash: color-mix(in srgb, var(--accent-base) 6%, transparent);
+  --accent-ink: color-mix(in oklab, var(--accent-base) 88%, white); /* small accent text */
+  /* Accent edge: the border of a filled accent control. */
+  --accent-edge: color-mix(in oklab, var(--accent-base) 78%, black);
+}
+
+/* -- per-server identity ------------------------------------------------ */
+/* Contract: a component stamps BOTH data-identity and
+   style="--identity: #rrggbb" (the distribution accent). The derived set is
+   computed on that same element. Without an inline --identity it falls back
+   to the accent base. Never concatenate hex alpha onto --identity.
+
+   Identity is a small colour: a tile, a tag. Idle servers (offline /
+   sleeping) are slightly desaturated: --identity-muted / -muted-ink. The
+   --identity-ash* names are kept as aliases for older area rules. */
+[data-identity] {
+  --identity-ink: color-mix(in oklab, var(--identity, var(--accent-base)) 84%, white);
+  --identity-dim: color-mix(in srgb, var(--identity, var(--accent-base)) 16%, transparent);
+  --identity-line: color-mix(in srgb, var(--identity, var(--accent-base)) 40%, transparent);
+  --identity-muted: color-mix(in srgb, var(--identity, var(--accent-base)) 9%, var(--surface-raised));
+  --identity-muted-ink: color-mix(in oklab, var(--identity, var(--accent-base)) 55%, var(--text-muted));
+  --identity-muted-line: color-mix(in srgb, var(--identity, var(--accent-base)) 20%, transparent);
+  --identity-ash: var(--identity-muted);
+  --identity-ash-ink: var(--identity-muted-ink);
+  --identity-ash-tab: var(--identity-muted-line);
+}
+
+/* -- light theme -------------------------------------------------------- */
+/* Nebula by day: a cool grey-blue ground, white cards, the accent darkened
+   to hold against white (dark cyan by default). The console stays dark. */
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --ink-900: #f5f4f1;
-  --ink-850: #efeeea;
-  --ink-800: #ffffff;
-  --ink-750: #faf9f7;
-  --ink-700: #e9e7e2;
-  --ink-600: #dedbd4;
+  --ink-900: #e9eef4; /* ground */
+  --ink-850: #f2f5f9; /* well floor */
+  --ink-800: #ffffff; /* solid surface */
+  --ink-750: #f7f9fc; /* raised */
+  --ink-700: #edf1f7; /* hover */
+  --ink-600: #d5dde8; /* pressed, toggle off */
 
   --surface: var(--ink-800);
   --surface-raised: var(--ink-750);
   --surface-sunken: var(--ink-850);
   --canvas: var(--ink-900);
 
-  --line: rgb(20 20 20 / 10%);
-  --line-strong: rgb(20 20 20 / 18%);
+  --surface-card: rgb(255 255 255 / 94%);
+  --surface-card-hover: #ffffff;
+  --card-tint: 3%;
+  --well-fill: linear-gradient(180deg, rgb(15 40 80 / 4%), rgb(15 40 80 / 1%)), #f4f7fb;
 
-  --text: #16181d;
-  --text-muted: #545a66;
-  --text-faint: #767d8a;
+  --line: rgb(30 60 110 / 12%);
+  --line-strong: rgb(30 60 110 / 21%);
+  --line-hover: rgb(30 60 110 / 32%);
+  --quiet-hover: rgb(15 30 60 / 5%);
+  --scrollbar-thumb: rgb(15 30 60 / 16%);
+  --scrollbar-thumb-hover: rgb(15 30 60 / 28%);
+  --groove: rgb(30 60 110 / 10%);
 
-  /* The same base, darkened until it holds its own against white. */
-  --accent: color-mix(in oklab, var(--accent-base) 58%, #0b0b0b);
-  --accent-bright: color-mix(in oklab, var(--accent-base) 42%, #0b0b0b);
-  --accent-dim: color-mix(in srgb, var(--accent-base) 16%, transparent);
-  --accent-line: color-mix(in srgb, var(--accent-base) 45%, transparent);
-  --accent-wash: color-mix(in srgb, var(--accent-base) 6%, transparent);
+  --text: #0f1a2a;       /* 17:1 on white */
+  --text-muted: #3d4a5e; /* 9:1 */
+  --text-faint: #566377; /* 6.1:1 on white, 5.6:1 on the well */
+  --text-heading: #0b1422;
+
   --text-on-accent: #ffffff;
 
-  --status-sleeping: #4f63a8;
-  --status-starting: #96660f;
-  --status-online: #26794f;
-  --status-stopping: #7a5a3c;
-  --status-crashed: #b2382a;
+  --status-offline: #5b6576;
+  --status-sleeping: #4150a6;
+  --status-starting: #9a530c;
+  --status-online: #16774a;
+  --status-stopping: #765a3e;
+  --status-crashed: #b42318;
+  --status-mix: 12%;
 
-  --shadow-inset: inset 0 2px 10px rgb(20 20 20 / 10%);
+  --lamp-halo-blur: 0px; /* no halo in daylight */
+
+  --bevel-top: inset 0 1px 0 rgb(255 255 255 / 90%);
+  --edge-bottom: 0 1px 0 rgb(15 30 60 / 8%);
+  --shadow-card: 0 1px 2px rgb(15 30 60 / 6%), 0 4px 14px rgb(15 30 60 / 6%);
+  --shadow-card-hover: 0 1px 2px rgb(15 30 60 / 8%), 0 6px 18px rgb(15 30 60 / 9%);
+  --shadow-panel: var(--shadow-card);
+  --shadow-inset: inset 0 1px 2px rgb(15 30 60 / 8%);
+  --shadow-key: 0 1px 2px rgb(15 30 60 / 8%);
+  --shadow-key-pressed: inset 0 1px 2px rgb(15 30 60 / 12%);
+  --shadow-key-accent: inset 0 1px 0 rgb(255 255 255 / 18%), 0 1px 2px rgb(15 30 60 / 14%);
+  --shadow-pop: 0 0 0 1px rgb(15 30 60 / 8%), 0 24px 56px rgb(15 30 60 / 20%);
+  /* The dark console set into a light window: a crisper rim. */
+  --screen-shadow: inset 0 0 0 1px rgb(0 0 0 / 55%), inset 0 2px 8px rgb(0 0 0 / 45%);
+
+  --ambient-ground: linear-gradient(180deg, #e6ecf3 0%, #e9eef4 40%, #eef2f7 100%);
+  --ambient-glow-strength: 7%;
+  --ambient-grid-line: rgb(15 40 80 / 2.5%);
+
+  --ring-track: rgb(30 60 110 / 12%);
+
+  --scrim: rgb(15 26 42 / 32%);
+  --window-hover: rgb(15 30 60 / 7%);
 }
 
-/* Motion is decoration here; meaning never depends on it. */
+/* In daylight each accent keeps its hue and chroma and only its lightness is
+   fixed (relative OKLCH; WebView2/Chromium 119+), so the six stay distinct.
+   L 0.50 carries white text at 5.4:1+ and holds 4.9:1+ as text on white.
+   Declared on [data-accent] descendants as well, so swatches preview. */
+:root[data-theme="light"],
+[data-theme="light"] [data-accent] {
+  --accent: oklch(from var(--accent-base) 0.5 min(c, 0.13) h);
+  --accent-bright: oklch(from var(--accent-base) 0.45 min(c, 0.13) h);
+  --accent-dim: color-mix(in srgb, var(--accent-base) 16%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent-base) 50%, transparent);
+  --accent-wash: color-mix(in srgb, var(--accent-base) 8%, transparent);
+  --accent-ink: oklch(from var(--accent-base) 0.46 min(c, 0.12) h);
+  --accent-edge: oklch(from var(--accent-base) 0.42 min(c, 0.12) h);
+}
+
+/* Identity in daylight: the ink mixes toward the text colour, so a near-white
+   identity (Paper) still reads on white. */
+:root[data-theme="light"] [data-identity] {
+  --identity-ink: color-mix(in oklab, var(--identity, var(--accent-base)) 44%, #0f1a2a);
+  --identity-dim: color-mix(in srgb, var(--identity, var(--accent-base)) 18%, transparent);
+  --identity-line: color-mix(in srgb, var(--identity, var(--accent-base)) 50%, transparent);
+  --identity-muted: color-mix(in srgb, var(--identity, var(--accent-base)) 8%, var(--surface-sunken));
+  --identity-muted-ink: color-mix(in oklab, var(--identity, var(--accent-base)) 30%, var(--text-muted));
+  --identity-muted-line: color-mix(in srgb, var(--identity, var(--accent-base)) 26%, transparent);
+}
+
+/* Motion is decoration; meaning never depends on it. */
 @media (prefers-reduced-motion: reduce) {
   :root {
+    --duration-press: 0ms;
     --duration-fast: 0ms;
+    --duration-dialog: 0ms;
     --duration: 0ms;
+    --key-travel: 0px;
   }
 }

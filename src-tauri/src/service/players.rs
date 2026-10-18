@@ -33,7 +33,7 @@ pub struct PlayerEntry {
 pub type PlayerLists = BTreeMap<String, Vec<PlayerEntry>>;
 
 pub fn read_lists(root: &Path, source: &PlayerSource) -> AppResult<PlayerLists> {
-    let PlayerSource::Files { lists } = source else {
+    let PlayerSource::Files { lists, .. } = source else {
         return Ok(PlayerLists::new());
     };
 
@@ -67,7 +67,7 @@ fn read_list(root: &Path, file: &str) -> AppResult<Vec<PlayerEntry>> {
 }
 
 pub fn write_list(root: &Path, source: &PlayerSource, list: &str, entries: &[PlayerEntry]) -> AppResult<()> {
-    let PlayerSource::Files { lists } = source else {
+    let PlayerSource::Files { lists, .. } = source else {
         return Err(AppError::new(ErrorCode::GameNotSupported).with("list", list));
     };
     let file = lists
@@ -97,6 +97,37 @@ pub fn write_list(root: &Path, source: &PlayerSource, list: &str, entries: &[Pla
     std::fs::write(&temp, serde_json::to_vec_pretty(&json)?)?;
     std::fs::rename(&temp, &path)?;
     Ok(())
+}
+
+/// Name → UUID from everything the game keeps on disk: its lists and, when
+/// the manifest names one, its name cache (`usercache.json`). Unreadable files
+/// contribute nothing; this is for faces, not for anything that must be right.
+pub fn read_identities(root: &Path, source: &PlayerSource) -> std::collections::HashMap<String, String> {
+    let mut out = std::collections::HashMap::new();
+    let PlayerSource::Files { lists, identity_file } = source else { return out };
+
+    if let Some(file) = identity_file {
+        if let Ok(path) = resolve_inside(root, file) {
+            let parsed: Vec<Value> = std::fs::read_to_string(path)
+                .ok()
+                .and_then(|text| serde_json::from_str(&text).ok())
+                .unwrap_or_default();
+            for entry in parsed {
+                if let (Some(name), Some(uuid)) = (entry["name"].as_str(), entry["uuid"].as_str()) {
+                    out.insert(name.to_string(), uuid.to_string());
+                }
+            }
+        }
+    }
+    // Lists are curated by the admin; let them win over the cache.
+    for file in lists.values() {
+        for entry in read_list(root, file).unwrap_or_default() {
+            if let Some(uuid) = entry.uuid {
+                out.insert(entry.name, uuid);
+            }
+        }
+    }
+    out
 }
 
 /// Where to fetch a face for a player.
@@ -143,6 +174,28 @@ mod tests {
     }
 
     #[test]
+    fn identities_come_from_the_name_cache_and_the_lists() {
+        let root = std::env::temp_dir().join(format!("nebula-identities-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).expect("temp root");
+        std::fs::write(
+            root.join("usercache.json"),
+            r#"[{"name":"Steve","uuid":"8667ba71-b85a-4004-af54-457a9734eed7","expiresOn":"2026-01-01"}]"#,
+        )
+        .expect("cache");
+        std::fs::write(root.join("ops.json"), r#"[{"name":"Alex","uuid":"ec561538-f3fd-461d-aff5-086b22154bce","level":4}]"#)
+            .expect("ops");
+        let source = PlayerSource::Files {
+            lists: BTreeMap::from([("operators".to_string(), "ops.json".to_string())]),
+            identity_file: Some("usercache.json".into()),
+        };
+        let ids = read_identities(&root, &source);
+        assert_eq!(ids.get("Steve").map(String::as_str), Some("8667ba71-b85a-4004-af54-457a9734eed7"));
+        assert_eq!(ids.get("Alex").map(String::as_str), Some("ec561538-f3fd-461d-aff5-086b22154bce"));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
     fn a_game_without_player_files_reports_no_lists() {
         let lists = read_lists(Path::new("/tmp"), &PlayerSource::Console).expect("no lists");
         assert!(lists.is_empty());
@@ -156,6 +209,7 @@ mod tests {
 
         let source = PlayerSource::Files {
             lists: BTreeMap::from([("allowed".to_string(), "whitelist.json".to_string())]),
+            identity_file: None,
         };
         let entries = vec![PlayerEntry {
             name: "Gabrieli2806".into(),
@@ -178,6 +232,7 @@ mod tests {
         std::fs::create_dir_all(&root).expect("temp root");
         let source = PlayerSource::Files {
             lists: BTreeMap::from([("banned".to_string(), "banned-players.json".to_string())]),
+            identity_file: None,
         };
         assert!(read_lists(&root, &source).expect("read")["banned"].is_empty());
         let _ = std::fs::remove_dir_all(&root);

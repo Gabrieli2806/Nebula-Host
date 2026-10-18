@@ -1,0 +1,331 @@
+/*
+ * RamSlider. Owner: RAM agent (round 3).
+ * A 4px rail in a well, the recommended band drawn as a faint accent
+ * region behind it, a solid accent fill, a round knob. The rail and the tick
+ * row are inset by half the knob so tick labels sit under the knob's centre.
+ */
+@layer components {
+  .ram-slider {
+    --ram-knob: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .ram-main {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .ram-scale {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* -- track ---------------------------------------------------------- */
+
+  .ram-track {
+    position: relative;
+    height: 36px;
+  }
+
+  .ram-rail {
+    position: absolute;
+    top: 50%;
+    left: calc(var(--ram-knob) / 2);
+    right: calc(var(--ram-knob) / 2);
+    height: 4px;
+    transform: translateY(-50%);
+    border-radius: 2px;
+    background: var(--ring-track);
+  }
+
+  .ram-zone {
+    position: absolute;
+    top: -6px;
+    bottom: -6px;
+    left: var(--ram-zone-start);
+    right: calc(100% - var(--ram-zone-end));
+    min-width: 2px;
+    border-radius: 4px;
+    background: var(--accent-wash);
+    box-shadow: inset 0 0 0 1px var(--accent-line);
+  }
+
+  /* Past the safe limit: an amber band, opened by a solid notch. */
+  .ram-caution {
+    position: absolute;
+    top: -6px;
+    bottom: -6px;
+    left: var(--ram-caution);
+    right: 0;
+    border-radius: 0 4px 4px 0;
+    border-left: 2px solid var(--status-starting);
+    background: var(--status-starting-dim);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--status-starting) 40%, transparent);
+  }
+
+  .ram-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--ram-fill);
+    border-radius: 2px;
+    background: var(--accent);
+    transition: background-color var(--duration-dialog) ease;
+  }
+
+  .ram-slider[data-over] .ram-fill {
+    background: var(--status-starting);
+  }
+
+  /* The recommended point: a short notch through the band. */
+  .ram-rec {
+    position: absolute;
+    top: -6px;
+    bottom: -6px;
+    left: var(--ram-rec);
+    width: 2px;
+    margin-left: -1px;
+    border-radius: 1px;
+    background: var(--accent-line);
+  }
+
+  /* -- native range, restyled --------------------------------------- */
+
+  .ram-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    background: transparent;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .ram-input:focus-visible {
+    outline: none;
+  }
+
+  .ram-input::-webkit-slider-runnable-track {
+    height: 100%;
+    background: transparent;
+  }
+
+  .ram-input::-moz-range-track {
+    height: 100%;
+    background: transparent;
+  }
+
+  .ram-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: var(--ram-knob);
+    height: var(--ram-knob);
+    margin-top: calc((36px - var(--ram-knob)) / 2);
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 35%);
+    transition:
+      border-color var(--duration-dialog) ease,
+      box-shadow var(--duration-dialog) ease;
+  }
+
+  .ram-input::-moz-range-thumb {
+    width: var(--ram-knob);
+    height: var(--ram-knob);
+    box-sizing: border-box;
+    border: 2px solid var(--accent);
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 35%);
+  }
+
+  .ram-input:hover::-webkit-slider-thumb {
+    border-color: var(--accent-bright);
+  }
+
+  .ram-input:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+
+  .ram-input:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+
+  .ram-slider[data-over] .ram-input::-webkit-slider-thumb {
+    border-color: var(--status-starting);
+  }
+
+  .ram-slider[data-over] .ram-input::-moz-range-thumb {
+    border-color: var(--status-starting);
+  }
+
+  .ram-input:disabled {
+    cursor: default;
+  }
+
+  .ram-slider[data-disabled] {
+    opacity: 0.55;
+  }
+
+  /* -- ticks ---------------------------------------------------------- */
+
+  .ram-ticks {
+    position: relative;
+    height: 18px;
+    margin: 0 calc(var(--ram-knob) / 2);
+  }
+
+  .ram-tick {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    padding-top: 6px;
+    font-family: var(--font-readout);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    white-space: nowrap;
+    color: var(--text-faint);
+  }
+
+  .ram-tick::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 1px;
+    height: 4px;
+    background: var(--line-strong);
+  }
+
+  .ram-tick[data-edge="start"] {
+    transform: none;
+    margin-left: calc(var(--ram-knob) / -2);
+  }
+
+  .ram-tick[data-edge="start"]::before {
+    left: calc(var(--ram-knob) / 2);
+  }
+
+  .ram-tick[data-edge="end"] {
+    transform: translateX(-100%);
+    margin-left: calc(var(--ram-knob) / 2);
+  }
+
+  .ram-tick[data-edge="end"]::before {
+    left: auto;
+    right: calc(var(--ram-knob) / 2);
+  }
+
+  /* -- exact amount --------------------------------------------------- */
+
+  .ram-amount {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-2);
+    height: 36px;
+  }
+
+  .ram-number {
+    width: 84px;
+    height: 36px;
+    font-family: var(--font-readout);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .ram-unit {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-control);
+    color: var(--text-muted);
+  }
+
+  /* -- status --------------------------------------------------------- */
+
+  .ram-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-1) var(--space-3);
+    min-height: 28px;
+  }
+
+  .ram-status-text {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+  }
+
+  .ram-machine {
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ram-use {
+    flex: none;
+  }
+
+  .ram-warn {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid color-mix(in srgb, var(--status-starting) 40%, transparent);
+    border-radius: var(--radius);
+    background: var(--status-starting-dim);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    color: var(--text);
+  }
+
+  .ram-warn > svg {
+    flex: none;
+    margin-top: 2px;
+    color: var(--status-starting);
+  }
+
+  .ram-note {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--text-faint);
+  }
+
+  /* Getting close: inline, amber icon, normal text (the box is for "over"). */
+  .ram-note[data-tone="caution"] {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    line-height: 1.45;
+    color: var(--text-muted);
+  }
+
+  .ram-note[data-tone="caution"] > svg {
+    flex: none;
+    margin-top: 2px;
+    color: var(--status-starting);
+  }
+
+  /* Settings: the memory row stacks, the slider takes the full width. */
+  .pref-row[data-layout="stacked"] {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--space-3);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ram-fill,
+    .ram-input::-webkit-slider-thumb {
+      transition: none;
+    }
+  }
+}

@@ -421,6 +421,7 @@ mod tests {
 
     fn minecraft_spec() -> WakeSpec {
         WakeSpec {
+            bind_setting: None,
             protocol: WakeProtocol::MinecraftJava,
             sleeping_motd: "{name} is asleep".to_string(),
         }

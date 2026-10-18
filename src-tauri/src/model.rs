@@ -317,6 +317,9 @@ pub struct InstanceView {
     /// Address to hand to players, when the node knows one.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub address: Option<String>,
+    /// The server's `server-icon.png` as a `data:` URL, when it has one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon_url: Option<String>,
 }
 
 /// One line of server output.
@@ -325,6 +328,38 @@ pub struct ConsoleLine {
     pub timestamp: DateTime<Utc>,
     pub level: ConsoleLevel,
     pub message: String,
+    /// `message` without the game's own time/level prefix, for display (the
+    /// console gutter already has the time). Absent when there was none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub body: Option<String>,
+    /// Set when the line is something a player did: said, joined, left.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speaker: Option<ConsoleSpeaker>,
+}
+
+impl ConsoleLine {
+    /// A line with no player attached — app messages, plain server output.
+    pub fn new(level: ConsoleLevel, message: impl Into<String>) -> Self {
+        Self { timestamp: Utc::now(), level, message: message.into(), body: None, speaker: None }
+    }
+}
+
+/// The player a console line is about, read with the manifest's patterns.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConsoleSpeaker {
+    pub name: String,
+    pub kind: SpeakerKind,
+    /// What they said, for chat lines.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SpeakerKind {
+    Chat,
+    Join,
+    Leave,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

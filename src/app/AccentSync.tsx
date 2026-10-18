@@ -13,13 +13,16 @@ import { useAppSettings } from "@/hooks/useBackend";
 export const ACCENTS = ["cyan", "amber", "emerald", "violet", "blue", "rose"] as const;
 export type Accent = (typeof ACCENTS)[number];
 
+/** Nebula cyan. Users who saved another accent keep it. */
+export const DEFAULT_ACCENT: Accent = "cyan";
+
 export function isAccent(value: string): value is Accent {
   return (ACCENTS as readonly string[]).includes(value);
 }
 
 export function AccentSync() {
   const { data: settings } = useAppSettings();
-  const accent = settings?.accent && isAccent(settings.accent) ? settings.accent : "cyan";
+  const accent = settings?.accent && isAccent(settings.accent) ? settings.accent : DEFAULT_ACCENT;
 
   useEffect(() => {
     document.documentElement.dataset.accent = accent;

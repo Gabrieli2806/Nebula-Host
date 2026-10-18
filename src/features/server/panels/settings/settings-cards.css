@@ -1,0 +1,200 @@
+/*
+ * Nebula Host: the server icon and Java cards in a server's settings. Rows
+ * and help text reuse the preferences pane (.pref-*, panels.css); this file
+ * only adds what those two cards need.
+ */
+
+@layer components {
+  /* == server icon ===================================================== */
+
+  .server-icon-card {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-5);
+    padding: 16px calc(var(--space-5) - var(--space-1));
+  }
+
+  /* The real tile, at header size, so the preview is exactly what the card
+     and the server header show. */
+  .server-icon-preview {
+    flex: none;
+    padding: var(--space-2);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius-lg);
+  }
+
+  .server-icon-body {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .server-icon-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+  }
+
+  .server-icon-actions .segmented {
+    margin-left: auto;
+  }
+
+  /* == java ============================================================ */
+
+  .java-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: 14px calc(var(--space-5) - var(--space-1)) 16px;
+  }
+
+  /* The one-line verdict: recommended Java there (ok) or missing (warn),
+     with the download next to it when it is missing. */
+  .java-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 10px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+  }
+
+  .java-status[data-tone="ok"] {
+    border-color: color-mix(in srgb, var(--status-online) 40%, transparent);
+    background: var(--status-online-dim);
+  }
+
+  .java-status[data-tone="ok"] > svg {
+    color: var(--status-online);
+  }
+
+  .java-status[data-tone="warn"] {
+    border-color: color-mix(in srgb, var(--status-starting) 45%, transparent);
+    background: var(--status-starting-dim);
+  }
+
+  .java-status[data-tone="warn"] > svg {
+    color: var(--status-starting);
+  }
+
+  .java-status > svg {
+    flex: none;
+  }
+
+  .java-status-text {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .java-status-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .java-status-hint {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+  }
+
+  .java-list {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .java-choice {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    width: 100%;
+    padding: 10px 12px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease);
+  }
+
+  .java-choice + .java-choice {
+    border-top: 1px solid var(--line);
+  }
+
+  .java-choice:hover:not(:disabled) {
+    background-color: var(--quiet-hover, rgb(255 255 255 / 4%));
+  }
+
+  .java-choice[aria-checked="true"] {
+    background-color: var(--accent-wash);
+  }
+
+  .java-choice:disabled {
+    cursor: progress;
+  }
+
+  .java-choice-radio {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin-top: 3px;
+    border: 1.5px solid var(--line-hover);
+    border-radius: 50%;
+  }
+
+  .java-choice[aria-checked="true"] .java-choice-radio {
+    border-color: var(--accent);
+    background: radial-gradient(circle, var(--accent) 0 3.5px, transparent 4px);
+  }
+
+  .java-choice-body {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .java-choice-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+
+  .java-choice-who {
+    color: var(--text);
+  }
+
+  .java-choice-version {
+    font-size: var(--text-xs);
+    color: var(--text-faint);
+  }
+
+  .java-choice-detail {
+    overflow: hidden;
+    font-size: var(--text-xs);
+    color: var(--text-faint);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .java-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+}
