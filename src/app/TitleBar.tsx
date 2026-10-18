@@ -15,9 +15,11 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { useI18n } from "@/i18n";
+import { IS_WEB, signOutWeb, webSession } from "@/lib/web";
 import { Icon, Mark } from "@/ui";
 
 import { NodeSwitcher } from "./NodeSwitcher";
+import "@/features/web/WebPair.css";
 
 export interface SidebarToggle {
   collapsed: boolean;
@@ -27,6 +29,42 @@ export interface SidebarToggle {
 }
 
 export function TitleBar({ sidebar }: { sidebar?: SidebarToggle } = {}) {
+  if (IS_WEB) return <WebTitleBar sidebar={sidebar} />;
+  return <WindowTitleBar sidebar={sidebar} />;
+}
+
+/** The web panel's bar: brand, the machine it manages, and sign out. */
+function WebTitleBar({ sidebar }: { sidebar?: SidebarToggle }) {
+  const { t } = useI18n();
+  const session = webSession();
+  return (
+    <header className="titlebar titlebar-web">
+      <div className="titlebar-brand">
+        {sidebar ? <SidebarButton {...sidebar} /> : null}
+        <Mark size={16} />
+        <span className="wordmark">{t("app.name")}</span>
+        {session ? (
+          <>
+            <span className="titlebar-sep" aria-hidden="true">
+              /
+            </span>
+            <span className="titlebar-web-node">{session.name}</span>
+          </>
+        ) : null}
+      </div>
+      {session ? (
+        <div className="flex flex-none items-center pr-2">
+          <button type="button" className="titlebar-web-signout" onClick={signOutWeb}>
+            <Icon name="external" size={13} />
+            <span>{t("web.signOut")}</span>
+          </button>
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
+function WindowTitleBar({ sidebar }: { sidebar?: SidebarToggle }) {
   const { t } = useI18n();
   const [maximized, setMaximized] = useState(false);
 

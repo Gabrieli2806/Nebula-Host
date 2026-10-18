@@ -10,7 +10,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
-import { activeRemote, remoteCall, remoteEvents } from "@/lib/connection";
+import { activeRemote, remoteCall, remoteEvents, uploadFromBrowser } from "@/lib/connection";
+import { IS_WEB, setWebPrefs, webPrefs } from "@/lib/web";
 
 import type {
   AddonBrowseRequest,
@@ -93,7 +94,37 @@ const ALWAYS_LOCAL = new Set([
 const UI_PREFS = ["language", "accent", "density"] as const;
 
 async function local<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  if (IS_WEB) return webLocal<T>(command, args);
   return invoke<T>(command, args);
+}
+
+/** The web panel has no backend of its own: how it looks stays in this
+ *  browser, and everything else goes to the machine that served it. */
+async function webLocal<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  if (command === "settings_get") return webPrefs() as T;
+  if (command === "settings_set") {
+    const next = (args?.settings ?? {}) as Record<string, unknown>;
+    const prefs: Record<string, unknown> = {};
+    for (const key of UI_PREFS) prefs[key] = next[key];
+    setWebPrefs(prefs);
+    return prefs as T;
+  }
+  const node = activeRemote();
+  if (!node || command === "app_open_log_folder" || command === "upload_to_node") {
+    throw { code: "local_only", params: {} };
+  }
+  return remoteCall<T>(node, command, args);
+}
+
+const WEB_UPLOAD_EVENT = "nebula:web-upload";
+
+/** Tauri events, or nothing in the web panel (which has no Tauri). */
+function tauriListen<T>(event: string, handler: (payload: T) => void): () => void {
+  if (IS_WEB) return () => {};
+  const unlisten = listen<T>(event, (message) => handler(message.payload));
+  return () => {
+    void unlisten.then((stop) => stop()).catch(() => {});
+  };
 }
 
 async function routed<T>(command: string, args?: Record<string, unknown>): Promise<T> {
@@ -108,7 +139,10 @@ async function routed<T>(command: string, args?: Record<string, unknown>): Promi
       local<AppSettings>("settings_get"),
     ]);
     const merged = { ...remote } as AppSettings;
-    for (const key of UI_PREFS) (merged as unknown as Record<string, unknown>)[key] = mine[key];
+    for (const key of UI_PREFS) {
+      // A browser that never chose keeps the machine's look.
+      if (mine[key] !== undefined) (merged as unknown as Record<string, unknown>)[key] = mine[key];
+    }
     return merged as T;
   }
   if (command === "settings_set") {
@@ -356,6 +390,20 @@ export const api = {
         throw toAppError(error);
       }
     },
+    /** Web panel: import a .zip chosen in the browser, streamed from it. */
+    importFile: async (instanceId: string, file: File, skipBackup = false): Promise<WorldImportResult> => {
+      const node = activeRemote();
+      try {
+        if (!node) throw { code: "local_only", params: {} };
+        // Reported like the desktop's own upload (`onLocalUpload`).
+        const uploadId = await uploadFromBrowser(node, file, (sent, total) =>
+          window.dispatchEvent(new CustomEvent(WEB_UPLOAD_EVENT, { detail: { sent, total } })),
+        );
+        return await remoteCall<WorldImportResult>(node, "world_import", { instanceId, uploadId, skipBackup });
+      } catch (error) {
+        throw toAppError(error);
+      }
+    },
   },
 
   app: {
@@ -376,7 +424,8 @@ export const api = {
 
   remote: {
     status: () => call<RemoteStatus>("remote_status"),
-    configure: (enabled: boolean) => call<RemoteStatus>("remote_configure", { enabled }),
+    configure: (enabled: boolean, webPanel?: boolean) =>
+      call<RemoteStatus>("remote_configure", { enabled, webPanel }),
     forgetDevice: (deviceId: string) => call<Node>("node_forget_device", { deviceId }),
   },
 
@@ -410,6 +459,7 @@ export interface InstancePatch {
  * function; safe to call from an effect.
  */
 export function onWindowDragDrop(handler: (event: WindowDragDrop) => void): () => void {
+  if (IS_WEB) return () => {};
   let disposed = false;
   let stop: (() => void) | null = null;
   const toCss = (position: { x: number; y: number }) => {
@@ -445,10 +495,7 @@ export function onWindowDragDrop(handler: (event: WindowDragDrop) => void): () =
 
 /** Events from this PC's backend, whichever machine the window manages. */
 export function onLocalAppEvent(handler: (event: AppEvent) => void): () => void {
-  const unlisten = listen<AppEvent>("nebula:event", (message) => handler(message.payload));
-  return () => {
-    void unlisten.then((stop) => stop());
-  };
+  return tauriListen<AppEvent>("nebula:event", handler);
 }
 
 /** A start from the tray menu (this PC) that needs the window. */
@@ -460,27 +507,23 @@ export interface TrayRefusal {
 
 /** The tray asked for something only the window can finish. */
 export function onTrayRefused(handler: (refusal: TrayRefusal) => void): () => void {
-  const unlisten = listen<TrayRefusal>("nebula:tray-refused", (message) => handler(message.payload));
-  return () => {
-    void unlisten.then((stop) => stop()).catch(() => {});
-  };
+  return tauriListen<TrayRefusal>("nebula:tray-refused", handler);
 }
 
 /** Bytes this PC has sent while streaming a file to a remote machine
  *  (always a local event, even while managing that machine). */
 export function onLocalUpload(handler: (progress: { sent: number; total: number }) => void): () => void {
-  const unlisten = listen<{ sent: number; total: number }>("nebula:upload", (message) => handler(message.payload));
-  return () => {
-    void unlisten.then((stop) => stop());
-  };
+  if (IS_WEB) {
+    const listener = (event: Event) => handler((event as CustomEvent<{ sent: number; total: number }>).detail);
+    window.addEventListener(WEB_UPLOAD_EVENT, listener);
+    return () => window.removeEventListener(WEB_UPLOAD_EVENT, listener);
+  }
+  return tauriListen<{ sent: number; total: number }>("nebula:upload", handler);
 }
 
 /** Subscribe to backend events. Returns an unsubscribe function. */
 export function onAppEvent(handler: (event: AppEvent) => void): () => void {
   const node = activeRemote();
   if (node) return remoteEvents(node, (payload) => handler(payload as AppEvent));
-  const unlisten = listen<AppEvent>("nebula:event", (message) => handler(message.payload));
-  return () => {
-    void unlisten.then((stop) => stop());
-  };
+  return tauriListen<AppEvent>("nebula:event", handler);
 }

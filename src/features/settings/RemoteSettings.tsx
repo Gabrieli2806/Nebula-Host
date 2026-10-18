@@ -10,7 +10,7 @@ import { keys, useNode } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { api } from "@/lib/ipc";
 import type { RemoteStatus, UpnpCheck } from "@/types/api";
-import { Button, ErrorNotice, Icon, Panel, Switch } from "@/ui";
+import { Button, CopyAddress, ErrorNotice, Icon, Panel, Switch } from "@/ui";
 
 import "./RemoteSettings.css";
 
@@ -20,12 +20,14 @@ export function RemoteSettings() {
   const { t, language } = useI18n();
   const client = useQueryClient();
   const helpId = useId();
+  const webHelpId = useId();
   const status = useQuery({ queryKey: REMOTE_KEY, queryFn: api.remote.status });
   const { data: node } = useNode();
   const [code, setCode] = useState<{ code: string; expires_at: string } | null>(null);
 
   const configure = useMutation({
-    mutationFn: api.remote.configure,
+    mutationFn: ({ enabled, webPanel }: { enabled: boolean; webPanel?: boolean }) =>
+      api.remote.configure(enabled, webPanel),
     onSuccess: (data: RemoteStatus) => client.setQueryData(REMOTE_KEY, data),
   });
   const issue = useMutation({ mutationFn: api.node.pairingCode, onSuccess: setCode });
@@ -63,7 +65,7 @@ export function RemoteSettings() {
             <Switch
               checked={data?.enabled ?? false}
               disabled={!data || configure.isPending}
-              onChange={(enabled) => configure.mutate(enabled)}
+              onChange={(enabled) => configure.mutate({ enabled })}
               label={t("remote.accessEnable")}
               describedBy={helpId}
             />
@@ -82,6 +84,29 @@ export function RemoteSettings() {
               {data.error ? ` — ${data.error}` : ""}
             </span>
           </div>
+
+          <div className="settings-row" data-switch="">
+            <label className="settings-row-hit">
+              <span className="settings-row-text">
+                <span className="settings-row-label">{t("web.panel")}</span>
+                <span id={webHelpId} className="settings-row-help">
+                  {t("web.panelHelp")}
+                </span>
+              </span>
+              <span className="settings-row-control">
+                <Switch
+                  checked={data.webPanel}
+                  disabled={configure.isPending}
+                  onChange={(webPanel) => configure.mutate({ enabled: true, webPanel })}
+                  label={t("web.panel")}
+                  describedBy={webHelpId}
+                />
+              </span>
+            </label>
+          </div>
+          {data.webPanel && data.running && data.addresses[0] ? (
+            <CopyAddress value={`http://${data.addresses[0]}`} label={t("web.panelUrl")} hint={t("web.panelUrlHint")} />
+          ) : null}
 
           <div className="remote-code-row">
             <Button icon="link" disabled={!data.running || issue.isPending} onClick={() => issue.mutate()}>

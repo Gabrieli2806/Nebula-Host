@@ -52,6 +52,22 @@ export const en = {
     pairedAt: "Paired {date}",
   },
 
+  web: {
+    signOut: "Sign out",
+    panel: "Web panel on the local network",
+    panelHelp: "Open Nebula Host from a phone or another computer's browser on the same network. Each browser signs in once with a pairing code. Only for your home network: the connection is not encrypted.",
+    panelUrl: "Open in a browser",
+    panelUrlHint: "Any device on this network",
+    pairTitle: "Sign in to {name}",
+    pairTitleGeneric: "Sign in to Nebula Host",
+    pairIntro: "On the computer running Nebula Host, open Settings › Remote access and press “Show pairing code”. On a headless node, run nebula-node pair.",
+    deviceName: "Name for this device",
+    deviceNameDefault: "Browser",
+    signIn: "Sign in",
+    signingIn: "Signing in…",
+    lanOnly: "Local network only. Anyone who can sign in here can control your servers, so never open this port on your router.",
+  },
+
   upnp: {
     upnpTest: "Test UPnP",
     upnpTesting: "Testing…",

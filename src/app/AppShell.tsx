@@ -61,6 +61,21 @@ export const SERVER_PANELS: {
 const COLLAPSED_KEY = "nebula.sidebarCollapsed";
 const RAIL_ID = "app-sidebar";
 
+/** Phone-width windows (the web panel on a phone): the sidebar becomes a
+ *  drawer over the content instead of a column beside it. */
+const NARROW_QUERY = "(max-width: 760px)";
+
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(() => window.matchMedia(NARROW_QUERY).matches);
+  useEffect(() => {
+    const query = window.matchMedia(NARROW_QUERY);
+    const update = () => setNarrow(query.matches);
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return narrow;
+}
+
 function readCollapsed(): boolean {
   try {
     return localStorage.getItem(COLLAPSED_KEY) === "1";
@@ -79,17 +94,29 @@ export function AppShell() {
 
   useBackendEvents();
 
-  const [collapsed, setCollapsed] = useState(readCollapsed);
-  const toggleSidebar = useCallback(() => setCollapsed((value) => !value), []);
+  const narrow = useNarrow();
+  const { pathname } = useLocation();
+  // The drawer belongs to the page it was opened on: picking a destination
+  // in it closes it.
+  const [drawerFor, setDrawerFor] = useState<string | null>(null);
+  const drawerOpen = drawerFor === pathname;
+  const setDrawerOpen = (open: boolean) => setDrawerFor(open ? pathname : null);
+  const [storedCollapsed, setCollapsed] = useState(readCollapsed);
+  // In a drawer the sidebar is always full width; "collapsed" means closed.
+  const collapsed = narrow ? false : storedCollapsed;
+  const toggleSidebar = useCallback(() => {
+    if (window.matchMedia(NARROW_QUERY).matches) setDrawerFor((open) => (open === pathname ? null : pathname));
+    else setCollapsed((value) => !value);
+  }, [pathname]);
   const expandSidebar = useCallback(() => setCollapsed(false), []);
 
   useEffect(() => {
     try {
-      localStorage.setItem(COLLAPSED_KEY, collapsed ? "1" : "0");
+      localStorage.setItem(COLLAPSED_KEY, storedCollapsed ? "1" : "0");
     } catch {
       // Storage blocked: the choice simply lasts for this session.
     }
-  }, [collapsed]);
+  }, [storedCollapsed]);
 
   // Ctrl+B (Cmd+B), the common sidebar shortcut. Nothing in the app binds it.
   useEffect(() => {
@@ -112,7 +139,6 @@ export function AppShell() {
 
   // One scroller (main) serves every route, so a new page must not inherit
   // the last page's offset.
-  const { pathname } = useLocation();
   const mainRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     mainRef.current?.scrollTo({ top: 0 });
@@ -128,12 +154,25 @@ export function AppShell() {
 
   return (
     <div className="flex h-full flex-col">
-      <TitleBar sidebar={{ collapsed, onToggle: toggleSidebar, controls: RAIL_ID }} />
-      <div className="flex min-h-0 flex-1">
+      <TitleBar
+        sidebar={{ collapsed: narrow ? !drawerOpen : collapsed, onToggle: toggleSidebar, controls: RAIL_ID }}
+      />
+      <div className="relative flex min-h-0 flex-1">
+        {narrow && drawerOpen ? (
+          <button
+            type="button"
+            className="rail-scrim"
+            aria-label={t("nav.collapseSidebar")}
+            onClick={() => setDrawerOpen(false)}
+          />
+        ) : null}
         <nav
           id={RAIL_ID}
           className="rail"
           data-collapsed={collapsed ? "" : undefined}
+          data-drawer={narrow ? "" : undefined}
+          data-open={narrow && drawerOpen ? "" : undefined}
+          inert={narrow && !drawerOpen ? true : undefined}
           aria-label={t("nav.sidebar")}
           {...tooltip.handlers}
         >

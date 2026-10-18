@@ -5,6 +5,7 @@
 //! ```text
 //! nebula-node [serve] [--port 47400] [--name "Raspberry Pi"]   run the node
 //! nebula-node pair    [--port 47400]                           show a pairing code
+//! nebula-node web     on|off                                   web panel for browsers on the LAN
 //! ```
 
 use std::sync::Arc;
@@ -16,22 +17,29 @@ use nebula_host_lib::{remote, store};
 
 struct Args {
     command: String,
+    /// Words after the command (`web on`).
+    rest: Vec<String>,
     port: u16,
     name: Option<String>,
 }
 
 fn parse_args() -> Args {
     let mut args = std::env::args().skip(1);
-    let mut parsed = Args { command: "serve".into(), port: remote::DEFAULT_PORT, name: None };
+    let mut parsed = Args { command: "serve".into(), rest: Vec::new(), port: remote::DEFAULT_PORT, name: None };
+    let mut seen_command = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--port" => parsed.port = args.next().and_then(|p| p.parse().ok()).unwrap_or(parsed.port),
             "--name" => parsed.name = args.next(),
             "-h" | "--help" => {
-                println!("nebula-node [serve|pair] [--port 47400] [--name NAME]");
+                println!("nebula-node [serve|pair|web on|web off] [--port 47400] [--name NAME]");
                 std::process::exit(0);
             }
-            other if !other.starts_with('-') => parsed.command = other.to_string(),
+            other if !other.starts_with('-') && !seen_command => {
+                seen_command = true;
+                parsed.command = other.to_string();
+            }
+            other if !other.starts_with('-') => parsed.rest.push(other.to_string()),
             other => {
                 eprintln!("unknown option {other}");
                 std::process::exit(2);
@@ -47,6 +55,7 @@ async fn main() {
     let result = match args.command.as_str() {
         "serve" => serve(args).await,
         "pair" => pair(args.port).await,
+        "web" => web(args.rest.first().map(String::as_str)),
         other => {
             eprintln!("unknown command {other} (expected serve or pair)");
             std::process::exit(2);
@@ -56,6 +65,26 @@ async fn main() {
         eprintln!("error: {error}");
         std::process::exit(1);
     }
+}
+
+/// Turn the web panel on or off. The running node reads it on every request.
+fn web(switch: Option<&str>) -> AppResult<()> {
+    let mut config = store::settings::load()?;
+    match switch {
+        Some("on") => config.web_panel = true,
+        Some("off") => config.web_panel = false,
+        _ => {
+            println!("web panel: {}", if config.web_panel { "on" } else { "off" });
+            return Ok(());
+        }
+    }
+    store::settings::save(&config)?;
+    if config.web_panel {
+        println!("web panel on. Restart the node (sudo systemctl restart nebula-node), then open http://<this machine>:47400 in a browser on the same network");
+    } else {
+        println!("web panel off (takes effect when the node restarts)");
+    }
+    Ok(())
 }
 
 async fn pair(port: u16) -> AppResult<()> {

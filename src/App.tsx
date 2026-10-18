@@ -11,6 +11,8 @@ import { ServersScreen } from "@/features/servers/ServersScreen";
 import { SettingsScreen } from "@/features/settings/SettingsScreen";
 import { useSuppressNativeContextMenu } from "@/ui/ContextMenu";
 import { I18nProvider } from "@/i18n";
+import { WebPair } from "@/features/web/WebPair";
+import { IS_WEB, webSession } from "@/lib/web";
 
 const client = new QueryClient({
   defaultOptions: {
@@ -31,6 +33,16 @@ export function App() {
       <I18nProvider>
         <AccentSync />
         <ThemeSync />
+        {/* The web panel signs in with a pairing code before anything else. */}
+        {IS_WEB && !webSession() ? <WebPair /> : <Shell />}
+      </I18nProvider>
+    </QueryClientProvider>
+  );
+}
+
+function Shell() {
+  return (
+    <>
         <AgreementGate />
         <HashRouter>
           <Routes>
@@ -49,7 +61,6 @@ export function App() {
             <Route path="*" element={<Navigate to="/servers" replace />} />
           </Routes>
         </HashRouter>
-      </I18nProvider>
-    </QueryClientProvider>
+    </>
   );
 }

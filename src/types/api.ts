@@ -736,6 +736,8 @@ export interface RemoteStatus {
   port: number;
   addresses: string[];
   error?: string | null;
+  /** The interface is served to browsers on the LAN. */
+  webPanel: boolean;
 }
 
 export interface UpnpCheck {

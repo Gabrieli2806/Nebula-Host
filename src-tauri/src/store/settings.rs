@@ -49,6 +49,9 @@ pub struct AppSettings {
     pub remote_enabled: bool,
     /// Port for the remote API.
     pub remote_port: u16,
+    /// Serve the Nebula Host interface to browsers on the LAN (phone, other
+    /// PC) from the remote API port. Off until the user turns it on.
+    pub web_panel: bool,
 }
 
 impl Default for AppSettings {
@@ -70,6 +73,7 @@ impl Default for AppSettings {
             mcp_read_only: false,
             remote_enabled: false,
             remote_port: crate::remote::DEFAULT_PORT,
+            web_panel: false,
         }
     }
 }

@@ -21,6 +21,8 @@ export interface RemoteNode {
   platform?: string;
 }
 
+import { IS_WEB, setWebSession, signOutWeb, webApiHost, webSession } from "@/lib/web";
+
 const NODES_KEY = "nebula.remoteNodes";
 const ACTIVE_KEY = "nebula.activeNode";
 
@@ -77,11 +79,29 @@ function isUnreachable(error: unknown): boolean {
 }
 
 export function remoteNodes(): RemoteNode[] {
+  // The web panel manages the machine that served it, and only that one.
+  if (IS_WEB) return [];
   return read<RemoteNode[]>(NODES_KEY, []);
+}
+
+/** In the web panel: the machine that served the page, once paired. */
+function webNode(): RemoteNode | null {
+  const session = webSession();
+  if (!session) return null;
+  return {
+    id: "web",
+    nodeId: session.nodeId,
+    name: session.name,
+    address: webApiHost(),
+    token: session.token,
+    deviceId: session.deviceId,
+    platform: session.platform,
+  };
 }
 
 /** The remote node this window manages, or null when it manages this PC. */
 export function activeRemote(): RemoteNode | null {
+  if (IS_WEB) return webNode();
   const id = read<string>(ACTIVE_KEY, "local");
   if (id === "local") return null;
   return remoteNodes().find((node) => node.id === id) ?? null;
@@ -160,6 +180,27 @@ export async function probe(address: string): Promise<NodeInfo> {
   const info = await request<NodeInfo>(`http://${normalise(address)}/info`, { method: "GET" }, 6000);
   if (info.app !== "nebula-host") throw failure("not_a_node");
   return info;
+}
+
+/** Web panel: trade the code shown on the machine for this browser's token. */
+export async function pairWeb(code: string, deviceName: string): Promise<void> {
+  const host = webApiHost();
+  const info = await probe(host);
+  const result = await request<{ token: string; deviceId: string; node: { id: string; name: string } }>(
+    `http://${host}/pair`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: code.replace(/\D/g, ""), deviceName }),
+    },
+  );
+  setWebSession({
+    token: result.token,
+    deviceId: result.deviceId,
+    name: result.node.name,
+    nodeId: info.nodeId,
+    platform: info.platform,
+  });
 }
 
 /** Trade the code shown on the node for a token, remember the node. */
@@ -244,8 +285,37 @@ export async function remoteCall<T>(node: RemoteNode, command: string, args?: Re
     return result;
   } catch (error) {
     reportLink(node.id, isUnreachable(error) ? "down" : "up");
+    if (IS_WEB && node.id === "web" && (error as { code?: unknown })?.code === "not_paired") signOutWeb();
     throw error;
   }
+}
+
+/** Web panel: send a file from this browser to the machine (POST /upload).
+ *  Returns the upload id the import commands take. */
+export function uploadFromBrowser(
+  node: RemoteNode,
+  file: File,
+  onProgress: (sent: number, total: number) => void,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    // XHR, not fetch: only XHR reports upload progress.
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `http://${node.address}/upload`);
+    xhr.setRequestHeader("Authorization", `Bearer ${node.token}`);
+    xhr.setRequestHeader("Content-Type", "application/zip");
+    xhr.upload.onprogress = (event) => onProgress(event.loaded, event.total || file.size);
+    xhr.onerror = () => reject(failure("node_unreachable", "upload failed", { address: node.address }));
+    xhr.onload = () => {
+      try {
+        const body = JSON.parse(xhr.responseText || "null");
+        if (xhr.status >= 200 && xhr.status < 300 && body?.uploadId) resolve(body.uploadId as string);
+        else reject(body && typeof body.code === "string" ? body : failure("unexpected", xhr.responseText));
+      } catch {
+        reject(failure("unexpected", xhr.responseText));
+      }
+    };
+    xhr.send(file);
+  });
 }
 
 /**

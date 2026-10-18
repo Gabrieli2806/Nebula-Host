@@ -52,6 +52,22 @@ export const es: Copy = {
     pairedAt: "Emparejado {date}",
   },
 
+  web: {
+    signOut: "Cerrar sesión",
+    panel: "Panel web en la red local",
+    panelHelp: "Abre Nebula Host desde el navegador del móvil o de otro PC en la misma red. Cada navegador inicia sesión una vez con un código de emparejamiento. Solo para tu red de casa: la conexión no va cifrada.",
+    panelUrl: "Abrir en un navegador",
+    panelUrlHint: "Cualquier dispositivo de esta red",
+    pairTitle: "Iniciar sesión en {name}",
+    pairTitleGeneric: "Iniciar sesión en Nebula Host",
+    pairIntro: "En el equipo con Nebula Host, abre Ajustes › Acceso remoto y pulsa «Mostrar código de emparejamiento». En un nodo sin pantalla, ejecuta nebula-node pair.",
+    deviceName: "Nombre de este dispositivo",
+    deviceNameDefault: "Navegador",
+    signIn: "Iniciar sesión",
+    signingIn: "Iniciando sesión…",
+    lanOnly: "Solo red local. Quien inicie sesión aquí puede controlar tus servidores: nunca abras este puerto en tu router.",
+  },
+
   upnp: {
     upnpTest: "Probar UPnP",
     upnpTesting: "Probando…",

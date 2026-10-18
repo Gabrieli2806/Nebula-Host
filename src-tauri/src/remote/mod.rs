@@ -17,6 +17,12 @@
 //! - `GET  /local/pairing-code` — issue a code, loopback callers only (how a
 //!   headless node shows a code: `nebula-node pair`).
 //!
+//! - Everything else — the web panel: the same interface the desktop app
+//!   shows, for a browser on the LAN, when `AppSettings::web_panel` is on
+//!   (otherwise a page saying what this port is). The browser pairs with a
+//!   code like any device and sends its token in a header, never a cookie,
+//!   so another site cannot ride on the session.
+//!
 //! Transport is plain HTTP on the LAN; the token is the authentication. This
 //! is a LAN feature — never forward this port to the internet.
 
@@ -69,10 +75,16 @@ fn origin_allowed(origin: &str) -> bool {
         || origin.starts_with("http://127.0.0.1:")
 }
 
+/// The web panel calls the API from its own origin: `http://<Host header>`.
+fn same_origin(origin: &str, headers: &HeaderMap) -> bool {
+    let host = headers.get("host").and_then(|v| v.to_str().ok()).unwrap_or_default();
+    !host.is_empty() && origin.strip_prefix("http://") == Some(host)
+}
+
 async fn cors(request: Request, next: Next) -> Response {
     let origin = request.headers().get("origin").and_then(|v| v.to_str().ok()).map(String::from);
     if let Some(origin) = &origin {
-        if !origin_allowed(origin) {
+        if !origin_allowed(origin) && !same_origin(origin, request.headers()) {
             return (StatusCode::FORBIDDEN, "Origin not allowed").into_response();
         }
     }
@@ -375,7 +387,6 @@ async fn local_pairing_code(
 
 fn router(ctx: Ctx) -> Router {
     Router::new()
-        .route("/", get(landing))
         .route("/info", get(info))
         .route("/pair", post(pair))
         .route("/rpc", post(rpc))
@@ -383,7 +394,7 @@ fn router(ctx: Ctx) -> Router {
         .route("/upload", post(upload).layer(axum::extract::DefaultBodyLimit::disable()))
         .route("/download/{export_id}", get(download))
         .route("/local/pairing-code", post(local_pairing_code))
-        .fallback(|| async { (StatusCode::NOT_FOUND, Body::empty()) })
+        .fallback(get(web_panel))
         .layer(middleware::from_fn(cors))
         .with_state(ctx)
 }
@@ -419,6 +430,7 @@ pub struct RemoteStatus {
     pub port: u16,
     pub addresses: Vec<String>,
     pub error: Option<String>,
+    pub web_panel: bool,
 }
 
 /// The desktop app's own remote API, opt-in (`AppSettings::remote_enabled`).
@@ -464,6 +476,7 @@ impl RemoteServer {
             port,
             addresses,
             error: self.last_error.lock().await.clone(),
+            web_panel: config.web_panel,
         })
     }
 }
@@ -487,6 +500,16 @@ mod tests {
     }
 
     #[test]
+    fn the_web_panel_may_call_its_own_origin_only() {
+        let mut h = HeaderMap::new();
+        h.insert("host", HeaderValue::from_static("192.168.1.92:47400"));
+        assert!(same_origin("http://192.168.1.92:47400", &h));
+        assert!(!same_origin("http://evil.example", &h));
+        assert!(!same_origin("https://192.168.1.92:47400", &h));
+        assert!(!same_origin("http://192.168.1.92:47400", &HeaderMap::new()));
+    }
+
+    #[test]
     fn only_the_app_and_dev_servers_may_call_from_a_webview() {
         assert!(origin_allowed("http://tauri.localhost"));
         assert!(origin_allowed("tauri://localhost"));
@@ -496,20 +519,70 @@ mod tests {
     }
 }
 
-/// What a browser sees at the root: this port is the app's remote API, not
-/// a website, so say so instead of an empty 404.
-async fn landing() -> axum::response::Html<&'static str> {
-    axum::response::Html(concat!(
-        "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\">",
-        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">",
-        "<title>Nebula Host</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;",
-        "background:#0b1220;color:#dbe4f3;font:16px/1.5 system-ui,sans-serif}main{max-width:520px;padding:24px}",
-        "h1{color:#5fd4f4;font-size:22px}code{color:#5fd4f4}</style></head><body><main>",
-        "<h1>Nebula Host &mdash; acceso remoto activo</h1>",
-        "<p>Este puerto es para la app Nebula Host, no para el navegador. Abre Nebula Host en otro equipo, ",
-        "elige <b>Conectar a otro equipo</b> y escribe la direcci&oacute;n de este (IP:47400) y el c&oacute;digo de emparejamiento.</p>",
-        "<p lang=\"en\">This port is for the Nebula Host app, not a browser. In Nebula Host on another computer choose ",
-        "<b>Connect to another computer</b> and enter this one's address (IP:47400) and the pairing code.</p>",
-        "</main></body></html>"
+/// The built interface (`npm run build` → `dist/`), compiled in. A build
+/// without it (a node built from Rust alone) serves only the notice page.
+#[derive(rust_embed::Embed)]
+#[folder = "../dist"]
+#[allow_missing = true]
+#[exclude = "*.map"]
+struct WebAssets;
+
+/// Locks the panel to this origin: no framing (clickjacking), scripts and
+/// calls only from here. Images may come from https (Modrinth icons, heads).
+const WEB_CSP: &str = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; \
+    img-src 'self' data: https:; connect-src 'self'; font-src 'self' data:; frame-ancestors 'none'; \
+    base-uri 'none'; form-action 'none'";
+
+async fn web_panel(uri: axum::http::Uri) -> Response {
+    let enabled = crate::store::settings::load().map(|s| s.web_panel).unwrap_or(false);
+    let Some(index) = WebAssets::get("index.html").filter(|_| enabled) else {
+        if uri.path() != "/" {
+            return (StatusCode::NOT_FOUND, Body::empty()).into_response();
+        }
+        return notice(enabled).into_response();
+    };
+    let path = uri.path().trim_start_matches('/');
+    // The app routes in the hash, so a path that is not a file is the page.
+    let (file, name) = match WebAssets::get(path).filter(|_| !path.is_empty()) {
+        Some(file) => (file, path),
+        None if !path.contains('.') => (index, "index.html"),
+        None => return (StatusCode::NOT_FOUND, Body::empty()).into_response(),
+    };
+    let mime = file.metadata.mimetype().to_string();
+    // Hashed bundle files never change; the page itself always revalidates.
+    let cache = if name.starts_with("assets/") { "public, max-age=31536000, immutable" } else { "no-cache" };
+    let mut response = (StatusCode::OK, file.data.into_owned()).into_response();
+    let headers = response.headers_mut();
+    if let Ok(value) = HeaderValue::from_str(&mime) {
+        headers.insert("Content-Type", value);
+    }
+    headers.insert("Cache-Control", HeaderValue::from_static(cache));
+    headers.insert("Content-Security-Policy", HeaderValue::from_static(WEB_CSP));
+    headers.insert("X-Frame-Options", HeaderValue::from_static("DENY"));
+    headers.insert("X-Content-Type-Options", HeaderValue::from_static("nosniff"));
+    headers.insert("Referrer-Policy", HeaderValue::from_static("no-referrer"));
+    response
+}
+
+/// What a browser sees when the web panel is off (or not built in): this
+/// port is the app's remote API, so say how to use it instead of a 404.
+fn notice(enabled: bool) -> axum::response::Html<String> {
+    let how = if enabled {
+        "<p>Este nodo no incluye el panel web. / This node was built without the web panel.</p>"
+    } else {
+        "<p>El panel web est&aacute; desactivado. Act&iacute;valo en Nebula Host &rsaquo; Ajustes &rsaquo; Acceso remoto \
+         &rsaquo; <b>Panel web en la red local</b> (en un nodo sin pantalla: <code>nebula-node web on</code>). \
+         Tambi&eacute;n puedes usar la app: <b>Conectar a otro equipo</b>.</p>\
+         <p lang=\"en\">The web panel is off. Turn it on in Nebula Host &rsaquo; Settings &rsaquo; Remote access \
+         &rsaquo; <b>Web panel on the local network</b> (on a headless node: <code>nebula-node web on</code>), \
+         or use the app: <b>Connect to another computer</b>.</p>"
+    };
+    axum::response::Html(format!(
+        "<!doctype html><html lang=\"es\"><head><meta charset=\"utf-8\">\
+         <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\
+         <title>Nebula Host</title><style>body{{margin:0;min-height:100vh;display:grid;place-items:center;\
+         background:#0b1220;color:#dbe4f3;font:16px/1.5 system-ui,sans-serif}}main{{max-width:540px;padding:24px}}\
+         h1{{color:#5fd4f4;font-size:22px}}code{{color:#5fd4f4}}</style></head><body><main>\
+         <h1>Nebula Host</h1>{how}</main></body></html>"
     ))
 }

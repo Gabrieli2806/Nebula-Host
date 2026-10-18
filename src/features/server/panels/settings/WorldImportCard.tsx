@@ -5,7 +5,7 @@
  * it is replaced, and the server must be stopped.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { keys } from "@/hooks/useBackend";
@@ -13,6 +13,7 @@ import { keys } from "@/hooks/useBackend";
 import "./world-import.css";
 import { useI18n } from "@/i18n";
 import { isRemote } from "@/lib/connection";
+import { IS_WEB } from "@/lib/web";
 import { api, onAppEvent, onLocalUpload } from "@/lib/ipc";
 import type { InstanceView, WorldImportResult } from "@/types/api";
 import { Button, Dialog, ErrorNotice, Icon, Panel } from "@/ui";
@@ -76,13 +77,17 @@ export function WorldImportCard({ instance }: { instance: InstanceView }) {
   const { t } = useI18n();
   const client = useQueryClient();
   const remote = isRemote();
-  const [source, setSource] = useState<{ path: string; kind: "zip" | "folder" } | null>(null);
+  // In the web panel the archive is a File from the browser, not a path.
+  const [source, setSource] = useState<{ path: string; kind: "zip" | "folder"; file?: File } | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [done, setDone] = useState<WorldImportResult | null>(null);
   const running = ["online", "starting", "stopping"].includes(instance.status);
 
   const run = useMutation({
     mutationFn: ({ path, skipBackup }: { path: string; skipBackup: boolean }) =>
-      api.worlds.import(instance.id, path, skipBackup),
+      source?.file
+        ? api.worlds.importFile(instance.id, source.file, skipBackup)
+        : api.worlds.import(instance.id, path, skipBackup),
     onSuccess: (result) => {
       setSource(null);
       setDone(result);
@@ -92,6 +97,10 @@ export function WorldImportCard({ instance }: { instance: InstanceView }) {
   });
 
   const pick = async (kind: "zip" | "folder") => {
+    if (IS_WEB) {
+      fileInput.current?.click();
+      return;
+    }
     const { open } = await import("@tauri-apps/plugin-dialog");
     const picked = await open(
       kind === "zip"
@@ -115,6 +124,22 @@ export function WorldImportCard({ instance }: { instance: InstanceView }) {
           {remote ? t("worldImport.introRemote") : t("worldImport.intro")}
         </p>
         <div className="flex flex-wrap items-center gap-2">
+          {IS_WEB ? (
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".zip,application/zip"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                run.reset();
+                setDone(null);
+                setSource({ path: file.name, kind: "zip", file });
+              }}
+            />
+          ) : null}
           <Button icon="upload" disabled={running || run.isPending} onClick={() => void pick("zip")}>
             {t("worldImport.fromZip")}
           </Button>

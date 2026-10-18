@@ -21,6 +21,7 @@ import {
 import { useI18n } from "@/i18n";
 import { api } from "@/lib/ipc";
 import { isRemote } from "@/lib/connection";
+import { IS_WEB } from "@/lib/web";
 import {
   formatBytes,
   formatCount,
@@ -150,6 +151,30 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
           </div>
 
           <div className="overview-head-actions">
+            {/* On a phone the sidebar (and its Start button) is a closed
+                drawer, so the power action sits here too. */}
+            {olderCopy ? null : instance.status === "online" || instance.status === "starting" ? (
+              <Button
+                size="sm"
+                icon="stop"
+                className="narrow-only"
+                disabled={instance.status === "starting" || actions.stop.isPending}
+                onClick={() => actions.stop.mutate(instance.id)}
+              >
+                {t("actions.stop")}
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="primary"
+                icon="play"
+                className="narrow-only"
+                disabled={instance.status === "stopping" || actions.start.isPending}
+                onClick={() => actions.start.mutate(instance.id)}
+              >
+                {instance.status === "sleeping" ? t("actions.wake") : t("actions.start")}
+              </Button>
+            )}
             <Button
               size="sm"
               icon="archive"
@@ -158,16 +183,18 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
             >
               {backup.isPending ? t("backups.creating") : t("overview.backupNow")}
             </Button>
-            <Button
-              size="sm"
-              icon="external"
-              disabled={openFolder.isPending || isRemote()}
-              title={isRemote() ? t("remote.localOnly") : undefined}
-              onClick={() => openFolder.mutate()}
-            >
-              {t("overview.openFolder")}
-            </Button>
-            {olderCopy ? null : (
+            {IS_WEB ? null : (
+              <Button
+                size="sm"
+                icon="external"
+                disabled={openFolder.isPending || isRemote()}
+                title={isRemote() ? t("remote.localOnly") : undefined}
+                onClick={() => openFolder.mutate()}
+              >
+                {t("overview.openFolder")}
+              </Button>
+            )}
+            {olderCopy || IS_WEB ? null : (
               <Button
                 size="sm"
                 icon="send"

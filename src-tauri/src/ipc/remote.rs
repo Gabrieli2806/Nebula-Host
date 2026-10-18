@@ -17,9 +17,17 @@ pub async fn remote_status(remote: Remote<'_>) -> AppResult<RemoteStatus> {
 }
 
 #[tauri::command]
-pub async fn remote_configure(state: State<'_>, remote: Remote<'_>, enabled: bool) -> AppResult<RemoteStatus> {
+pub async fn remote_configure(
+    state: State<'_>,
+    remote: Remote<'_>,
+    enabled: bool,
+    web_panel: Option<bool>,
+) -> AppResult<RemoteStatus> {
     let mut config = settings::load()?;
     config.remote_enabled = enabled;
+    if let Some(web_panel) = web_panel {
+        config.web_panel = web_panel;
+    }
     settings::save(&config)?;
     remote.reconcile(state.inner().clone()).await
 }

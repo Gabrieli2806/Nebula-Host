@@ -294,6 +294,7 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             next.mcp_read_only = current.mcp_read_only;
             next.remote_enabled = current.remote_enabled;
             next.remote_port = current.remote_port;
+            next.web_panel = current.web_panel;
             settings_store::save(&next)?;
             ok(settings_store::load()?)
         }
