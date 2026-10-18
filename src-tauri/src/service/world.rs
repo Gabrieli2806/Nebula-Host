@@ -28,6 +28,36 @@ pub struct WorldImportResult {
     pub backup_id: Option<String>,
 }
 
+/// Progress of an import, for the progress bar.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorldImportProgress {
+    /// `backup`, `unpack`, `place` or `done`.
+    pub phase: &'static str,
+    pub done: u64,
+    pub total: u64,
+}
+
+/// Throttles progress to about ten updates a second (plus phase changes).
+struct Reporter<F: Fn(WorldImportProgress)> {
+    send: F,
+    last: std::sync::Mutex<(std::time::Instant, &'static str)>,
+}
+
+impl<F: Fn(WorldImportProgress)> Reporter<F> {
+    fn new(send: F) -> Self {
+        Self { send, last: std::sync::Mutex::new((std::time::Instant::now() - std::time::Duration::from_secs(1), "")) }
+    }
+    fn report(&self, phase: &'static str, done: u64, total: u64) {
+        let Ok(mut last) = self.last.lock() else { return };
+        let now = std::time::Instant::now();
+        if last.1 != phase || now.duration_since(last.0).as_millis() >= 100 || done >= total {
+            *last = (now, phase);
+            (self.send)(WorldImportProgress { phase, done, total });
+        }
+    }
+}
+
 /// Where uploaded archives wait for `world_import` (remote imports).
 pub fn uploads_dir() -> AppResult<PathBuf> {
     let dir = paths::config_dir()?.join("uploads");
@@ -48,7 +78,7 @@ pub fn upload_path(upload_id: &str) -> AppResult<PathBuf> {
     Ok(path)
 }
 
-fn extract_zip(archive: &Path, into: &Path) -> AppResult<()> {
+fn extract_zip(archive: &Path, into: &Path, progress: &dyn Fn(u64, u64)) -> AppResult<()> {
     let file = std::fs::File::open(archive)?;
     let mut zip = zip::ZipArchive::new(file).map_err(|error| {
         AppError::new(ErrorCode::InvalidInput).with("reason", "not_a_zip").detail(error)
@@ -57,6 +87,8 @@ fn extract_zip(archive: &Path, into: &Path) -> AppResult<()> {
     if total > MAX_UNPACKED_BYTES {
         return Err(AppError::new(ErrorCode::InvalidInput).with("reason", "archive_too_large"));
     }
+    let mut done: u64 = 0;
+    progress(0, total);
     for index in 0..zip.len() {
         let mut entry = zip.by_index(index).map_err(|error| AppError::new(ErrorCode::InvalidInput).detail(error))?;
         // Never trust paths inside an archive.
@@ -70,12 +102,29 @@ fn extract_zip(archive: &Path, into: &Path) -> AppResult<()> {
             std::fs::create_dir_all(parent)?;
         }
         let mut out = std::fs::File::create(&target)?;
-        std::io::copy(&mut entry, &mut out)?;
+        done += std::io::copy(&mut entry, &mut out)?;
+        out.sync_all()?;
+        progress(done, total);
     }
     Ok(())
 }
 
-fn copy_folder(from: &Path, to: &Path) -> AppResult<()> {
+fn folder_size(dir: &Path) -> u64 {
+    std::fs::read_dir(dir)
+        .map(|entries| {
+            entries
+                .flatten()
+                .map(|e| match e.file_type() {
+                    Ok(t) if t.is_dir() && !t.is_symlink() => folder_size(&e.path()),
+                    Ok(t) if t.is_file() => e.metadata().map(|m| m.len()).unwrap_or(0),
+                    _ => 0,
+                })
+                .sum()
+        })
+        .unwrap_or(0)
+}
+
+fn copy_folder(from: &Path, to: &Path, done: &mut u64, total: u64, progress: &dyn Fn(u64, u64)) -> AppResult<()> {
     std::fs::create_dir_all(to)?;
     for entry in std::fs::read_dir(from)?.flatten() {
         let kind = entry.file_type()?;
@@ -83,9 +132,10 @@ fn copy_folder(from: &Path, to: &Path) -> AppResult<()> {
         if kind.is_symlink() {
             continue;
         } else if kind.is_dir() {
-            copy_folder(&entry.path(), &target)?;
+            copy_folder(&entry.path(), &target, done, total, progress)?;
         } else {
-            std::fs::copy(entry.path(), target)?;
+            *done += std::fs::copy(entry.path(), target)?;
+            progress(*done, total);
         }
     }
     Ok(())
@@ -93,7 +143,12 @@ fn copy_folder(from: &Path, to: &Path) -> AppResult<()> {
 
 impl InstanceService {
     /// Import the world in `source` (a `.zip` or a folder on this machine).
-    pub async fn import_world(self: &Arc<Self>, instance_id: &str, source: PathBuf) -> AppResult<WorldImportResult> {
+    pub async fn import_world(
+        self: &Arc<Self>,
+        instance_id: &str,
+        source: PathBuf,
+        skip_backup: bool,
+    ) -> AppResult<WorldImportResult> {
         self.ensure_not_transferring(instance_id).await?;
         if self.processes.is_running(instance_id).await {
             return Err(AppError::new(ErrorCode::InstanceAlreadyRunning).with("instance", instance_id));
@@ -104,29 +159,49 @@ impl InstanceService {
             return Err(AppError::new(ErrorCode::FileNotFound).with("path", source.display()));
         }
 
-        // Back up what is there now: replacing a world must be undoable.
-        let backup_id = match backups::create(self, instance_id, Some("Before importing a world".into())).await {
-            Ok(backup) => Some(backup.id),
-            Err(error) => {
-                tracing::warn!(%instance_id, %error, "no backup before world import");
-                return Err(error);
+        let events = self.events.clone();
+        let id_for_events = instance_id.to_string();
+        let send = move |progress: WorldImportProgress| {
+            let _ = events.send(crate::service::AppEvent::WorldImport { instance_id: id_for_events.clone(), progress });
+        };
+        let reporter = Arc::new(Reporter::new(send));
+
+        // Back up what is there now, unless the user explicitly chose not to.
+        // (Even without it, the old world is only removed once the new one is
+        // in place, and put back if placing fails.)
+        let backup_id = if skip_backup {
+            tracing::info!(%instance_id, "world import without a backup, by request");
+            None
+        } else {
+            reporter.report("backup", 0, 0);
+            match backups::create(self, instance_id, Some("Before importing a world".into())).await {
+                Ok(backup) => Some(backup.id),
+                Err(error) => {
+                    tracing::warn!(%instance_id, %error, "no backup before world import");
+                    return Err(error);
+                }
             }
         };
 
         let root = instance.path.clone();
         let staged = root.join(format!(".nebula-import-{}", uuid::Uuid::new_v4().simple()));
         let build = instance.build.clone();
+        let progress_reporter = reporter.clone();
         let result = tokio::task::spawn_blocking(move || {
+            let unpack = |done: u64, total: u64| progress_reporter.report("unpack", done, total);
             let outcome = (|| {
                 let is_zip = source.is_file()
                     && source.extension().is_some_and(|e| e.eq_ignore_ascii_case("zip"));
                 if is_zip {
-                    extract_zip(&source, &staged)?;
+                    extract_zip(&source, &staged, &unpack)?;
                 } else if source.is_dir() {
-                    copy_folder(&source, &staged)?;
+                    let total = folder_size(&source);
+                    let mut done = 0;
+                    copy_folder(&source, &staged, &mut done, total, &unpack)?;
                 } else {
                     return Err(AppError::new(ErrorCode::InvalidInput).with("reason", "not_zip_or_folder"));
                 }
+                progress_reporter.report("place", 0, 0);
                 adapter.import_world(&root, &staged, &build)
             })();
             let _ = std::fs::remove_dir_all(&staged);
@@ -135,6 +210,7 @@ impl InstanceService {
         .await
         .map_err(AppError::unexpected)??;
 
+        reporter.report("done", 1, 1);
         self.after_folder_change(instance_id).await;
         tracing::info!(%instance_id, level = %result.level_name, "world imported");
         Ok(WorldImportResult { report: result, backup_id })

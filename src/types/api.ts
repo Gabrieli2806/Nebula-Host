@@ -647,7 +647,8 @@ export type AppEvent =
   | { type: "import"; instanceId: string; progress: ImportProgress }
   | { type: "javaDownload"; major: number; progress: JavaDownloadProgress }
   | { type: "pendingAddons"; instanceId: string; pending: PendingAddonChange[] }
-  | { type: "transfer"; instanceId: string; progress: TransferProgress };
+  | { type: "transfer"; instanceId: string; progress: TransferProgress }
+  | { type: "worldImport"; instanceId: string; progress: WorldImportProgress };
 
 // -- transfers between machines ----------------------------------------------
 
@@ -770,4 +771,11 @@ export interface WorldImportResult {
   dimensions: string[];
   sourceName: string;
   backupId?: string | null;
+}
+
+export interface WorldImportProgress {
+  /** backup | unpack | place | done */
+  phase: "backup" | "unpack" | "place" | "done";
+  done: number;
+  total: number;
 }

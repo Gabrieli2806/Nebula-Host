@@ -120,36 +120,72 @@ pub fn import(root: &Path, staged: &Path, bukkit_layout: bool) -> AppResult<Worl
 
     let level = level_name(root);
     let target = root.join(&level);
-    for old in [target.clone(), root.join(format!("{level}_nether")), root.join(format!("{level}_the_end"))] {
+    let nether_dir = root.join(format!("{level}_nether"));
+    let end_dir = root.join(format!("{level}_the_end"));
+
+    // Never delete the current world before the new one is in place: set it
+    // aside, place the import, and only then drop what was set aside. If any
+    // step fails, the import is removed and the old world is put back — so
+    // even an import without a backup cannot lose the world it replaces.
+    let aside = root.join(format!(".nebula-replaced-{}", uuid::Uuid::new_v4().simple()));
+    let mut set_aside: Vec<(PathBuf, PathBuf)> = Vec::new();
+    for old in [target.clone(), nether_dir.clone(), end_dir.clone()] {
         if old.exists() {
-            fs::remove_dir_all(&old)?;
+            fs::create_dir_all(&aside)?;
+            let parked = aside.join(name_of(&old));
+            if let Err(error) = fs::rename(&old, &parked) {
+                // Undo what was already parked before giving up.
+                for (original, parked) in set_aside.iter().rev() {
+                    let _ = fs::rename(parked, original);
+                }
+                let _ = fs::remove_dir_all(&aside);
+                return Err(error.into());
+            }
+            set_aside.push((old, parked));
         }
     }
 
-    move_dir(&main, &target)?;
-    // A singleplayer save carries the game's lock; the server makes its own.
-    let _ = fs::remove_file(target.join("session.lock"));
+    let placed = (|| -> AppResult<()> {
+        move_dir(&main, &target)?;
+        // A singleplayer save carries the game's lock; the server makes its own.
+        let _ = fs::remove_file(target.join("session.lock"));
 
-    if bukkit_layout {
-        if let Some(nether) = &nether {
-            move_dir(nether, &root.join(format!("{level}_nether")))?;
-        }
-        if let Some(end) = &end {
-            move_dir(end, &root.join(format!("{level}_the_end")))?;
-        }
-    } else {
-        // Fold Bukkit-style dimension folders back into the one world.
-        if let Some(dim) = nether.as_ref().map(|n| n.join("DIM-1")).filter(|d| d.is_dir()) {
-            if !target.join("DIM-1").exists() {
-                move_dir(&dim, &target.join("DIM-1"))?;
+        if bukkit_layout {
+            if let Some(nether) = &nether {
+                move_dir(nether, &nether_dir)?;
+            }
+            if let Some(end) = &end {
+                move_dir(end, &end_dir)?;
+            }
+        } else {
+            // Fold Bukkit-style dimension folders back into the one world.
+            if let Some(dim) = nether.as_ref().map(|n| n.join("DIM-1")).filter(|d| d.is_dir()) {
+                if !target.join("DIM-1").exists() {
+                    move_dir(&dim, &target.join("DIM-1"))?;
+                }
+            }
+            if let Some(dim) = end.as_ref().map(|e| e.join("DIM1")).filter(|d| d.is_dir()) {
+                if !target.join("DIM1").exists() {
+                    move_dir(&dim, &target.join("DIM1"))?;
+                }
             }
         }
-        if let Some(dim) = end.as_ref().map(|e| e.join("DIM1")).filter(|d| d.is_dir()) {
-            if !target.join("DIM1").exists() {
-                move_dir(&dim, &target.join("DIM1"))?;
+        Ok(())
+    })();
+
+    if let Err(error) = placed {
+        for new in [&target, &nether_dir, &end_dir] {
+            if new.exists() {
+                let _ = fs::remove_dir_all(new);
             }
         }
+        for (original, parked) in set_aside.iter().rev() {
+            let _ = fs::rename(parked, original);
+        }
+        let _ = fs::remove_dir_all(&aside);
+        return Err(error);
     }
+    let _ = fs::remove_dir_all(&aside);
 
     let mut dimensions = vec!["overworld".to_string()];
     if target.join("DIM-1").is_dir() || root.join(format!("{level}_nether")).is_dir() {
@@ -214,6 +250,24 @@ mod tests {
                 assert!(!root.join("world_nether").exists());
             }
         }
+    }
+
+    #[test]
+    fn a_failed_import_puts_the_old_world_back() {
+        let root = temp("root");
+        world(&root.join("world"));
+        fs::write(root.join("world/keep.txt"), b"old").unwrap();
+        // Nothing importable: fails before touching anything.
+        let staged = temp("bad");
+        assert!(import(&root, &staged, false).is_err());
+        assert!(root.join("world/keep.txt").is_file(), "old world untouched");
+        // A successful import replaces it and leaves no parked copy behind.
+        let staged = temp("good");
+        world(&staged.join("New"));
+        import(&root, &staged, false).unwrap();
+        assert!(!root.join("world/keep.txt").exists());
+        let leftovers = fs::read_dir(&root).unwrap().flatten().filter(|e| e.file_name().to_string_lossy().starts_with(".nebula-replaced")).count();
+        assert_eq!(leftovers, 0);
     }
 
     #[test]

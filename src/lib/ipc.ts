@@ -346,12 +346,12 @@ export const api = {
      * machine the file is streamed there first (by this PC's backend, not the
      * webview) and imported from the upload.
      */
-    import: async (instanceId: string, path: string): Promise<WorldImportResult> => {
+    import: async (instanceId: string, path: string, skipBackup = false): Promise<WorldImportResult> => {
       const node = activeRemote();
       try {
-        if (!node) return await invoke<WorldImportResult>("world_import", { instanceId, path });
+        if (!node) return await invoke<WorldImportResult>("world_import", { instanceId, path, skipBackup });
         const uploadId = await invoke<string>("upload_to_node", { address: node.address, token: node.token, path });
-        return await remoteCall<WorldImportResult>(node, "world_import", { instanceId, uploadId });
+        return await remoteCall<WorldImportResult>(node, "world_import", { instanceId, uploadId, skipBackup });
       } catch (error) {
         throw toAppError(error);
       }
@@ -461,6 +461,15 @@ export function onTrayRefused(handler: (refusal: TrayRefusal) => void): () => vo
   const unlisten = listen<TrayRefusal>("nebula:tray-refused", (message) => handler(message.payload));
   return () => {
     void unlisten.then((stop) => stop()).catch(() => {});
+  };
+}
+
+/** Bytes this PC has sent while streaming a file to a remote machine
+ *  (always a local event, even while managing that machine). */
+export function onLocalUpload(handler: (progress: { sent: number; total: number }) => void): () => void {
+  const unlisten = listen<{ sent: number; total: number }>("nebula:upload", (message) => handler(message.payload));
+  return () => {
+    void unlisten.then((stop) => stop());
   };
 }
 

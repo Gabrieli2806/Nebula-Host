@@ -85,6 +85,13 @@ pub enum AppEvent {
         instance_id: String,
         pending: Vec<crate::service::pending::PendingAddonChange>,
     },
+    /// A world import moving along: `backup`, `unpack` (bytes), `place`,
+    /// `done`. Throttled.
+    WorldImport {
+        #[serde(rename = "instanceId")]
+        instance_id: String,
+        progress: crate::service::world::WorldImportProgress,
+    },
     /// A server transfer between machines moving along (export, upload,
     /// verify, adopt). Throttled; the last one has `done: true`.
     Transfer {

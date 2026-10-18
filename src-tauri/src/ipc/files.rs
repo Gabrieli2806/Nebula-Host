@@ -130,19 +130,43 @@ pub async fn world_import(
     state: State<'_>,
     instance_id: String,
     path: String,
+    skip_backup: Option<bool>,
 ) -> AppResult<crate::service::world::WorldImportResult> {
-    state.inner().import_world(&instance_id, std::path::PathBuf::from(path)).await
+    state
+        .inner()
+        .import_world(&instance_id, std::path::PathBuf::from(path), skip_backup.unwrap_or(false))
+        .await
 }
 
 /// Stream a file on this PC to a paired node (its `/upload`), returning the
 /// upload id `world_import` takes over there. Runs here, not in the webview,
 /// so a multi-gigabyte world never passes through the UI.
 #[tauri::command]
-pub async fn upload_to_node(address: String, token: String, path: String) -> AppResult<String> {
+pub async fn upload_to_node(app: tauri::AppHandle, address: String, token: String, path: String) -> AppResult<String> {
+    use tauri::Emitter;
     use crate::error::{AppError, ErrorCode};
     let file = tokio::fs::File::open(&path).await?;
     let length = file.metadata().await?.len();
-    let stream = tokio_util_stream(file);
+    // Report bytes sent as a local event (`nebula:upload`): while managing a
+    // remote machine the UI listens to that machine's events, not ours.
+    let sent = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
+    let last = std::sync::Arc::new(std::sync::Mutex::new(std::time::Instant::now()));
+    let stream = {
+        use futures_util::StreamExt;
+        let (sent, last, app) = (sent.clone(), last.clone(), app.clone());
+        tokio_util_stream(file).map(move |chunk| {
+            if let Ok(bytes) = &chunk {
+                let done = sent.fetch_add(bytes.len() as u64, std::sync::atomic::Ordering::Relaxed) + bytes.len() as u64;
+                if let Ok(mut at) = last.lock() {
+                    if at.elapsed().as_millis() >= 100 || done >= length {
+                        *at = std::time::Instant::now();
+                        let _ = app.emit("nebula:upload", serde_json::json!({ "sent": done, "total": length }));
+                    }
+                }
+            }
+            chunk
+        })
+    };
     let response = reqwest::Client::new()
         .post(format!("http://{address}/upload"))
         .bearer_auth(token)

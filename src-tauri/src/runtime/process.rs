@@ -506,10 +506,34 @@ impl ProcessSupervisor {
     }
 
     /// Stop everything, for app shutdown.
+    /// Ask every server to stop, then WAIT for them to finish saving.
+    ///
+    /// Returning right after sending `stop` let the caller exit while the
+    /// worlds were still being written — and on Linux, systemd then kills
+    /// the whole service, game servers included, mid-save. Waits up to
+    /// `SHUTDOWN_GRACE` for all of them; a server that still has not exited
+    /// by then is reported, never silently abandoned.
     pub async fn stop_all(&self, stop_command: &str) {
+        const SHUTDOWN_GRACE: Duration = Duration::from_secs(75);
         let ids: Vec<String> = self.processes.read().await.keys().cloned().collect();
-        for id in ids {
-            let _ = self.stop(&id, stop_command).await;
+        if ids.is_empty() {
+            return;
+        }
+        for id in &ids {
+            let _ = self.stop(id, stop_command).await;
+        }
+        let deadline = Instant::now() + SHUTDOWN_GRACE;
+        loop {
+            let still: Vec<String> = self.processes.read().await.keys().cloned().collect();
+            if still.is_empty() {
+                tracing::info!(count = ids.len(), "all servers stopped cleanly");
+                return;
+            }
+            if Instant::now() >= deadline {
+                tracing::warn!(?still, "servers did not finish stopping in time");
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(250)).await;
         }
     }
 }

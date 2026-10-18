@@ -189,6 +189,13 @@ export const es: Copy = {
   },
 
   worldImport: {
+    withoutBackup: "Importar sin copia",
+    withoutBackupHelp: "Sin copia la importación es más rápida, pero luego no podrás volver al mundo actual. Aun así, el mundo actual solo se quita cuando el nuevo ya está en su sitio, y se restaura si la importación falla.",
+    phase_upload: "Enviando el .zip al equipo…",
+    phase_backup: "Haciendo copia del mundo actual…",
+    phase_unpack: "Descomprimiendo el mundo…",
+    phase_place: "Colocando el mundo…",
+    phase_done: "Listo",
     title: "Importar un mundo",
     intro: "Trae un mundo de un jugador o el mundo de otro servidor, desde un .zip o directamente desde su carpeta. Antes se hace una copia del mundo actual y luego se reemplaza.",
     introRemote: "Trae un mundo de un jugador o el de otro servidor como .zip desde este PC. Se envía a este equipo y reemplaza el mundo actual, del que antes se hace una copia.",

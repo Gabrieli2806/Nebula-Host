@@ -170,7 +170,8 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
         "world_import" => {
             let upload_id: String = arg(args, "uploadId")?;
             let archive = crate::service::world::upload_path(&upload_id)?;
-            let result = service.import_world(&id()?, archive.clone()).await;
+            let skip_backup: Option<bool> = opt(args, "skipBackup")?;
+            let result = service.import_world(&id()?, archive.clone(), skip_backup.unwrap_or(false)).await;
             let _ = std::fs::remove_file(&archive);
             ok(result?)
         }

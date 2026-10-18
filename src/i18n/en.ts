@@ -189,6 +189,13 @@ export const en = {
   },
 
   worldImport: {
+    withoutBackup: "Import without backup",
+    withoutBackupHelp: "Without a backup the import is faster, but you cannot go back to the current world afterwards. Even then, the current world is only removed once the new one is in place, and it is restored if the import fails.",
+    phase_upload: "Sending the .zip to the machine…",
+    phase_backup: "Backing up the current world…",
+    phase_unpack: "Unpacking the world…",
+    phase_place: "Putting the world in place…",
+    phase_done: "Done",
     title: "Import a world",
     intro: "Bring in a singleplayer world or the world of another server, from a .zip or straight from its folder. The current world is backed up first and then replaced.",
     introRemote: "Bring in a singleplayer world or the world of another server as a .zip from this PC. It is sent to this machine and replaces the current world, which is backed up first.",

@@ -5,15 +5,72 @@
  * it is replaced, and the server must be stopped.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { keys } from "@/hooks/useBackend";
+
+import "./world-import.css";
 import { useI18n } from "@/i18n";
 import { isRemote } from "@/lib/connection";
-import { api } from "@/lib/ipc";
+import { api, onAppEvent, onLocalUpload } from "@/lib/ipc";
 import type { InstanceView, WorldImportResult } from "@/types/api";
 import { Button, Dialog, ErrorNotice, Icon, Panel } from "@/ui";
+
+type Stage = { phase: "upload" | "backup" | "unpack" | "place" | "done"; done: number; total: number };
+
+/** Live progress for one import: the local upload (remote only), then the
+ *  backup / unpack / place phases reported by the machine doing it. */
+function useImportProgress(instanceId: string, active: boolean): Stage | null {
+  const [stage, setStage] = useState<Stage | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    const stopUpload = onLocalUpload(({ sent, total }) => setStage({ phase: "upload", done: sent, total }));
+    const stopEvents = onAppEvent((event) => {
+      if (event.type === "worldImport" && event.instanceId === instanceId) setStage(event.progress);
+    });
+    return () => {
+      stopUpload();
+      stopEvents();
+      setStage(null);
+    };
+  }, [instanceId, active]);
+  return active ? stage : null;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+  if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  return `${Math.max(0, Math.round(bytes / 1024))} KB`;
+}
+
+function ImportProgress({ stage }: { stage: Stage | null }) {
+  const { t } = useI18n();
+  const phase = stage?.phase ?? "backup";
+  const determinate = !!stage && stage.total > 0 && (phase === "upload" || phase === "unpack");
+  const pct = determinate ? Math.min(100, Math.round((stage!.done / stage!.total) * 100)) : null;
+  return (
+    <div className="world-import-progress" role="status" aria-live="polite">
+      <div className="world-import-progress-head">
+        <span>{t(`worldImport.phase_${phase}`)}</span>
+        <span className="world-import-progress-num">
+          {determinate ? `${formatBytes(stage!.done)} / ${formatBytes(stage!.total)} · ${pct}%` : ""}
+        </span>
+      </div>
+      <div
+        className="world-import-bar"
+        data-indeterminate={determinate ? undefined : ""}
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={pct ?? undefined}
+        aria-label={t(`worldImport.phase_${phase}`)}
+      >
+        <span style={{ width: determinate ? `${pct}%` : undefined }} />
+      </div>
+    </div>
+  );
+}
 
 export function WorldImportCard({ instance }: { instance: InstanceView }) {
   const { t } = useI18n();
@@ -24,7 +81,8 @@ export function WorldImportCard({ instance }: { instance: InstanceView }) {
   const running = ["online", "starting", "stopping"].includes(instance.status);
 
   const run = useMutation({
-    mutationFn: (path: string) => api.worlds.import(instance.id, path),
+    mutationFn: ({ path, skipBackup }: { path: string; skipBackup: boolean }) =>
+      api.worlds.import(instance.id, path, skipBackup),
     onSuccess: (result) => {
       setSource(null);
       setDone(result);
@@ -47,6 +105,7 @@ export function WorldImportCard({ instance }: { instance: InstanceView }) {
     }
   };
 
+  const stage = useImportProgress(instance.id, run.isPending);
   const dims = (list: string[]) => list.map((d) => t(`worldImport.dim_${d}`)).join(", ");
 
   return (
@@ -91,7 +150,18 @@ export function WorldImportCard({ instance }: { instance: InstanceView }) {
               <Button disabled={run.isPending} onClick={() => setSource(null)}>
                 {t("actions.cancel")}
               </Button>
-              <Button variant="primary" disabled={run.isPending} onClick={() => run.mutate(source.path)}>
+              <Button
+                variant="danger"
+                disabled={run.isPending}
+                onClick={() => run.mutate({ path: source.path, skipBackup: true })}
+              >
+                {t("worldImport.withoutBackup")}
+              </Button>
+              <Button
+                variant="primary"
+                disabled={run.isPending}
+                onClick={() => run.mutate({ path: source.path, skipBackup: false })}
+              >
                 {run.isPending ? (remote ? t("worldImport.uploading") : t("worldImport.importing")) : t("worldImport.confirm")}
               </Button>
             </>
@@ -100,6 +170,8 @@ export function WorldImportCard({ instance }: { instance: InstanceView }) {
           <div className="flex flex-col gap-3">
             <code className="selectable break-all text-[length:var(--text-xs)]">{source.path}</code>
             <p className="m-0 text-[length:var(--text-sm)] text-[color:var(--text-muted)]">{t("worldImport.confirmBody")}</p>
+            <p className="m-0 text-[length:var(--text-xs)] text-[color:var(--text-faint)]">{t("worldImport.withoutBackupHelp")}</p>
+            {run.isPending ? <ImportProgress stage={stage} /> : null}
             {run.error ? <ErrorNotice error={run.error} compact /> : null}
           </div>
         </Dialog>
