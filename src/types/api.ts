@@ -675,3 +675,10 @@ export interface AppLog {
   version: string;
   platform: string;
 }
+
+export interface WorldImportResult {
+  levelName: string;
+  dimensions: string[];
+  sourceName: string;
+  backupId?: string | null;
+}

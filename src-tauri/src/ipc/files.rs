@@ -109,3 +109,63 @@ pub async fn instance_disk_usage(
 ) -> AppResult<DiskUsage> {
     state.disk_usage(&instance_id, refresh.unwrap_or(false)).await
 }
+
+/// Import a world from a `.zip` or a folder on this PC.
+#[tauri::command]
+pub async fn world_import(
+    state: State<'_>,
+    instance_id: String,
+    path: String,
+) -> AppResult<crate::service::world::WorldImportResult> {
+    state.inner().import_world(&instance_id, std::path::PathBuf::from(path)).await
+}
+
+/// Stream a file on this PC to a paired node (its `/upload`), returning the
+/// upload id `world_import` takes over there. Runs here, not in the webview,
+/// so a multi-gigabyte world never passes through the UI.
+#[tauri::command]
+pub async fn upload_to_node(address: String, token: String, path: String) -> AppResult<String> {
+    use crate::error::{AppError, ErrorCode};
+    let file = tokio::fs::File::open(&path).await?;
+    let length = file.metadata().await?.len();
+    let stream = tokio_util_stream(file);
+    let response = reqwest::Client::new()
+        .post(format!("http://{address}/upload"))
+        .bearer_auth(token)
+        .header(reqwest::header::CONTENT_LENGTH, length)
+        .body(reqwest::Body::wrap_stream(stream))
+        .send()
+        .await
+        .map_err(|e| AppError::new(ErrorCode::NodeUnreachable).detail(e.to_string()))?;
+    let status = response.status();
+    let body: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| AppError::new(ErrorCode::Unexpected).detail(e.to_string()))?;
+    if !status.is_success() {
+        // The node answered with its own AppError JSON; surface it as detail.
+        return Err(AppError::new(ErrorCode::Unexpected).with("status", status.as_u16()).detail(body.to_string()));
+    }
+    body.get("uploadId")
+        .and_then(|v| v.as_str())
+        .map(String::from)
+        .ok_or_else(|| AppError::new(ErrorCode::Unexpected).detail("no upload id"))
+}
+
+/// A tokio file as a stream of byte chunks (without pulling in tokio-util).
+fn tokio_util_stream(
+    file: tokio::fs::File,
+) -> impl futures_util::Stream<Item = std::io::Result<Vec<u8>>> + Send + 'static {
+    use tokio::io::AsyncReadExt;
+    futures_util::stream::unfold(file, |mut file| async move {
+        let mut buffer = vec![0u8; 256 * 1024];
+        match file.read(&mut buffer).await {
+            Ok(0) => None,
+            Ok(n) => {
+                buffer.truncate(n);
+                Some((Ok(buffer), file))
+            }
+            Err(error) => Some((Err(error), file)),
+        }
+    })
+}

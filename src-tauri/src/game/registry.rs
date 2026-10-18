@@ -111,6 +111,18 @@ pub struct LaunchPlan {
     pub env: BTreeMap<String, String>,
 }
 
+/// What importing a world did, for the confirmation shown to the user.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorldImportReport {
+    /// The folder the server loads.
+    pub level_name: String,
+    /// Which dimensions came with it (overworld, nether, end for Minecraft).
+    pub dimensions: Vec<String>,
+    /// The name of the world in the source.
+    pub source_name: String,
+}
+
 #[async_trait]
 pub trait GameAdapter: Send + Sync {
     fn manifest(&self) -> &GameManifest;
@@ -141,6 +153,17 @@ pub trait GameAdapter: Send + Sync {
 
     /// The Java major a build is meant to run on, for games whose manifest
     /// asks for a JVM. Drives the "Recommended" runtime and its download.
+    /// Put a world (already unpacked into `staged`) where this server loads
+    /// it, replacing the current one. Games without importable worlds say so.
+    fn import_world(
+        &self,
+        _root: &std::path::Path,
+        _staged: &std::path::Path,
+        _build: &BuildSelector,
+    ) -> AppResult<WorldImportReport> {
+        Err(crate::error::AppError::new(crate::error::ErrorCode::GameNotSupported).with("feature", "world_import"))
+    }
+
     fn runtime_major(&self, _build: &BuildSelector) -> Option<u32> {
         None
     }

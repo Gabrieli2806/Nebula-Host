@@ -245,6 +245,45 @@ fn host_is_literal(headers: &HeaderMap) -> bool {
 /// page can trigger or read it: loopback peer only, POST with a custom header
 /// (a cross-origin browser request would need a preflight we never grant), no
 /// `Origin` at all, and a literal Host (defeats DNS rebinding).
+/// Largest archive a device may upload (a big modded world plus margin).
+const MAX_UPLOAD_BYTES: u64 = 32 * 1024 * 1024 * 1024;
+
+/// Stream an archive (a world `.zip`) to the node, for `world_import`.
+/// The body is written to disk as it arrives; nothing is held in memory.
+async fn upload(headers: HeaderMap, body: Body) -> Response {
+    if let Err(response) = authenticate(&headers) {
+        return response;
+    }
+    use futures_util::StreamExt;
+    use tokio::io::AsyncWriteExt;
+
+    let result: AppResult<String> = async {
+        let id = uuid::Uuid::new_v4().to_string();
+        let path = crate::service::world::uploads_dir()?.join(format!("{id}.zip"));
+        let mut file = tokio::fs::File::create(&path).await?;
+        let mut stream = body.into_data_stream();
+        let mut written: u64 = 0;
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|e| AppError::new(ErrorCode::InvalidInput).detail(e.to_string()))?;
+            written += chunk.len() as u64;
+            if written > MAX_UPLOAD_BYTES {
+                drop(file);
+                let _ = tokio::fs::remove_file(&path).await;
+                return Err(AppError::new(ErrorCode::InvalidInput).with("reason", "archive_too_large"));
+            }
+            file.write_all(&chunk).await?;
+        }
+        file.flush().await?;
+        Ok(id)
+    }
+    .await;
+
+    match result {
+        Ok(id) => Json(json!({ "uploadId": id })).into_response(),
+        Err(error) => error_response(StatusCode::BAD_REQUEST, error),
+    }
+}
+
 async fn local_pairing_code(
     AxumState(ctx): AxumState<Ctx>,
     ConnectInfo(peer): ConnectInfo<SocketAddr>,
@@ -269,6 +308,7 @@ fn router(ctx: Ctx) -> Router {
         .route("/pair", post(pair))
         .route("/rpc", post(rpc))
         .route("/events", get(events))
+        .route("/upload", post(upload).layer(axum::extract::DefaultBodyLimit::disable()))
         .route("/local/pairing-code", post(local_pairing_code))
         .fallback(|| async { (StatusCode::NOT_FOUND, Body::empty()) })
         .layer(middleware::from_fn(cors))

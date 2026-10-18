@@ -71,6 +71,8 @@ macro_rules! ipc_handlers {
             $crate::ipc::files::files_import_check,
             $crate::ipc::files::files_import,
             $crate::ipc::files::instance_disk_usage,
+            $crate::ipc::files::world_import,
+            $crate::ipc::files::upload_to_node,
             // mcp
             $crate::ipc::mcp::mcp_status,
             $crate::ipc::mcp::mcp_configure,

@@ -10,6 +10,7 @@ pub mod icon;
 pub mod import;
 pub mod instances;
 pub mod java;
+pub mod world;
 pub mod logs;
 pub mod pending;
 pub mod players;

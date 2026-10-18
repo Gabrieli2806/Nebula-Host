@@ -40,6 +40,7 @@ import type {
   Backup,
   ConsoleLine,
   McpStatus,
+  WorldImportResult,
   JavaOverview,
   AppLog,
   RemoteStatus,
@@ -305,6 +306,24 @@ export const api = {
     download: (major: number) => call<JavaInstallation>("java_download", { major }),
     /** Settings › Java: the four slots (25/21/17/8) and every JVM found. */
     overview: (refresh = false) => call<JavaOverview>("java_overview", { refresh }),
+  },
+
+  worlds: {
+    /**
+     * Import a world from a .zip or folder on this PC. When managing a remote
+     * machine the file is streamed there first (by this PC's backend, not the
+     * webview) and imported from the upload.
+     */
+    import: async (instanceId: string, path: string): Promise<WorldImportResult> => {
+      const node = activeRemote();
+      try {
+        if (!node) return await invoke<WorldImportResult>("world_import", { instanceId, path });
+        const uploadId = await invoke<string>("upload_to_node", { address: node.address, token: node.token, path });
+        return await remoteCall<WorldImportResult>(node, "world_import", { instanceId, uploadId });
+      } catch (error) {
+        throw toAppError(error);
+      }
+    },
   },
 
   app: {

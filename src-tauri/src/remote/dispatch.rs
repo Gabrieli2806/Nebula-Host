@@ -154,6 +154,15 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             ok(files::create_dir(&instance.path, &arg::<String>(args, "path")?)?)
         }
 
+        // -- worlds --------------------------------------------------------------
+        "world_import" => {
+            let upload_id: String = arg(args, "uploadId")?;
+            let archive = crate::service::world::upload_path(&upload_id)?;
+            let result = service.import_world(&id()?, archive.clone()).await;
+            let _ = std::fs::remove_file(&archive);
+            ok(result?)
+        }
+
         // -- backups --------------------------------------------------------------
         "backups_list" => {
             let instance_id = id()?;

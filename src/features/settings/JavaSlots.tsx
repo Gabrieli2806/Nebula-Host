@@ -78,6 +78,10 @@ export function JavaSlots({
   );
 }
 
+const BROWSE = "__browse";
+const DOWNLOAD = "__download";
+
+/** One line per slot: name, what it uses, and a single dropdown for the rest. */
 function SlotRow({
   slot,
   installations,
@@ -91,36 +95,40 @@ function SlotRow({
 }) {
   const { t } = useI18n();
   const { download, progress } = useJavaDownload();
-  const [tested, setTested] = useState<string | null>(null);
-  const test = useMutation({
-    mutationFn: (path: string) => api.settings.probeJava(path),
-    onSuccess: (java) => setTested(t("java.testOk", { version: java.version, major: java.major })),
-  });
+  const [browseError, setBrowseError] = useState<unknown>(null);
+  const remote = isRemote();
 
-  // Choices for this slot: same major first, then newer ones (a newer JVM
-  // usually runs an older server, the way Modrinth allows it too).
+  // Same major first, then newer ones (a newer JVM runs older servers too).
   const choices = installations
     .filter((i) => i.major >= slot.major)
     .sort((a, b) => Number(a.major !== slot.major) - Number(b.major !== slot.major) || a.major - b.major);
   const effective = slot.effective;
+  const exact = effective?.major === slot.major;
   const downloading = download.isPending && download.variables === slot.major;
   const pct =
     downloading && progress?.major === slot.major && "received" in progress.progress && progress.progress.total
       ? Math.round((progress.progress.received / progress.progress.total) * 100)
       : null;
 
-  const browse = async () => {
-    const { open } = await import("@tauri-apps/plugin-dialog");
-    const picked = await open({ multiple: false, filters: [{ name: "java", extensions: ["exe", ""] }] });
-    if (typeof picked !== "string") return;
-    try {
-      const java = await api.settings.probeJava(picked);
-      onPin(java.path);
-    } catch (error) {
-      test.reset();
-      setTested(null);
-      throw error;
+  const describe = (java: JavaInstallation) => `${java.vendor ?? "Java"} ${java.version}`;
+
+  const onSelect = async (value: string) => {
+    setBrowseError(null);
+    if (value === DOWNLOAD) {
+      download.mutate(slot.major);
+      return;
     }
+    if (value === BROWSE) {
+      try {
+        const { open } = await import("@tauri-apps/plugin-dialog");
+        const picked = await open({ multiple: false, filters: [{ name: "java", extensions: ["exe", ""] }] });
+        if (typeof picked === "string") onPin((await api.settings.probeJava(picked)).path);
+      } catch (error) {
+        setBrowseError(error);
+      }
+      return;
+    }
+    onPin(value || null);
   };
 
   return (
@@ -130,66 +138,50 @@ function SlotRow({
         <span className="java-slot-for">{t(`java.for${slot.major}`)}</span>
       </div>
 
-      <div className="java-slot-body">
-        <div className="java-slot-path">
-          {effective ? (
-            <>
-              <code className="selectable" title={effective.path}>
-                {effective.path}
-              </code>
-              <span className="java-slot-meta">
-                <span className="java-tag" data-kind={slot.automatic ? "auto" : "pinned"}>
-                  {slot.automatic ? t("java.auto") : t("java.pinned")}
-                </span>
-                {effective.vendor ?? "Java"} {effective.version}
-                {effective.major !== slot.major ? ` · ${t("java.newer", { major: effective.major })}` : ""}
-              </span>
-            </>
-          ) : (
-            <span className="java-slot-none">
-              <Icon name="warning" size={13} /> {t("java.notFound")}
-            </span>
-          )}
-        </div>
+      <span className="java-slot-state" title={effective?.path}>
+        {downloading ? (
+          <>{pct !== null ? `${t("java.downloading")} ${pct}%` : t("java.downloading")}</>
+        ) : effective ? (
+          <>
+            <Icon name={exact ? "check" : "info"} size={13} />
+            {describe(effective)}
+            {exact ? "" : ` · ${t("java.newer", { major: effective.major })}`}
+          </>
+        ) : (
+          <>
+            <Icon name="warning" size={13} /> {t("java.notFoundShort")}
+          </>
+        )}
+      </span>
 
-        <div className="java-slot-actions">
-          {choices.length > 0 ? (
-            <Select
-              aria-label={t("java.choose", { major: slot.major })}
-              value={slot.automatic ? "" : (slot.configured ?? "")}
-              onChange={(event) => onPin(event.target.value || null)}
-            >
-              <option value="">{t("java.automatic")}</option>
-              {choices.map((install) => (
-                <option key={install.path} value={install.path}>
-                  Java {install.major} · {install.vendor ?? ""} {install.version}
-                </option>
-              ))}
-            </Select>
-          ) : null}
-          <Button size="sm" icon="folder" disabled={isRemote()} title={isRemote() ? t("remote.localOnly") : undefined} onClick={() => void browse()}>
-            {t("java.browse")}
-          </Button>
-          {!effective || effective.major !== slot.major ? (
-            canDownload ? (
-              <Button size="sm" icon="download" disabled={download.isPending} onClick={() => download.mutate(slot.major)}>
-                {downloading ? (pct !== null ? `${pct}%` : t("java.downloading")) : t("java.download", { major: slot.major })}
-              </Button>
-            ) : null
-          ) : (
-            <Button size="sm" variant="quiet" disabled={test.isPending} onClick={() => effective && test.mutate(effective.path)}>
-              {t("java.test")}
-            </Button>
-          )}
-        </div>
-      </div>
+      <Select
+        className="java-slot-select"
+        aria-label={t("java.choose", { major: slot.major })}
+        value={slot.automatic ? "" : (slot.configured ?? "")}
+        disabled={downloading}
+        onChange={(event) => void onSelect(event.target.value)}
+      >
+        <option value="">{t("java.automatic")}</option>
+        {choices.length ? (
+          <optgroup label={t("java.detected")}>
+            {choices.map((install) => (
+              <option key={install.path} value={install.path}>
+                Java {install.major} · {describe(install)}
+              </option>
+            ))}
+          </optgroup>
+        ) : null}
+        <optgroup label={t("java.more")}>
+          {remote ? null : <option value={BROWSE}>{t("java.browse")}…</option>}
+          {canDownload && !exact ? <option value={DOWNLOAD}>{t("java.download", { major: slot.major })}</option> : null}
+        </optgroup>
+      </Select>
 
-      {tested ? (
-        <p className="java-slot-ok">
-          <Icon name="check" size={13} /> {tested}
-        </p>
+      {browseError || download.error ? (
+        <div className="java-slot-error">
+          <ErrorNotice error={browseError ?? download.error} compact />
+        </div>
       ) : null}
-      {test.error || download.error ? <ErrorNotice error={test.error ?? download.error} compact /> : null}
     </div>
   );
 }

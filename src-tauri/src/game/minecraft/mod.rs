@@ -10,6 +10,7 @@ pub mod downloader;
 pub mod launch;
 pub mod modrinth;
 pub mod types;
+pub mod world;
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -142,6 +143,15 @@ impl GameAdapter for MinecraftAdapter {
             entry_point,
             java_major: Some(launch::min_java_version(&ctx.build.version)),
         })
+    }
+
+    fn import_world(
+        &self,
+        root: &std::path::Path,
+        staged: &std::path::Path,
+        build: &BuildSelector,
+    ) -> AppResult<crate::game::registry::WorldImportReport> {
+        world::import(root, staged, world::uses_bukkit_layout(&build.distribution))
     }
 
     fn runtime_major(&self, build: &BuildSelector) -> Option<u32> {
