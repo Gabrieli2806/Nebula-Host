@@ -47,7 +47,7 @@ async-trait = "0.1"
 base64 = "0.22"
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 chrono = { workspace = true }
-dirs = "6"
+dirs = "7"
 flate2 = "1"
 futures-util = { workspace = true }
 hex = { workspace = true }
