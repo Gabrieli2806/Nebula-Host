@@ -13,6 +13,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { CreateServerDialog } from "./CreateServerDialog";
 import { ServerCard } from "./ServerCard";
 import { ServerRow } from "./ServerRow";
+import { useServerMenu } from "./useServerMenu";
 import {
   useAppSettings,
   useDistribution,
@@ -140,9 +141,14 @@ export function ServersScreen() {
   }, [wantsCreate, searchParams, setSearchParams]);
 
   const open = (instance: InstanceView) => navigate(`/servers/${instance.id}/overview`);
+  const serverMenu = useServerMenu(instances ?? [], () => setCreating(true));
 
   return (
-    <div className="servers-screen flex max-w-[var(--content-max)] flex-col gap-6 p-[var(--gutter)]">
+    <div
+      className="servers-screen flex max-w-[var(--content-max)] flex-col gap-6 p-[var(--gutter)]"
+      onContextMenu={serverMenu.onContextMenu}
+    >
+      {serverMenu.menu}
       <Heading
         instances={instances}
         onCreate={() => setCreating(true)}

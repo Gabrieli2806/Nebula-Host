@@ -72,6 +72,7 @@ export function ServerCard({ instance, onOpen }: { instance: InstanceView; onOpe
 
   return (
     <article
+      data-instance-id={instance.id}
       className="panel card-interactive server-card"
       {...identityProps(accent)}
       data-idle={isIdle(instance.status) ? "" : undefined}

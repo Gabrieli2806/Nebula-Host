@@ -53,6 +53,7 @@ export function ServerRow({ instance, onOpen }: { instance: InstanceView; onOpen
   return (
     <>
       <tr
+        data-instance-id={instance.id}
         className="server-row"
         {...identityProps(accent)}
         data-idle={isIdle(instance.status) ? "" : undefined}

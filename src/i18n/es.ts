@@ -215,6 +215,16 @@ export const es: Copy = {
     dim_end: "End",
   },
 
+  menu: {
+    open: "Abrir",
+    console: "Consola",
+    files: "Archivos",
+    backups: "Copias de seguridad",
+    settings: "Ajustes",
+    copyAddress: "Copiar dirección",
+    refresh: "Actualizar",
+  },
+
   mcp: {
     title: "Asistentes de IA (MCP)",
     intro: "Permite que un asistente de IA como Claude o Cursor gestione tus servidores mediante el Model Context Protocol: listar y arrancar servidores, crear nuevos, ejecutar comandos, leer la consola y diagnosticar errores.",
@@ -372,6 +382,8 @@ export const es: Copy = {
   },
 
   install: {
+    downloadingGeneric: "Descargando los archivos del servidor",
+    installingLoaderGeneric: "Instalando el cargador de mods",
     title: "Preparando {name}",
     resolving: "Averiguando qué compilación descargar",
     downloading: "Descargando {file}",

@@ -9,6 +9,7 @@ import { AgreementGate } from "@/features/server/agreement/Agreement";
 import { ServerScreen } from "@/features/server/ServerScreen";
 import { ServersScreen } from "@/features/servers/ServersScreen";
 import { SettingsScreen } from "@/features/settings/SettingsScreen";
+import { useSuppressNativeContextMenu } from "@/ui/ContextMenu";
 import { I18nProvider } from "@/i18n";
 
 const client = new QueryClient({
@@ -24,6 +25,7 @@ const client = new QueryClient({
 });
 
 export function App() {
+  useSuppressNativeContextMenu();
   return (
     <QueryClientProvider client={client}>
       <I18nProvider>

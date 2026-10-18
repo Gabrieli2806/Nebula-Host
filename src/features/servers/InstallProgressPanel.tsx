@@ -7,6 +7,8 @@
  * pending); the lamp, check and weight are CSS (servers.css).
  */
 
+import { useState } from "react";
+
 import { useInstallProgress } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { formatBytes } from "@/lib/format";
@@ -34,6 +36,23 @@ export function InstallProgressPanel({
 }) {
   const { t } = useI18n();
   const progress = useInstallProgress(instanceId);
+
+  // The file and loader names only arrive while their phase runs. Remember
+  // them, so a finished row keeps its name and a row not reached yet reads
+  // generically instead of showing a raw {file} / {distribution} placeholder.
+  const [seen, setSeen] = useState<{ file?: string; distribution?: string }>({});
+  if (progress?.phase === "downloading" && progress.file && progress.file !== seen.file) {
+    setSeen((prev) => ({ ...prev, file: progress.file }));
+  }
+  if (progress?.phase === "installing_loader" && progress.distribution !== seen.distribution) {
+    setSeen((prev) => ({ ...prev, distribution: progress.distribution }));
+  }
+  const label = (phase: Phase): string => {
+    if (phase === "downloading") return seen.file ? t(LABEL.downloading, { file: seen.file }) : t("install.downloadingGeneric");
+    if (phase === "installing_loader")
+      return seen.distribution ? t(LABEL.installing_loader, { distribution: seen.distribution }) : t("install.installingLoaderGeneric");
+    return t(LABEL[phase]);
+  };
 
   const current: Phase =
     progress?.phase === "generating_world"
@@ -71,7 +90,7 @@ export function InstallProgressPanel({
 
               <div className="flex min-w-0 flex-1 flex-col gap-2">
                 <span className="install-phase-label">
-                  {t(LABEL[phase], phaseParams(progress))}
+                  {label(phase)}
                 </span>
 
                 {state === "active" && progress?.phase === "downloading" && progress.total ? (
@@ -101,11 +120,3 @@ export function InstallProgressPanel({
   );
 }
 
-function phaseParams(
-  progress: ReturnType<typeof useInstallProgress>,
-): Record<string, string> | undefined {
-  if (!progress) return undefined;
-  if (progress.phase === "downloading") return { file: progress.file };
-  if (progress.phase === "installing_loader") return { distribution: progress.distribution };
-  return undefined;
-}

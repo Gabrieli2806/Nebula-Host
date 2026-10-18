@@ -215,6 +215,16 @@ export const en = {
     dim_end: "End",
   },
 
+  menu: {
+    open: "Open",
+    console: "Console",
+    files: "Files",
+    backups: "Backups",
+    settings: "Settings",
+    copyAddress: "Copy address",
+    refresh: "Refresh",
+  },
+
   mcp: {
     title: "AI assistants (MCP)",
     intro: "Let an AI assistant such as Claude or Cursor manage your servers through the Model Context Protocol: list and start servers, create new ones, run commands, read the console and diagnose crashes.",
@@ -372,6 +382,8 @@ export const en = {
   },
 
   install: {
+    downloadingGeneric: "Downloading the server files",
+    installingLoaderGeneric: "Installing the mod loader",
     title: "Setting up {name}",
     resolving: "Working out which build to fetch",
     downloading: "Downloading {file}",
