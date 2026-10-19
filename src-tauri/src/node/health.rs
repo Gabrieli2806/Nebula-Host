@@ -139,6 +139,10 @@ pub fn storage_locations() -> Vec<StorageLocation> {
     let mut push = |path: std::path::PathBuf, kind: &'static str| {
         let _ = std::fs::create_dir_all(&path);
         let (total, free) = volume_space(&path).unwrap_or((0, 0));
+        // An SD slot with no card answers with an empty volume: leave it out.
+        if total == 0 && kind != "internal" {
+            return;
+        }
         out.push(StorageLocation {
             path: path.display().to_string(),
             kind,
