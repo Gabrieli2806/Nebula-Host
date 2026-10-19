@@ -17,6 +17,7 @@ import {
 
 import { agreementRequired, requestAgreement } from "@/lib/agreement";
 import { api, onAppEvent, onWindowDragDrop, toAppError, type AppError } from "@/lib/ipc";
+import { linkState, subscribeLink } from "@/lib/connection";
 import type {
   AddonBrowseRequest,
   AppEvent,
@@ -72,6 +73,29 @@ export function useBackendEvents() {
   const client = useQueryClient();
 
   useEffect(() => onAppEvent((event) => applyEvent(client, event)), [client]);
+
+  // Events only say what changes from now on. Whatever happened while this
+  // window could not hear (a dropped connection, a phone asleep, a tab in the
+  // background) is brought back by asking again: when the link to a remote
+  // machine returns, and when the window is looked at again.
+  useEffect(() => {
+    const resync = () => {
+      if (document.visibilityState === "visible") void client.invalidateQueries({ queryKey: keys.instances });
+    };
+    let last = linkState();
+    const stopLink = subscribeLink(() => {
+      const now = linkState();
+      if (now === "up" && last === "down") void client.invalidateQueries();
+      last = now;
+    });
+    document.addEventListener("visibilitychange", resync);
+    window.addEventListener("focus", resync);
+    return () => {
+      stopLink();
+      document.removeEventListener("visibilitychange", resync);
+      window.removeEventListener("focus", resync);
+    };
+  }, [client]);
 }
 
 function applyEvent(client: QueryClient, event: AppEvent) {
@@ -90,9 +114,6 @@ function applyEvent(client: QueryClient, event: AppEvent) {
       patchInstance(client, event.instanceId, (instance) => ({
         ...instance,
         ...event.state,
-        // Status is owned by the status event; stats must never move it, or a
-        // sleeping server flickers back to offline on every tick.
-        status: instance.status,
       }));
       break;
     }
@@ -208,7 +229,9 @@ export function useGames() {
 }
 
 export function useInstances() {
-  return useQuery({ queryKey: keys.instances, queryFn: api.instances.list });
+  // Events keep this current; the slow refresh is the safety net for any the
+  // window missed. It pauses while the window is hidden.
+  return useQuery({ queryKey: keys.instances, queryFn: api.instances.list, refetchInterval: 15_000 });
 }
 
 export function useInstance(instanceId: string) {

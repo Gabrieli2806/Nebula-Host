@@ -995,23 +995,27 @@ impl InstanceService {
                 state.memory_used_mb = 0;
                 state.tick_rate = None;
             }
+            // Emitted while the state is locked, so events leave in the order
+            // the states changed: a measurement taken before this change can
+            // never reach a listener after it.
+            self.emit(AppEvent::Status { instance_id: instance_id.to_string(), status });
         }
-        self.emit(AppEvent::Status { instance_id: instance_id.to_string(), status });
     }
 
     /// Store freshly measured numbers and tell the UI. Status is not part of
     /// this: only `set_status` writes it.
     pub async fn publish_state(&self, instance_id: &str, state: InstanceState) {
-        {
-            let mut states = self.states.write().await;
-            let stored = states.entry(instance_id.to_string()).or_default();
-            let status = stored.status;
-            *stored = state.clone();
-            stored.status = status;
-        }
+        let mut states = self.states.write().await;
+        let stored = states.entry(instance_id.to_string()).or_default();
+        let status = stored.status;
+        *stored = state;
+        stored.status = status;
+        // Carries the authoritative status, so a listener that missed a
+        // status event (a dropped connection, a busy tab) is corrected by
+        // the next measurement instead of staying wrong.
         self.emit(AppEvent::Stats {
             instance_id: instance_id.to_string(),
-            state: Box::new(state),
+            state: Box::new(stored.clone()),
         });
     }
 
