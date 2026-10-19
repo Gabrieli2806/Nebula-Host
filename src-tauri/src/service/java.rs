@@ -67,7 +67,7 @@ impl InstanceService {
             selected: instance.resources.runtime_path.clone(),
             automatic,
             installations,
-            can_download: java::adoptium_platform().is_some(),
+            can_download: java::can_install(),
         })
     }
 
@@ -132,7 +132,7 @@ pub async fn java_overview(refresh: bool) -> AppResult<JavaOverview> {
                 JavaSlot { major, automatic: pinned.is_none(), configured: pinned, effective }
             })
             .collect();
-        Ok(JavaOverview { slots, installations, can_download: java::adoptium_platform().is_some() })
+        Ok(JavaOverview { slots, installations, can_download: java::can_install() })
     })
     .await
     .map_err(AppError::unexpected)?

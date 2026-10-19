@@ -93,6 +93,13 @@ export const en = {
     menuMachines: "Machines and their load",
   },
 
+  javaInstall: {
+    install: "Install Java {major} (recommended)",
+    installing: "Installing Java…",
+    progress: "Installing… {done} / {total}",
+    done: "Java {major} installed",
+  },
+
   upnp: {
     upnpTest: "Test UPnP",
     upnpTesting: "Testing…",
@@ -990,7 +997,7 @@ export const en = {
     install_failed: { title: "Setup failed", cause: "The {distribution} installer did not finish.", action: "Check that Java is installed, then try again." },
     download_failed: { title: "Download failed", cause: "{file} did not finish downloading.", action: "Check the connection and try again — it resumes where it stopped." },
     checksum_mismatch: { title: "Download was damaged", cause: "The file that arrived does not match what was published.", action: "Try again. If it keeps failing, the mirror may be having problems." },
-    java_not_found: { title: "Java not found", cause: "This version needs Java {major} and none was found.", action: "Install Java, then point at it in Settings." },
+    java_not_found: { title: "Java not found", cause: "This version needs Java {major} and none was found.", action: "Install it with the button below, or pick one in Settings › Java." },
     java_too_old: { title: "Java is too old", cause: "This version needs Java {major}.", action: "Install a newer Java and select it in Settings." },
     docker_not_available: { title: "Docker is not answering", cause: "Docker is not running on this machine.", action: "Start Docker Desktop, or run this server as a normal program instead." },
     not_enough_memory: { title: "Not enough memory", cause: "This machine does not have {needed} to spare.", action: "Give the server less memory, or close something else." },

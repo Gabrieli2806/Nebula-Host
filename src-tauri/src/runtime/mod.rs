@@ -3,6 +3,8 @@
 //! way.
 
 pub mod adopt;
+#[cfg(target_os = "android")]
+pub mod android_java;
 pub mod console;
 pub mod docker;
 pub mod java;

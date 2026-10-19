@@ -11,9 +11,15 @@ import { ServersScreen } from "@/features/servers/ServersScreen";
 import { SettingsScreen } from "@/features/settings/SettingsScreen";
 import { MachinesScreen } from "@/features/machines/MachinesScreen";
 import { useSuppressNativeContextMenu } from "@/ui/ContextMenu";
+import { errorActions } from "@/ui";
+import { JavaInstallButton } from "@/features/java/JavaInstall";
 import { I18nProvider } from "@/i18n";
 import { WebPair } from "@/features/web/WebPair";
 import { IS_WEB, webSession } from "@/lib/web";
+
+// A missing Java says which one; offer to install it right there.
+errorActions.java_not_found = (error) =>
+  error.params.major ? <JavaInstallButton major={Number(error.params.major)} /> : null;
 
 const client = new QueryClient({
   defaultOptions: {

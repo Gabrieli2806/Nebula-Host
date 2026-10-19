@@ -17,6 +17,7 @@ import { TitleBar } from "@/app/TitleBar";
 import { keys, useNode, useNodeHealth, useRequirements } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { formatMegabytes } from "@/lib/format";
+import { JavaInstallButton } from "@/features/java/JavaInstall";
 import { api } from "@/lib/ipc";
 import type { InstanceStatus, Requirement } from "@/types/api";
 import { Button, ErrorNotice, Field, Mark, Skeleton, StatusDot, TextInput } from "@/ui";
@@ -152,6 +153,11 @@ function RequirementRow({ requirement }: { requirement: Requirement }) {
       </div>
       {requirement.status !== "ready" && advice ? (
         <p className="first-run-requirement-advice">{advice}</p>
+      ) : null}
+      {requirement.id === "java" && requirement.status === "missing" ? (
+        <div className="first-run-requirement-advice">
+          <JavaInstallButton major={25} />
+        </div>
       ) : null}
     </li>
   );

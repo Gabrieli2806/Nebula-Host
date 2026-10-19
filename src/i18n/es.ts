@@ -93,6 +93,13 @@ export const es: Copy = {
     menuMachines: "Equipos y su carga",
   },
 
+  javaInstall: {
+    install: "Instalar Java {major} (recomendado)",
+    installing: "Instalando Java…",
+    progress: "Instalando… {done} / {total}",
+    done: "Java {major} instalado",
+  },
+
   upnp: {
     upnpTest: "Probar UPnP",
     upnpTesting: "Probando…",
@@ -990,7 +997,7 @@ export const es: Copy = {
     install_failed: { title: "La instalación falló", cause: "El instalador de {distribution} no terminó.", action: "Comprueba que Java está instalado y vuelve a intentarlo." },
     download_failed: { title: "Falló la descarga", cause: "{file} no terminó de descargarse.", action: "Revisa la conexión e inténtalo otra vez: continúa donde se quedó." },
     checksum_mismatch: { title: "La descarga llegó dañada", cause: "El archivo recibido no coincide con el publicado.", action: "Inténtalo otra vez. Si vuelve a fallar, el servidor de descargas puede tener problemas." },
-    java_not_found: { title: "No se encontró Java", cause: "Esta versión necesita Java {major} y no hay ninguno.", action: "Instala Java e indícalo en Ajustes." },
+    java_not_found: { title: "No se encontró Java", cause: "Esta versión necesita Java {major} y no hay ninguno.", action: "Instálalo con el botón de abajo, o elige uno en Ajustes › Java." },
     java_too_old: { title: "Java es demasiado antiguo", cause: "Esta versión necesita Java {major}.", action: "Instala un Java más nuevo y selecciónalo en Ajustes." },
     docker_not_available: { title: "Docker no responde", cause: "Docker no está funcionando en este equipo.", action: "Arranca Docker Desktop, o ejecuta este servidor como un programa normal." },
     not_enough_memory: { title: "No hay memoria suficiente", cause: "Este equipo no tiene {needed} libres.", action: "Dale menos memoria al servidor, o cierra algo." },

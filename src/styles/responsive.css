@@ -1,0 +1,151 @@
+/*
+ * Nebula Host: responsive.css. The same app at phone width (the Android app,
+ * the web panel on a phone, or a desktop window made very narrow) and with a
+ * finger instead of a mouse.
+ *
+ * Nothing here changes the look: the layout reflows (columns stack, rows
+ * wrap, dialogs become sheets) and controls get room for a thumb. The
+ * sidebar becomes a drawer (shell.css) rather than a tab bar, so the app
+ * reads the same everywhere.
+ *
+ * `--ad-slot` reserves space for a future banner at the foot of the page; it
+ * is 0 today and nothing renders there.
+ */
+
+:root {
+  --ad-slot: 0px;
+}
+
+@layer components {
+  .app-main {
+    padding-bottom: var(--ad-slot);
+  }
+
+  /* -- touch: room for a finger (44px, the platform guideline) ---------- */
+  @media (pointer: coarse) {
+    :root {
+      --control-height: 44px;
+      --control-height-sm: 38px;
+    }
+
+    .rail-item,
+    .node-switcher-item,
+    .context-menu-item,
+    .fleet-running button {
+      min-height: 44px;
+    }
+
+    /* No hover on a touchscreen: a tap must not leave a card looking hovered. */
+    .card-interactive:hover {
+      border-color: var(--line);
+      box-shadow: var(--shadow-card);
+    }
+
+    /* Text inputs at 16px: smaller makes some browsers zoom the page. */
+    input,
+    select,
+    textarea {
+      font-size: max(16px, 1em);
+    }
+  }
+
+  /* -- phone width -------------------------------------------------------- */
+  @media (max-width: 760px) {
+    :root {
+      --gutter: 16px;
+    }
+
+    /* Page headers: title on its own line, actions wrap under it. */
+    .servers-screen > header,
+    .machines-screen > header,
+    .settings-header {
+      flex-wrap: wrap;
+      row-gap: var(--space-3);
+    }
+
+    .servers-toolbar {
+      flex-wrap: wrap;
+      row-gap: var(--space-2);
+    }
+
+    /* Wide tables scroll sideways inside their card, not the whole page. */
+    .servers-table-card {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .servers-table {
+      min-width: 560px;
+    }
+
+    /* Settings rows stack: label and help first, the control underneath. */
+    .settings-row,
+    .settings-row-hit {
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: var(--space-2);
+    }
+
+    .settings-row-control {
+      justify-content: flex-start;
+    }
+
+    /* A switch stays beside its label: stacking it would look broken. */
+    .settings-row[data-switch] .settings-row-hit {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    /* Dialogs become sheets anchored to the bottom, within thumb reach. */
+    .dialog-scrim {
+      align-items: flex-end;
+      padding: 0;
+    }
+
+    .dialog {
+      max-width: 100% !important;
+      max-height: 92vh;
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      border-bottom: 0;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .dialog footer {
+      flex-wrap: wrap;
+    }
+
+    .dialog footer .btn {
+      flex: 1 1 auto;
+    }
+
+    /* Choice strips (theme, view, filters) wrap instead of running off. */
+    .segmented {
+      flex-wrap: wrap;
+      max-width: 100%;
+      overflow-x: visible;
+    }
+
+    .segmented .segment {
+      flex: 1 1 auto;
+    }
+
+    /* Card grids: one column, full width. */
+    .servers-grid,
+    .fleet-grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+    }
+
+    .fleet-facts {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    /* Server page header: name and status, then the actions. */
+    .server-pagehead {
+      flex-wrap: wrap;
+    }
+
+    /* The console uses the height the phone has, and its input stays big. */
+    .console-window {
+      min-height: 55vh;
+    }
+  }
+}

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* global process, console, fetch, Buffer */
 /**
  * Prepare the Java runtimes that ship inside the Android app.
  *
