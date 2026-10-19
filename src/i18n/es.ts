@@ -112,6 +112,19 @@ export const es: Copy = {
     back: "Servidores",
   },
 
+  phoneWelcome: {
+    title: "Tus servidores, en el bolsillo",
+    intro: "Gestiona desde este teléfono los servidores que corren en tu PC o en una Raspberry Pi.",
+    connect: "Conectar a un equipo",
+    connectHint: "Empareja con Nebula Host en tu PC o en un nodo usando el código que muestra.",
+    host: "Alojar en este teléfono",
+    hostHint: "Ejecuta un servidor pequeño aquí, para unos pocos amigos en el mismo Wi-Fi.",
+    note: "Puedes hacer ambas cosas después: cambia de equipo desde el nombre de arriba.",
+    hostWarning: "Alojar en un teléfono sirve para partidas pequeñas: gasta batería y memoria, calienta el teléfono y los jugadores necesitan el mismo Wi-Fi. Para algo más grande, un PC es mejor anfitrión.",
+    emptyTitle: "Aún no hay nada aquí",
+    emptyHint: "Conecta con el equipo que aloja tus servidores, o aloja uno en este teléfono.",
+  },
+
   upnp: {
     upnpTest: "Probar UPnP",
     upnpTesting: "Probando…",

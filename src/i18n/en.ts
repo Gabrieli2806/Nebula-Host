@@ -112,6 +112,19 @@ export const en = {
     back: "Servers",
   },
 
+  phoneWelcome: {
+    title: "Your servers, in your pocket",
+    intro: "Manage the servers running on your computer or Raspberry Pi from this phone.",
+    connect: "Connect to a computer",
+    connectHint: "Pair with Nebula Host on your PC or a node, with the code it shows.",
+    host: "Host on this phone",
+    hostHint: "Run a small server here, for a few friends on the same Wi-Fi.",
+    note: "You can do both later: switch machines from the name at the top.",
+    hostWarning: "Hosting on a phone works for small games: it uses battery and memory, warms the phone, and players need the same Wi-Fi. A computer is the better host for anything bigger.",
+    emptyTitle: "Nothing here yet",
+    emptyHint: "Connect to the computer that hosts your servers, or host one on this phone.",
+  },
+
   upnp: {
     upnpTest: "Test UPnP",
     upnpTesting: "Testing…",

@@ -16,6 +16,10 @@ export const IS_WEB = typeof window !== "undefined" && !("__TAURI_INTERNALS__" i
 export const IS_MOBILE =
   typeof navigator !== "undefined" && !IS_WEB && /Android|iPhone|iPad/i.test(navigator.userAgent);
 
+/** Features that need a desktop (a window to open folders in, a tray, files
+ *  picked by path, an AI assistant on the same machine) are left out here. */
+export const DESKTOP_FEATURES = !IS_WEB && !IS_MOBILE;
+
 export interface WebSession {
   token: string;
   deviceId: string;

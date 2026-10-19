@@ -11,7 +11,7 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 
 import { TitleBar } from "@/app/TitleBar";
 import { keys, useNode, useNodeHealth, useRequirements } from "@/hooks/useBackend";
@@ -20,6 +20,9 @@ import { formatMegabytes } from "@/lib/format";
 import { JavaInstallButton } from "@/features/java/JavaInstall";
 import { api } from "@/lib/ipc";
 import type { InstanceStatus, Requirement } from "@/types/api";
+import { isRemote } from "@/lib/connection";
+import { IS_MOBILE } from "@/lib/web";
+import { PHONE_HOSTING_KEY, PhoneHostingNotice, PhoneWelcome } from "./PhoneWelcome";
 import { Button, ErrorNotice, Field, Mark, Skeleton, StatusDot, TextInput } from "@/ui";
 
 const ADVICE: Record<string, string> = {
@@ -62,6 +65,18 @@ export function FirstRun() {
     },
   });
 
+  // The phone app opens on "manage your computer" first; hosting here is the
+  // second choice. Once it manages another machine, setup is done.
+  const [hostHere, setHostHere] = useState(() => {
+    try {
+      return localStorage.getItem(PHONE_HOSTING_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  if (IS_MOBILE && isRemote()) return <Navigate to="/servers" replace />;
+  if (IS_MOBILE && !hostHere) return <PhoneWelcome onHostHere={() => setHostHere(true)} />;
+
   const ready =
     requirements.data !== undefined &&
     requirements.data.every((requirement) => requirement.status !== "missing");
@@ -78,6 +93,7 @@ export function FirstRun() {
           <p className="first-run-intro">{t("firstRun.intro")}</p>
 
           <section className="first-run-card" aria-label={t("firstRun.welcome")}>
+            {IS_MOBILE ? <PhoneHostingNotice /> : null}
             <Field label={t("firstRun.nameLabel")} help={t("firstRun.nameHelp")}>
               <TextInput
                 value={name || (node?.name ?? "")}

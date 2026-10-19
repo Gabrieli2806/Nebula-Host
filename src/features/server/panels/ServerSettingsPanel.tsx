@@ -25,6 +25,7 @@ import { RamSlider } from "@/ui/RamSlider";
 import { JavaRuntimeCard } from "./settings/JavaRuntimeCard";
 import { ServerIconCard } from "./settings/ServerIconCard";
 import { WorldImportCard } from "./settings/WorldImportCard";
+import { IS_MOBILE } from "@/lib/web";
 import "./settings/settings-cards.css";
 
 const SAVED_TICK_MS = 1200;
@@ -38,7 +39,7 @@ export function ServerSettingsPanel({ instance }: { instance: InstanceView }) {
       <AutomationSettings instance={instance} />
       {game?.server_icon ? <ServerIconCard instance={instance} accent={accent} /> : null}
       {game?.runtime.kind === "java" ? <JavaRuntimeCard instance={instance} /> : null}
-      {game?.wake ? <WorldImportCard instance={instance} /> : null}
+      {game?.wake && !IS_MOBILE ? <WorldImportCard instance={instance} /> : null}
       <GameSettings instance={instance} />
     </div>
   );

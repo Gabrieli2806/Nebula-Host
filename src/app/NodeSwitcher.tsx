@@ -177,7 +177,7 @@ function MenuItem({
   );
 }
 
-function PairDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function PairDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useI18n();
   const [address, setAddress] = useState("");
   const [code, setCode] = useState("");

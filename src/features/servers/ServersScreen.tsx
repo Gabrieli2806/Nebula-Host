@@ -24,6 +24,9 @@ import { useRemoteLink } from "@/hooks/useRemoteLink";
 import { useI18n } from "@/i18n";
 import { formatMegabytes } from "@/lib/format";
 import type { InstanceStatus, InstanceView } from "@/types/api";
+import { PairDialog } from "@/app/NodeSwitcher";
+import { IS_MOBILE } from "@/lib/web";
+import { isRemote } from "@/lib/connection";
 import { Button, ErrorNotice, Icon, Mark, Skeleton, identityProps } from "@/ui";
 
 type Density = "cards" | "list";
@@ -649,6 +652,30 @@ function Unreachable({ name }: { name: string }) {
 
 function NoServers({ onCreate }: { onCreate: () => void }) {
   const { t } = useI18n();
+  const [pairing, setPairing] = useState(false);
+  // On the phone, managing a computer comes first; hosting here second.
+  if (IS_MOBILE && !isRemote()) {
+    return (
+      <div className="panel servers-empty">
+        <div className="empty-state">
+          <span className="empty-state-icon">
+            <Mark size={28} />
+          </span>
+          <p className="empty-state-title">{t("phoneWelcome.emptyTitle")}</p>
+          <p className="empty-state-hint">{t("phoneWelcome.emptyHint")}</p>
+          <div className="mt-1 flex flex-col items-stretch gap-2">
+            <Button variant="primary" icon="link" onClick={() => setPairing(true)}>
+              {t("phoneWelcome.connect")}
+            </Button>
+            <Button icon="plus" onClick={onCreate}>
+              {t("phoneWelcome.host")}
+            </Button>
+          </div>
+        </div>
+        {pairing ? <PairDialog open onClose={() => setPairing(false)} /> : null}
+      </div>
+    );
+  }
   return (
     <div className="panel servers-empty">
       <div className="empty-state">

@@ -1,5 +1,8 @@
 package net.g2806.nebulahost
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.system.Os
 import androidx.activity.enableEdgeToEdge
@@ -18,10 +21,34 @@ class MainActivity : TauriActivity() {
     // app may keep servers in without any storage permission: its private
     // folder and its own folder on each storage volume (phone, SD card).
     val deviceName = android.provider.Settings.Global.getString(contentResolver, "device_name")
-      ?: "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+      ?: "${Build.MANUFACTURER} ${Build.MODEL}"
     Os.setenv("NEBULA_DEVICE_NAME", deviceName, true)
     val volumes = getExternalFilesDirs(null).filterNotNull().joinToString("\n") { it.absolutePath }
     Os.setenv("NEBULA_STORAGE_DIRS", volumes, true)
     super.onCreate(savedInstanceState)
+
+    // The notification is how servers keep running in the background.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+      checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+    ) {
+      requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
+    }
+  }
+
+  override fun onResume() {
+    super.onResume()
+    visible = true
+    // Started with the app; it stays while servers run, after the app leaves.
+    ServerService.start(this)
+  }
+
+  override fun onPause() {
+    visible = false
+    super.onPause()
+  }
+
+  companion object {
+    @Volatile
+    var visible = false
   }
 }

@@ -92,6 +92,8 @@ async fn refresh_resources(service: &Arc<InstanceService>, system: &mut System) 
 /// flip it back to offline every three seconds — which is exactly the bug this
 /// shape avoids.
 async fn publish_states(service: &Arc<InstanceService>) {
+    #[cfg(target_os = "android")]
+    write_running_status(service).await;
     for view in service.list().await.unwrap_or_default() {
         let id = &view.instance.id;
         let mut state = service.state_of(id).await;
@@ -238,3 +240,31 @@ async fn run_due_schedules(service: &Arc<InstanceService>) {
 
 /// Re-export so callers do not need to know the event type's home module.
 pub type Event = AppEvent;
+
+/// What is running, for the Android foreground service: it keeps the app
+/// alive while servers run in the background and shows them in its
+/// notification. A small file is the whole interface, so the service needs
+/// no way into the Rust side.
+#[cfg(target_os = "android")]
+async fn write_running_status(service: &Arc<InstanceService>) {
+    let running: Vec<serde_json::Value> = service
+        .list()
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|view| view.state.status.expects_process())
+        .map(|view| {
+            serde_json::json!({
+                "name": view.instance.name,
+                "status": view.state.status,
+                "players": view.state.players_online,
+            })
+        })
+        .collect();
+    let Ok(dir) = crate::store::paths::config_dir() else { return };
+    let text = serde_json::json!({ "running": running }).to_string();
+    let tmp = dir.join("running.json.tmp");
+    if std::fs::write(&tmp, text).is_ok() {
+        let _ = std::fs::rename(&tmp, dir.join("running.json"));
+    }
+}

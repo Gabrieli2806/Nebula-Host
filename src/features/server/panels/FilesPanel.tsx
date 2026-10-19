@@ -26,6 +26,7 @@ import type {
 import { Button, Dialog, EmptyState, ErrorNotice, Icon, Meter, Panel, Skeleton } from "@/ui";
 
 import "./FilesPanel.css";
+import { DESKTOP_FEATURES } from "@/lib/web";
 
 /** Extensions worth opening in the editor rather than the file manager. */
 const EDITABLE = /\.(properties|txt|json|ya?ml|toml|cfg|conf|log|md|snbt)$/i;
@@ -368,6 +369,7 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
         </nav>
       }
       actions={
+        DESKTOP_FEATURES ? (
         <>
           <Button size="sm" icon="folder" disabled={busy || isRemote()} title={isRemote() ? t("remote.localOnly") : undefined} onClick={() => void pick(true)}>
             {t("files.uploadFolder")}
@@ -386,6 +388,7 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
             {t("actions.openFolder")}
           </Button>
         </>
+        ) : null
       }
       bodyClassName="files-body"
     >

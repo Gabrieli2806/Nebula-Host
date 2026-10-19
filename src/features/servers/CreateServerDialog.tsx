@@ -33,6 +33,9 @@ import {
   identityProps,
 } from "@/ui";
 import { RamSlider, useRamPlan } from "@/ui/RamSlider";
+import { PhoneHostingNotice } from "@/features/onboarding/PhoneWelcome";
+import { isRemote } from "@/lib/connection";
+import { IS_MOBILE } from "@/lib/web";
 
 type Step = "build" | "details" | "installing";
 
@@ -212,6 +215,7 @@ export function CreateServerDialog({
     >
       {step === "build" ? (
         <div className="flex flex-col gap-4">
+          {IS_MOBILE && !isRemote() ? <PhoneHostingNotice /> : null}
           {/* Each distribution as a choice with its glyph and name, in the
               colour its card will carry. Native radios, so arrow keys and
               screen readers work as for any radio group. */}

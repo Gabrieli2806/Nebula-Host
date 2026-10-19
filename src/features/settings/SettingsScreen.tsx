@@ -23,6 +23,7 @@ import { AboutSettings, DiagnosticsSettings } from "./AboutSettings";
 import { JavaSlots } from "./JavaSlots";
 import { McpSettings } from "./McpSettings";
 import { RemoteSettings, UpnpTest } from "./RemoteSettings";
+import { DESKTOP_FEATURES } from "@/lib/web";
 import {
   Button,
   ErrorNotice,
@@ -285,6 +286,8 @@ export function SettingsScreen() {
       </Panel>
 
       <Panel title={t("settings.startupNetwork")}>
+        {DESKTOP_FEATURES ? (
+          <>
         <SwitchRow
           label={t("settings.launchAtStartup")}
           help={t("settings.launchAtStartupHelp")}
@@ -301,6 +304,8 @@ export function SettingsScreen() {
           saved={saved === "runInTray"}
           error={failure("runInTray")}
         />
+          </>
+        ) : null}
         <SwitchRow
           label={t("settings.allowUpnp")}
           help={t("settings.allowUpnpHelp")}
@@ -326,11 +331,11 @@ export function SettingsScreen() {
 
       {remote ? null : <RemoteSettings />}
 
-      {remote ? null : <McpSettings />}
+      {remote || !DESKTOP_FEATURES ? null : <McpSettings />}
 
       <JavaSlots paths={settings.javaPaths} onChange={(javaPaths) => update("java", { javaPaths })} />
 
-      <DiagnosticsSettings />
+      {DESKTOP_FEATURES ? <DiagnosticsSettings /> : null}
 
       <AboutSettings />
     </div>
