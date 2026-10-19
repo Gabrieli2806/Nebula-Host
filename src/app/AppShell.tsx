@@ -531,18 +531,20 @@ function useMachine() {
   const { remote, reachable } = useRemoteLink();
   const { data: node } = useNode();
   const health = useNodeHealth();
-  // Numbers from before the link dropped would be stale: hide them.
-  const data = reachable && !health.isError ? health.data : undefined;
+  // The last numbers stay on screen (dimmed) when a reading fails or the link
+  // drops: taking the block away and putting it back on every missed poll made
+  // the sidebar jump. Before the first reading, the dials show empty.
+  const stale = !reachable || health.isError;
   const title = remote ? (node?.name ?? remote.name) : t("node.thisMachine");
-  return { remote, reachable, up: data !== undefined, title, health: data };
+  return { remote, reachable, up: !stale && health.data !== undefined, stale, title, health: health.data };
 }
 
 function NodeBlock() {
   const { t } = useI18n();
-  const { remote, reachable, up, title, health } = useMachine();
+  const { remote, reachable, up, stale, title, health } = useMachine();
 
   return (
-    <section className="node-block" aria-label={title}>
+    <section className="node-block" aria-label={title} data-stale={stale || !health ? "" : undefined}>
       <div className="flex items-center justify-between gap-2">
         <span className="label node-block-title" title={title}>
           {title}
@@ -552,27 +554,23 @@ function NodeBlock() {
 
       {remote && !reachable ? <p className="node-block-reconnecting">{t("remote.reconnecting")}</p> : null}
 
-      {health ? (
-        <>
-          <div className="node-rings">
-            <Ring size={52} label={t("node.cpu")} value={health.cpu_percent} />
-            <Ring
-              size={52}
-              label={t("node.memory")}
-              value={health.memory_used_mb}
-              max={health.memory_total_mb}
-              detail={formatMegabytes(health.memory_total_mb)}
-            />
-            <Ring
-              size={52}
-              label={t("node.disk")}
-              value={health.disk_used_gb}
-              max={health.disk_total_gb}
-              detail={`${health.disk_total_gb} GB`}
-            />
-          </div>
-        </>
-      ) : null}
+      <div className="node-rings">
+        <Ring size={52} label={t("node.cpu")} value={health?.cpu_percent ?? 0} />
+        <Ring
+          size={52}
+          label={t("node.memory")}
+          value={health?.memory_used_mb ?? 0}
+          max={health?.memory_total_mb ?? 1}
+          detail={health ? formatMegabytes(health.memory_total_mb) : "—"}
+        />
+        <Ring
+          size={52}
+          label={t("node.disk")}
+          value={health?.disk_used_gb ?? 0}
+          max={health?.disk_total_gb ?? 1}
+          detail={health ? `${health.disk_total_gb} GB` : "—"}
+        />
+      </div>
     </section>
   );
 }

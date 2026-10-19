@@ -7,4 +7,6 @@
         <item quantity="one">%d server running</item>
         <item quantity="other">%d servers running</item>
     </plurals>
+    <string name="battery_title">Keep servers running in the background</string>
+    <string name="battery_text">Some phones pause apps to save battery. Tap and set Nebula Host to \"Not optimized\" so players are not disconnected.</string>
 </resources>

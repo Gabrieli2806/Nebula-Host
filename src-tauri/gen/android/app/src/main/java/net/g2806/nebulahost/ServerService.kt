@@ -73,7 +73,10 @@ class ServerService : Service() {
       stopSelf()
       return
     }
-    if (running.isEmpty()) release() else hold()
+    if (running.isEmpty()) release() else {
+      hold()
+      askAboutBattery()
+    }
     getSystemService(NotificationManager::class.java).notify(ID, build(running))
   }
 
@@ -111,6 +114,38 @@ class ServerService : Service() {
       .build()
   }
 
+  /**
+   * Some phones pause background apps despite the notification (aggressive
+   * battery savers). Once per app start, while a server runs and the app is
+   * still battery-optimised, a notification offers the system setting that
+   * lets it keep running. It opens the settings list rather than asking
+   * directly: the direct prompt needs a permission Google Play reserves for
+   * a few kinds of apps, and the foreground service already covers most
+   * phones.
+   */
+  private fun askAboutBattery() {
+    if (askedAboutBattery) return
+    val power = getSystemService(Context.POWER_SERVICE) as PowerManager
+    if (power.isIgnoringBatteryOptimizations(packageName)) return
+    askedAboutBattery = true
+    val settings = PendingIntent.getActivity(
+      this, 1,
+      Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+      PendingIntent.FLAG_IMMUTABLE,
+    )
+    val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(this, CHANNEL)
+      else @Suppress("DEPRECATION") Notification.Builder(this)
+    val notification = builder
+      .setSmallIcon(R.drawable.ic_stat_nebula)
+      .setContentTitle(getString(R.string.battery_title))
+      .setContentText(getString(R.string.battery_text))
+      .setStyle(Notification.BigTextStyle().bigText(getString(R.string.battery_text)))
+      .setContentIntent(settings)
+      .setAutoCancel(true)
+      .build()
+    getSystemService(NotificationManager::class.java).notify(BATTERY_ID, notification)
+  }
+
   private fun hold() {
     if (wakeLock == null) {
       wakeLock = (getSystemService(Context.POWER_SERVICE) as PowerManager)
@@ -133,6 +168,8 @@ class ServerService : Service() {
   companion object {
     private const val CHANNEL = "servers"
     private const val ID = 47400
+    private const val BATTERY_ID = 47401
+    @Volatile private var askedAboutBattery = false
 
     fun start(context: Context) {
       val intent = Intent(context, ServerService::class.java)

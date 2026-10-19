@@ -688,3 +688,15 @@
     }
   }
 }
+
+@layer components {
+  /* The machine block keeps its place while a reading is late or the link
+     is down: the last numbers stay, dimmed, instead of the block vanishing. */
+  .node-block .node-rings {
+    transition: opacity var(--duration) var(--ease);
+  }
+
+  .node-block[data-stale] .node-rings {
+    opacity: 0.45;
+  }
+}

@@ -7,4 +7,6 @@
         <item quantity="one">%d servidor en marcha</item>
         <item quantity="other">%d servidores en marcha</item>
     </plurals>
+    <string name="battery_title">Mantén los servidores en segundo plano</string>
+    <string name="battery_text">Algunos teléfonos pausan apps para ahorrar batería. Toca y marca Nebula Host como \"Sin optimizar\" para que no se desconecten los jugadores.</string>
 </resources>
