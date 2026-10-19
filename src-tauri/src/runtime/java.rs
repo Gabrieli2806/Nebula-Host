@@ -30,6 +30,27 @@ pub fn configure_no_window_command(command: &mut Command) -> &mut Command {
     command
 }
 
+/// A command that runs `java`.
+///
+/// On Android an app may only execute what the package installed, never a
+/// file in its own data folder, so a runtime kept there (the one that ships
+/// in the app, or one the user picked) is started through the launcher
+/// library instead: `libnebula_java.so`, which loads the runtime and runs it
+/// in-process (see `src-tauri/android/launcher/nebula_java.c`). Anywhere else
+/// this is just `Command::new(java)`.
+pub fn java_command(java: &Path) -> Command {
+    #[cfg(target_os = "android")]
+    if let Some(lib_dir) = std::env::var_os("NEBULA_NATIVE_LIB_DIR") {
+        // <home>/bin/java → <home>
+        if let Some(home) = java.parent().and_then(Path::parent) {
+            let mut command = Command::new(PathBuf::from(lib_dir).join("libnebula_java.so"));
+            command.env("NEBULA_JRE_DIR", home);
+            return command;
+        }
+    }
+    Command::new(java)
+}
+
 /// A JVM the user has configured, or that was found on this machine.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JavaInstallation {
@@ -87,10 +108,6 @@ pub fn resolve_java(override_path: Option<&str>, required_major: u32) -> AppResu
 
     if let Some(path) = configured_java_for_major(required_major) {
         return Ok(PathBuf::from(path));
-    }
-
-    if cfg!(target_os = "android") {
-        return Err(AppError::new(ErrorCode::JavaNotFound).with("major", required_major));
     }
 
     if let Some(path) = discovered_java_for_major(required_major) {
@@ -244,7 +261,7 @@ fn major_from_version(version: &str) -> u32 {
 /// time limit: a broken install that never answers must not hold up the
 /// health check or a detection pass.
 fn version_output(java: &Path) -> std::io::Result<String> {
-    let mut command = Command::new(java);
+    let mut command = java_command(java);
     let mut child = configure_no_window_command(&mut command)
         .arg("-version")
         .stdin(Stdio::null())

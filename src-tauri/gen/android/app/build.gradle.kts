@@ -45,6 +45,13 @@ android {
             )
         }
     }
+    packaging {
+        // The launcher is run from the library folder, so libraries must be
+        // unpacked there rather than mapped out of the APK.
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
     kotlinOptions {
         jvmTarget = "1.8"
     }
@@ -56,6 +63,33 @@ android {
 rust {
     rootDirRel = "../../../"
 }
+
+// -- Java launcher ----------------------------------------------------------
+// The one executable the package carries: it starts the Java runtime that
+// ships in the assets (see src-tauri/android/launcher/nebula_java.c). Built
+// with the NDK's clang for each ABI and packaged as a native library, the only
+// kind of file Android lets an app execute.
+val launcherSource = file("../../../android/launcher/nebula_java.c")
+val launcherAbis = mapOf("arm64-v8a" to "aarch64-linux-android", "x86_64" to "x86_64-linux-android")
+
+val buildNebulaLauncher = tasks.register("buildNebulaLauncher") {
+    inputs.file(launcherSource)
+    val outDir = file("src/main/jniLibs")
+    outputs.dir(outDir)
+    doLast {
+        val ndk = android.ndkDirectory
+        val host = File(ndk, "toolchains/llvm/prebuilt").listFiles()!!.first()
+        val windows = System.getProperty("os.name").lowercase().contains("windows")
+        for ((abi, triple) in launcherAbis) {
+            val clang = File(host, "bin/${triple}24-clang" + if (windows) ".cmd" else "")
+            val target = File(outDir, "$abi/libnebula_java.so")
+            target.parentFile.mkdirs()
+            ProcessBuilder(clang.absolutePath, "-O2", "-fPIE", "-pie", "-o", target.absolutePath, launcherSource.absolutePath, "-ldl")
+                .inheritIO().start().waitFor().let { code -> if (code != 0) throw GradleException("launcher build failed for $abi") }
+        }
+    }
+}
+tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(buildNebulaLauncher) }
 
 dependencies {
     implementation("androidx.webkit:webkit:1.14.0")

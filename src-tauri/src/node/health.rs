@@ -57,13 +57,19 @@ pub fn sample(instances_running: u32) -> NodeHealth {
     let memory_used_mb = system.used_memory() / 1024 / 1024;
 
     let disks = Disks::new_with_refreshed_list();
-    let (disk_total, disk_available) = disks
+    // Android lists system partitions first (read-only, no free space);
+    // the volume that matters is the one holding the app's data.
+    let listed = disks
         .list()
         .first()
         .map(|disk| (disk.total_space(), disk.available_space()))
-        .filter(|(total, _)| *total > 0)
-        .or_else(data_volume)
-        .unwrap_or((0, 0));
+        .filter(|(total, _)| *total > 0);
+    let (disk_total, disk_available) = if cfg!(target_os = "android") {
+        data_volume().or(listed)
+    } else {
+        listed.or_else(data_volume)
+    }
+    .unwrap_or((0, 0));
 
     NodeHealth {
         cpu_percent,
