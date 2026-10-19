@@ -245,6 +245,8 @@ export const api = {
      * this copy and the one on the other machine are different servers.
      */
     forcePlay: (instanceId: string) => call<Instance>("instance_force_play", { instanceId }),
+    /** Hide the "this copy split from the one on X" notice for good. */
+    dismissFork: (instanceId: string) => call<Instance>("instance_dismiss_fork", { instanceId }),
   },
 
   transfer: {
@@ -259,6 +261,8 @@ export const api = {
       local<TransferOutcome>("transfer_run", { request }).catch((error) => {
         throw toAppError(error);
       }),
+    /** Call off a running transfer; the server stays where it was. */
+    cancel: (transferId: string) => local<boolean>("transfer_cancel", { transferId }),
   },
 
   files: {

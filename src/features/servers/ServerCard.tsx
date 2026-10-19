@@ -19,7 +19,7 @@ import { useI18n } from "@/i18n";
 import { formatDuration, formatMegabytes } from "@/lib/format";
 import type { InstanceView } from "@/types/api";
 import { TransferNote } from "@/features/server/transfer/TransferBanner";
-import { TransferProgressStrip } from "@/features/server/transfer/active";
+import { TransferProgressStrip } from "@/features/server/transfer/TransferStrip";
 import { movedTo } from "@/features/server/transfer/machines";
 import {
   Button,

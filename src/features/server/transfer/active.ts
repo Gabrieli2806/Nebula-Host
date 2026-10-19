@@ -11,14 +11,9 @@ import { useEffect, useSyncExternalStore } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { keys } from "@/hooks/useBackend";
-import { useI18n } from "@/i18n";
 import { activeRemote } from "@/lib/connection";
-import { formatBytes } from "@/lib/format";
-import { onAppEvent, onLocalAppEvent } from "@/lib/ipc";
+import { api, onAppEvent, onLocalAppEvent } from "@/lib/ipc";
 import type { AppEvent, TransferPhase, TransferProgress } from "@/types/api";
-import { Icon } from "@/ui";
-
-import "./transfer.css";
 
 export const PHASES: TransferPhase[] = ["prepare", "export", "upload", "verify", "adopt", "finalize"];
 
@@ -27,6 +22,8 @@ interface ActiveTransfer {
   /** Name of the machine it is going to, when this window started it. */
   target?: string;
   progress: TransferProgress | null;
+  /** The person asked to call it off; waiting for it to stop. */
+  cancelling?: boolean;
 }
 
 let active = new Map<string, ActiveTransfer>();
@@ -39,6 +36,14 @@ function publish(next: Map<string, ActiveTransfer>) {
 
 export function beginTransfer(instanceId: string, transferId: string, target: string) {
   publish(new Map(active).set(instanceId, { transferId, target, progress: null }));
+}
+
+/** Ask for the transfer to be called off. It stops at its next safe point. */
+export function cancelTransfer(instanceId: string) {
+  const current = active.get(instanceId);
+  if (!current || current.cancelling) return;
+  publish(new Map(active).set(instanceId, { ...current, cancelling: true }));
+  void api.transfer.cancel(current.transferId).catch(() => undefined);
 }
 
 export function endTransfer(instanceId: string) {
@@ -64,6 +69,7 @@ export function applyTransferProgress(instanceId: string, progress: TransferProg
       transferId: progress.transferId,
       target: current?.target,
       progress,
+      cancelling: current?.cancelling,
     }),
   );
 }
@@ -96,58 +102,4 @@ export function useTransferTracking() {
     if (activeRemote()) stops.push(onAppEvent(take));
     return () => stops.forEach((stop) => stop());
   }, [client]);
-}
-
-/** The strip on a card or overview: where it is going and which step. */
-export function TransferProgressStrip({ instanceId, compact = false }: { instanceId: string; compact?: boolean }) {
-  const { t } = useI18n();
-  const transfer = useActiveTransfer(instanceId);
-  if (!transfer) return null;
-
-  const target = transfer.target ?? t("transfer.otherMachine");
-  const progress = transfer.progress;
-  const hasBytes = progress !== null && progress.total > 0;
-  const share = hasBytes ? Math.min(100, Math.round((progress.bytes / progress.total) * 100)) : null;
-  const step = progress ? PHASES.indexOf(progress.phase) + 1 : 1;
-  const phase = t(`transfer.phase.${progress?.phase ?? "prepare"}`, { target });
-
-  return (
-    <div className="transfer-strip" data-compact={compact ? "" : undefined} role="status" aria-live="polite">
-      <div className="transfer-strip-head">
-        <Icon name="send" size={13} />
-        <span className="transfer-strip-title">{t("transfer.running", { target })}</span>
-        <span className="transfer-strip-step readout">
-          {step}/{PHASES.length}
-        </span>
-      </div>
-      <div className="transfer-strip-phase">
-        <span>{phase}</span>
-        {hasBytes ? (
-          <span className="readout">
-            {compact ? `${share}%` : `${formatBytes(progress.bytes)} / ${formatBytes(progress.total)}`}
-          </span>
-        ) : null}
-      </div>
-      <span className="transfer-strip-bar" aria-hidden="true" data-indeterminate={share === null ? "" : undefined}>
-        <span style={share === null ? undefined : { width: `${share}%` }} />
-      </span>
-    </div>
-  );
-}
-
-/** The compact version for a table row: a tag with the share sent. */
-export function TransferTag({ instanceId }: { instanceId: string }) {
-  const { t } = useI18n();
-  const transfer = useActiveTransfer(instanceId);
-  if (!transfer) return null;
-  const progress = transfer.progress;
-  const share =
-    progress && progress.total > 0 ? ` ${Math.min(100, Math.round((progress.bytes / progress.total) * 100))}%` : "";
-  return (
-    <span className="tag transfer-tag" role="status">
-      <Icon name="send" size={11} />
-      {t("transfer.tagRunning")}
-      {share}
-    </span>
-  );
 }

@@ -8,7 +8,9 @@
 //! the target's `POST /upload` (or to this machine's uploads folder), with
 //! progress reported on this machine's event channel.
 
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use futures_util::StreamExt;
@@ -104,11 +106,45 @@ async fn read_answer<T: serde::de::DeserializeOwned>(response: reqwest::Response
     Ok(serde_json::from_slice(&bytes)?)
 }
 
+/// A transfer the person called off. Checked between steps and while bytes
+/// move; never once the source has started to retire its copy.
+#[derive(Default)]
+struct CancelToken(AtomicBool);
+
+impl CancelToken {
+    fn is_cancelled(&self) -> bool {
+        self.0.load(Ordering::SeqCst)
+    }
+}
+
+fn tokens() -> &'static Mutex<HashMap<String, Arc<CancelToken>>> {
+    static TOKENS: OnceLock<Mutex<HashMap<String, Arc<CancelToken>>>> = OnceLock::new();
+    TOKENS.get_or_init(Default::default)
+}
+
+/// Call off a running transfer. False when there is none by that id (it
+/// already ended, or is past the point where it can be undone).
+pub fn cancel(transfer_id: &str) -> bool {
+    let token = tokens().lock().ok().and_then(|map| map.get(transfer_id).cloned());
+    match token {
+        Some(token) => {
+            token.0.store(true, Ordering::SeqCst);
+            true
+        }
+        None => false,
+    }
+}
+
+fn cancelled() -> AppError {
+    AppError::new(ErrorCode::InvalidInput).with("reason", "transfer_cancelled")
+}
+
 struct Runner {
     service: Arc<InstanceService>,
     http: reqwest::Client,
     transfer_id: String,
     instance_id: String,
+    cancel: Arc<CancelToken>,
 }
 
 impl Runner {
@@ -162,7 +198,11 @@ impl Runner {
                 let (instance_id, transfer_id) = (self.instance_id.clone(), self.transfer_id.clone());
                 let mut sent = 0u64;
                 let mut last = Instant::now();
+                let cancel = self.cancel.clone();
                 let stream = crate::remote::file_stream(file).map(move |chunk| {
+                    if cancel.is_cancelled() {
+                        return Err(std::io::Error::other("transfer cancelled"));
+                    }
                     if let Ok(bytes) = &chunk {
                         sent += bytes.len() as u64;
                         if last.elapsed() >= Duration::from_millis(250) {
@@ -195,6 +235,9 @@ impl Runner {
                     let mut file = tokio::fs::File::create(&path).await?;
                     let mut stream = response.bytes_stream();
                     while let Some(chunk) = stream.next().await {
+                        if self.cancel.is_cancelled() {
+                            return Err(cancelled());
+                        }
                         let chunk = chunk.map_err(|e| unreachable(address, e))?;
                         file.write_all(&chunk).await?;
                         tick(chunk.len(), self);
@@ -218,7 +261,11 @@ impl Runner {
                 let (instance_id, transfer_id) = (self.instance_id.clone(), self.transfer_id.clone());
                 let mut sent = 0u64;
                 let mut last = Instant::now();
+                let cancel = self.cancel.clone();
                 let stream = response.bytes_stream().map(move |chunk| {
+                    if cancel.is_cancelled() {
+                        return Err(std::io::Error::other("transfer cancelled"));
+                    }
                     if let Ok(bytes) = &chunk {
                         sent += bytes.len() as u64;
                         if last.elapsed() >= Duration::from_millis(250) {
@@ -226,7 +273,7 @@ impl Runner {
                             events.transfer_progress(&instance_id, &transfer_id, TransferPhase::Upload, sent.min(total), total);
                         }
                     }
-                    chunk
+                    chunk.map_err(std::io::Error::other)
                 });
                 let response = self
                     .http
@@ -271,13 +318,21 @@ fn upload_id(answer: &Value) -> AppResult<String> {
 /// the source stays the server and the target is left as it was.
 pub async fn run(service: Arc<InstanceService>, request: TransferRequest) -> AppResult<TransferOutcome> {
     let transfer_id = request.transfer_id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let cancel = Arc::new(CancelToken::default());
+    if let Ok(mut map) = tokens().lock() {
+        map.insert(transfer_id.clone(), cancel.clone());
+    }
     let runner = Runner {
         service: service.clone(),
         http: client(),
         transfer_id: transfer_id.clone(),
         instance_id: request.instance_id.clone(),
+        cancel,
     };
     let result = run_steps(&runner, &request).await;
+    if let Ok(mut map) = tokens().lock() {
+        map.remove(&transfer_id);
+    }
     service.transfer_finished(&request.instance_id, &transfer_id, result.is_err());
     result
 }
@@ -300,6 +355,9 @@ async fn run_steps(runner: &Runner, request: &TransferRequest) -> AppResult<Tran
     let target_node: Node = runner.call(target, "node_get", json!({})).await?;
     if source_node.id == target_node.id {
         return Err(AppError::new(ErrorCode::InvalidInput).with("reason", "same_machine"));
+    }
+    if runner.cancel.is_cancelled() {
+        return Err(cancelled());
     }
 
     // 1–2. Stop, lock and pack on the source.
@@ -336,14 +394,26 @@ async fn run_steps(runner: &Runner, request: &TransferRequest) -> AppResult<Tran
         }
     };
 
+    // Called off while the source was stopping and packing: nothing has left
+    // it, so unlocking it is all there is to undo.
+    if runner.cancel.is_cancelled() {
+        abort().await;
+        return Err(cancelled());
+    }
+
     // 3. Bytes, source → target.
     let upload_id = match runner.move_bytes(source, target, &export).await {
         Ok(id) => id,
         Err(error) => {
             abort().await;
-            return Err(error);
+            // A stream cut on purpose fails like a broken connection; say what it was.
+            return Err(if runner.cancel.is_cancelled() { cancelled() } else { error });
         }
     };
+    if runner.cancel.is_cancelled() {
+        abort().await;
+        return Err(cancelled());
+    }
 
     // 4. Verify and adopt on the target.
     let adopted: AdoptReport = match runner
@@ -374,7 +444,23 @@ async fn run_steps(runner: &Runner, request: &TransferRequest) -> AppResult<Tran
         }
     };
 
-    // 5. Only now does the source retire its copy.
+    // Last chance to call it off: the target has the copy but the source has
+    // not retired anything yet, so undo the adoption and unlock the source.
+    if runner.cancel.is_cancelled() {
+        if let Err(undo) =
+            runner.call::<Value>(target, "transfer_discard", json!({ "instanceId": adopted.instance.id })).await
+        {
+            warn!(%undo, "target could not undo its adoption; it holds an extra copy");
+        }
+        abort().await;
+        return Err(cancelled());
+    }
+
+    // 5. Only now does the source retire its copy. From here it cannot be
+    // called off.
+    if let Ok(mut map) = tokens().lock() {
+        map.remove(&runner.transfer_id);
+    }
     runner.service.transfer_progress(&request.instance_id, &runner.transfer_id, TransferPhase::Finalize, 0, 0);
     let finalize_args = json!({
         "instanceId": request.instance_id,
@@ -437,4 +523,30 @@ async fn run_steps(runner: &Runner, request: &TransferRequest) -> AppResult<Tran
         "server transferred"
     );
     Ok(TransferOutcome { transfer_id: runner.transfer_id.clone(), export, adopted, mode: request.mode, commit_warning })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_a_running_transfer_can_be_called_off() {
+        assert!(!cancel("nothing-by-this-id"));
+
+        let token = Arc::new(CancelToken::default());
+        tokens().lock().unwrap().insert("t-cancel".into(), token.clone());
+        assert!(!token.is_cancelled());
+        assert!(cancel("t-cancel"));
+        assert!(token.is_cancelled());
+
+        // Past the point of no return the token is gone: asking is a no-op.
+        tokens().lock().unwrap().remove("t-cancel");
+        assert!(!cancel("t-cancel"));
+    }
+
+    #[test]
+    fn a_cancelled_transfer_has_its_own_reason() {
+        let error = cancelled();
+        assert_eq!(error.params.get("reason").map(String::as_str), Some("transfer_cancelled"));
+    }
 }

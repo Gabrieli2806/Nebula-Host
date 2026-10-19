@@ -67,8 +67,23 @@ export function subscribeLink(listener: () => void): () => void {
 /** Only answers from the machine this window manages move the link: a call
  *  to another node (the transfer dialog asks every paired one), or a slow
  *  one that outlived a switch, says nothing about it. */
+/** A machine busy with a big job (packing a world, a saturated network)
+ *  misses a call or two. "Down" needs several misses in a row over at least
+ *  this long, so the unreachable banner does not flash in and out. */
+const DOWN_AFTER_MS = 15_000;
+const DOWN_AFTER_MISSES = 3;
+let misses = 0;
+let lastUp = Date.now();
+
 function reportLink(nodeId: string, next: LinkState) {
   if (activeRemote()?.id !== nodeId) return;
+  if (next === "up") {
+    misses = 0;
+    lastUp = Date.now();
+  } else {
+    misses += 1;
+    if (misses < DOWN_AFTER_MISSES || Date.now() - lastUp < DOWN_AFTER_MS) return;
+  }
   if (link === next) return;
   link = next;
   for (const listener of linkListeners) listener();

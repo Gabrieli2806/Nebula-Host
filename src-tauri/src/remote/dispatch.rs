@@ -220,6 +220,7 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             None => ok(service.transfer_discard_by_transfer(&arg::<String>(args, "transferId")?).await?),
         },
         "instance_force_play" => ok(service.force_play(&id()?).await?),
+        "instance_dismiss_fork" => ok(service.dismiss_fork_notice(&id()?).await?),
 
         // -- backups --------------------------------------------------------------
         "backups_list" => {
@@ -326,7 +327,7 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
         "upnp_check" => ok(crate::net::upnp::check().await),
 
         // Commands that act on the local machine's files or desktop.
-        "instance_open_folder" | "app_open_log_folder" | "transfer_run" | "files_import" | "files_import_check" | "mcp_status" | "mcp_configure"
+        "instance_open_folder" | "app_open_log_folder" | "transfer_run" | "transfer_cancel" | "files_import" | "files_import_check" | "mcp_status" | "mcp_configure"
         | "mcp_regenerate_token" | "addons_search" | "addons_installed" | "addon_install" => {
             Err(local_only(command))
         }

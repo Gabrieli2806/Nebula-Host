@@ -167,6 +167,10 @@ export const es: Copy = {
     hideHint: "Ocultarlo no detiene la transferencia; la tarjeta del servidor muestra su progreso.",
     otherMachine: "otro equipo",
     tagRunning: "Transfiriendo",
+    cancel: "Cancelar transferencia",
+    cancelling: "Cancelando…",
+    cancelledNote: "Transferencia cancelada. {name} se quedó en {source} y no cambió nada. Se detuvo para la transferencia, así que vuelve a iniciarlo.",
+    forkedDismiss: "No mostrar más",
     keepOpen: "Mantén Nebula Host abierto hasta que termine.",
     phase: {
       prepare: "Detener el servidor",

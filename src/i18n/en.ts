@@ -167,6 +167,10 @@ export const en = {
     hideHint: "Hiding this keeps the transfer going; the server's card shows its progress.",
     otherMachine: "another machine",
     tagRunning: "Transferring",
+    cancel: "Cancel transfer",
+    cancelling: "Cancelling…",
+    cancelledNote: "Transfer cancelled. {name} stayed on {source} and nothing changed there. It was stopped for the transfer, so start it again.",
+    forkedDismiss: "Don't show again",
     keepOpen: "Keep Nebula Host open until it finishes.",
     phase: {
       prepare: "Stop the server",

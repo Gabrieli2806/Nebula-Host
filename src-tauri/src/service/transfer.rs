@@ -1147,6 +1147,13 @@ impl InstanceService {
         Ok(result)
     }
 
+    /// Stop showing the "this copy split from the one on X" notice. It is
+    /// information only (nothing decides anything from it), and it is often
+    /// stale: the other copy may be long deleted.
+    pub async fn dismiss_fork_notice(&self, instance_id: &str) -> AppResult<Instance> {
+        self.store.update(instance_id, |stored| stored.forked_from = None).await
+    }
+
     /// Tell listeners a transfer this machine ran is over.
     pub fn transfer_finished(&self, instance_id: &str, transfer_id: &str, failed: bool) {
         self.transfer_event(

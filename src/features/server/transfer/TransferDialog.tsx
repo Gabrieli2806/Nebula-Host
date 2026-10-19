@@ -19,7 +19,7 @@ import { api, onAppEvent, onLocalAppEvent, toAppError } from "@/lib/ipc";
 import type { AppEvent, InstanceView, TransferMode, TransferOutcome, TransferProgress } from "@/types/api";
 import { Button, Dialog, ErrorNotice, Icon } from "@/ui";
 
-import { beginTransfer, endTransfer, PHASES } from "./active";
+import { beginTransfer, cancelTransfer, endTransfer, PHASES, useActiveTransfer } from "./active";
 import { managedKey, useMachines, type Machine } from "./machines";
 import "./transfer.css";
 
@@ -60,6 +60,7 @@ export function TransferDialog({
   const [allowPlayers, setAllowPlayers] = useState(false);
   const [keepBoth, setKeepBoth] = useState(false);
   const [progress, setProgress] = useState<TransferProgress | null>(null);
+  const live = useActiveTransfer(instance.id);
   const transferId = useRef("");
 
   const target = destinations.find((m) => m.key === targetKey) ?? (destinations.length === 1 ? destinations[0] : undefined);
@@ -157,9 +158,16 @@ export function TransferDialog({
         width={560}
         dismissable={false}
         footer={
-          <Button variant="quiet" onClick={onClose}>
-            {t("transfer.hide")}
-          </Button>
+          <>
+            {live?.progress?.phase === "finalize" ? null : (
+              <Button variant="danger" disabled={!live || live.cancelling} onClick={() => cancelTransfer(instance.id)}>
+                {live?.cancelling ? t("transfer.cancelling") : t("transfer.cancel")}
+              </Button>
+            )}
+            <Button variant="quiet" onClick={onClose}>
+              {t("transfer.hide")}
+            </Button>
+          </>
         }
       >
         <div className="flex flex-col gap-4">
@@ -172,7 +180,8 @@ export function TransferDialog({
   }
 
   // -- choose (and failures) -----------------------------------------------
-  const failed = run.error && !(reason && RETRYABLE.has(reason));
+  const wasCancelled = reason === "transfer_cancelled";
+  const failed = run.error && !wasCancelled && !(reason && RETRYABLE.has(reason));
   const needsPlayers = players > 0 || reason === "players_online";
   const canStart = Boolean(source && target) && (!needsPlayers || allowPlayers);
 
@@ -195,6 +204,13 @@ export function TransferDialog({
     >
       <div className="flex flex-col gap-5">
         <p className="transfer-quiet">{t("transfer.intro")}</p>
+
+        {wasCancelled ? (
+          <p className="transfer-safe">
+            <Icon name="check" size={14} />
+            {t("transfer.cancelledNote", names)}
+          </p>
+        ) : null}
 
         {failed ? (
           <div className="flex flex-col gap-2">

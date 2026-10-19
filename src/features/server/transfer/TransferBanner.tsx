@@ -57,6 +57,14 @@ export function TransferBanner({ instance }: { instance: InstanceView }) {
     },
   });
 
+  const dismiss = useMutation({
+    mutationFn: () => api.instances.dismissFork(instance.id),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.instances });
+      void client.invalidateQueries({ queryKey: keys.instance(instance.id) });
+    },
+  });
+
   const transfer = instance.transfer;
   if (transfer?.state === "transferred_out") {
     const node = transfer.to_node_name;
@@ -167,6 +175,12 @@ export function TransferBanner({ instance }: { instance: InstanceView }) {
           </p>
           <p className="transfer-banner-body">{t("transfer.forkedBody", { node: fork.node_name })}</p>
         </div>
+        <div className="transfer-banner-actions">
+          <Button size="sm" variant="quiet" disabled={dismiss.isPending} onClick={() => dismiss.mutate()}>
+            {t("transfer.forkedDismiss")}
+          </Button>
+        </div>
+        {dismiss.error ? <ErrorNotice error={dismiss.error} compact /> : null}
       </section>
     );
   }

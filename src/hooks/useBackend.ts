@@ -171,16 +171,36 @@ function applyEvent(client: QueryClient, event: AppEvent) {
   }
 }
 
+/** Same fields, same values: nothing for the screen to redo. */
+function sameFields(a: InstanceView, b: InstanceView): boolean {
+  const keysOfA = Object.keys(a) as (keyof InstanceView)[];
+  return keysOfA.every((key) => Object.is(a[key], b[key]));
+}
+
 function patchInstance(
   client: QueryClient,
   instanceId: string,
   patch: (instance: InstanceView) => InstanceView,
 ) {
-  client.setQueryData<InstanceView[]>(keys.instances, (instances) =>
-    instances?.map((instance) => (instance.id === instanceId ? patch(instance) : instance)),
-  );
+  // A measurement identical to what is shown (an idle server, every few
+  // seconds) must not hand React a new list: every card would redraw.
+  const apply = (instance: InstanceView) => {
+    const next = patch(instance);
+    return sameFields(instance, next) ? instance : next;
+  };
+  client.setQueryData<InstanceView[]>(keys.instances, (instances) => {
+    if (!instances) return instances;
+    let changed = false;
+    const next = instances.map((instance) => {
+      if (instance.id !== instanceId) return instance;
+      const patched = apply(instance);
+      if (patched !== instance) changed = true;
+      return patched;
+    });
+    return changed ? next : instances;
+  });
   client.setQueryData<InstanceView>(keys.instance(instanceId), (instance) =>
-    instance ? patch(instance) : instance,
+    instance ? apply(instance) : instance,
   );
 }
 

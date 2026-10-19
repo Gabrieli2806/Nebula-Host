@@ -33,7 +33,7 @@ import {
 import type { DiskUsage, InstanceView } from "@/types/api";
 import { TransferBanner } from "@/features/server/transfer/TransferBanner";
 import { movedTo } from "@/features/server/transfer/machines";
-import { TransferProgressStrip } from "@/features/server/transfer/active";
+import { TransferProgressStrip } from "@/features/server/transfer/TransferStrip";
 import { TransferDialog } from "@/features/server/transfer/TransferDialog";
 import {
   Button,

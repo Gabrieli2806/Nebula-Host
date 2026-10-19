@@ -139,7 +139,9 @@ macro_rules! ipc_handlers {
             $crate::ipc::settings::app_open_log_folder,
             // transfers
             $crate::ipc::transfer::transfer_run,
+            $crate::ipc::transfer::transfer_cancel,
             $crate::ipc::transfer::instance_force_play,
+            $crate::ipc::transfer::instance_dismiss_fork,
         ]
     };
 }

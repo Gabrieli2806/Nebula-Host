@@ -322,6 +322,11 @@
     }
   }
 
+  .transfer-strip-cancel {
+    align-self: flex-end;
+    margin: -2px 0 -2px;
+  }
+
   .transfer-tag {
     display: inline-flex;
     align-items: center;
