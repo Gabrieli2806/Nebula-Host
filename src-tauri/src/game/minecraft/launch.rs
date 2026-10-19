@@ -141,13 +141,17 @@ pub fn eula_accepted(root: &Path) -> bool {
 pub const DEFAULT_MOTD: &str = "A Nebula Host Server";
 
 /// Seed `server.properties` so the first launch already uses the right port.
+///
+/// `white-list=false` is written on purpose: recent Minecraft versions create
+/// the file with the whitelist ON, and a new server nobody can join ("You are
+/// not whitelisted") is the wrong default for a friends-and-family host.
 pub fn write_initial_properties(root: &Path, port: u16) -> AppResult<()> {
     let path = root.join("server.properties");
     if path.exists() {
         return Ok(());
     }
     let contents = format!(
-        "#Minecraft server properties\nserver-port={port}\nmotd={DEFAULT_MOTD}\nmax-players=20\nonline-mode=true\n"
+        "#Minecraft server properties\nserver-port={port}\nmotd={DEFAULT_MOTD}\nmax-players=20\nonline-mode=true\nwhite-list=false\n"
     );
     fs::write(path, contents)?;
     Ok(())
@@ -184,6 +188,7 @@ mod tests {
         let text = fs::read_to_string(root.join("server.properties")).expect("read");
         assert!(text.contains("motd=A Nebula Host Server"));
         assert!(text.contains("server-port=25570"));
+        assert!(text.contains("white-list=false"), "a new server must not start with the whitelist on");
 
         fs::write(root.join("server.properties"), "motd=Mine\n").expect("rewrite");
         write_initial_properties(&root, 25570).expect("no-op");
