@@ -7,11 +7,32 @@ use crate::error::{AppError, AppResult, ErrorCode};
 
 const APP_DIR: &str = "nebula-host";
 
+/// A base folder that replaces the OS's config and data folders, for
+/// platforms that have none of their own (Android: the app's private files
+/// folder). Set once, before anything touches the disk.
+static BASE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+pub fn set_base(dir: PathBuf) {
+    let _ = BASE.set(dir);
+}
+
+fn os_config_dir() -> AppResult<PathBuf> {
+    BASE.get()
+        .cloned()
+        .or_else(dirs::config_dir)
+        .ok_or_else(|| AppError::new(ErrorCode::IoFailed).detail("no config directory on this OS"))
+}
+
+fn os_data_dir() -> AppResult<PathBuf> {
+    BASE.get()
+        .cloned()
+        .or_else(dirs::data_dir)
+        .ok_or_else(|| AppError::new(ErrorCode::IoFailed).detail("no data directory on this OS"))
+}
+
 /// Config and state (settings.json, nodes, instance index).
 pub fn config_dir() -> AppResult<PathBuf> {
-    let dir = dirs::config_dir()
-        .ok_or_else(|| AppError::new(ErrorCode::IoFailed).detail("no config directory on this OS"))?
-        .join(APP_DIR);
+    let dir = os_config_dir()?.join(APP_DIR);
     std::fs::create_dir_all(&dir)?;
     Ok(dir)
 }
@@ -19,16 +40,14 @@ pub fn config_dir() -> AppResult<PathBuf> {
 /// Where server files live by default. Overridable in settings — an old PC
 /// used as a server often has the space on a second drive.
 pub fn default_instances_dir() -> AppResult<PathBuf> {
-    let dir = dirs::data_dir()
-        .ok_or_else(|| AppError::new(ErrorCode::IoFailed).detail("no data directory on this OS"))?
+    let dir = os_data_dir()?
         .join(APP_DIR)
         .join("instances");
     Ok(dir)
 }
 
 pub fn backups_dir() -> AppResult<PathBuf> {
-    let dir = dirs::data_dir()
-        .ok_or_else(|| AppError::new(ErrorCode::IoFailed).detail("no data directory on this OS"))?
+    let dir = os_data_dir()?
         .join(APP_DIR)
         .join("backups");
     std::fs::create_dir_all(&dir)?;
@@ -39,8 +58,7 @@ pub fn backups_dir() -> AppResult<PathBuf> {
 /// own JVMs so removing the app (or this folder) never breaks a Java the
 /// user installed.
 pub fn runtimes_dir() -> AppResult<PathBuf> {
-    let dir = dirs::data_dir()
-        .ok_or_else(|| AppError::new(ErrorCode::IoFailed).detail("no data directory on this OS"))?
+    let dir = os_data_dir()?
         .join(APP_DIR)
         .join("runtimes");
     std::fs::create_dir_all(&dir)?;

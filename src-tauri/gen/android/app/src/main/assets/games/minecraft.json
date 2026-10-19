@@ -1,0 +1,671 @@
+{
+  "id": "minecraft",
+  "name": "Minecraft: Java Edition",
+  "accent": "#5FBF8F",
+  "icon": "minecraft",
+  "agreement": {
+    "url": "https://aka.ms/MinecraftEULA"
+  },
+  "distributions": [
+    {
+      "id": "vanilla",
+      "accent": "#79b851",
+      "name": "Vanilla",
+      "summary_key": "game.minecraft.dist.vanilla",
+      "glyph": "cube",
+      "has_loader_version": false
+    },
+    {
+      "id": "paper",
+      "accent": "#dfe6ee",
+      "name": "Paper",
+      "summary_key": "game.minecraft.dist.paper",
+      "glyph": "sheet",
+      "has_loader_version": false,
+      "addon_loaders": [
+        "paper",
+        "spigot",
+        "bukkit"
+      ],
+      "addon_dir": "plugins",
+      "tick_rate_command": "tps",
+      "addon_project_type": "plugin"
+    },
+    {
+      "id": "purpur",
+      "accent": "#a855f7",
+      "name": "Purpur",
+      "summary_key": "game.minecraft.dist.purpur",
+      "glyph": "pillar",
+      "has_loader_version": false,
+      "addon_loaders": [
+        "purpur",
+        "paper",
+        "spigot",
+        "bukkit"
+      ],
+      "addon_dir": "plugins",
+      "tick_rate_command": "tps",
+      "addon_project_type": "plugin"
+    },
+    {
+      "id": "fabric",
+      "accent": "#c8a165",
+      "name": "Fabric",
+      "summary_key": "game.minecraft.dist.fabric",
+      "glyph": "spool",
+      "has_loader_version": true,
+      "addon_loaders": [
+        "fabric"
+      ],
+      "addon_dir": "mods",
+      "addon_project_type": "mod"
+    },
+    {
+      "id": "forge",
+      "accent": "#5b7fa6",
+      "name": "Forge",
+      "summary_key": "game.minecraft.dist.forge",
+      "glyph": "hammer",
+      "has_loader_version": true,
+      "addon_loaders": [
+        "forge"
+      ],
+      "addon_dir": "mods",
+      "tick_rate_command": "forge tps",
+      "addon_project_type": "mod"
+    },
+    {
+      "id": "neoforge",
+      "accent": "#f16436",
+      "name": "NeoForge",
+      "summary_key": "game.minecraft.dist.neoforge",
+      "glyph": "flame",
+      "has_loader_version": true,
+      "addon_loaders": [
+        "neoforge"
+      ],
+      "addon_dir": "mods",
+      "tick_rate_command": "neoforge tps",
+      "addon_project_type": "mod"
+    }
+  ],
+  "runtime": {
+    "kind": "java",
+    "min_major": 8
+  },
+  "ports": [
+    {
+      "key": "server-port",
+      "default": 25565,
+      "protocol": "tcp",
+      "primary": true
+    }
+  ],
+  "console": {
+    "ready_pattern": "Done \\([^)]*\\)!",
+    "join_pattern": "(?P<name>[A-Za-z0-9_]{1,16}) joined the game",
+    "leave_pattern": "(?P<name>[A-Za-z0-9_]{1,16}) left the game",
+    "tick_rate_patterns": [
+      "TPS from last 1m, 5m, 15m: \\*?(?P<value>\\d+(?:\\.\\d+)?)",
+      "Overall:\\s+(?P<value>\\d+(?:\\.\\d+)?) TPS",
+      "Mean TPS:\\s*(?P<value>\\d+(?:\\.\\d+)?)"
+    ],
+    "suppress_patterns": [
+      "TPS from last 1m",
+      "[A-Za-z][A-Za-z ]*: \\d+(?:\\.\\d+)? TPS \\(",
+      "Mean tick time:"
+    ],
+    "stop_command": "stop",
+    "stopping_pattern": "(?:^|\\]: |\\[[A-Za-z0-9_]{1,16}: )Stopping (?:the )?server\\]?$",
+    "crash_pattern": "Encountered an unexpected exception|This crash report has been saved to|Considering it to be crashed|Failed to start the minecraft server|The server has stopped responding!",
+    "strip_colour_codes": true,
+    "chat_pattern": "\\]: (?:\\[Not Secure\\] )?<(?P<name>[A-Za-z0-9_]{1,16})> (?P<message>.*)$",
+    "log_prefix_pattern": "^\\[\\d{2}:\\d{2}:\\d{2}(?: [A-Z]+)?\\]:? (?:\\[[^\\]]*/[A-Z]+\\](?: \\[[^\\]]+\\])?: )?",
+    "identity_pattern": "UUID of player (?P<name>[A-Za-z0-9_]{1,16}) is (?P<uuid>[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})",
+    "completion": {
+      "help_command": "help",
+      "page_command": "help {page}",
+      "page_pattern": "Help: Index \\((?P<page>\\d+)/(?P<pages>\\d+)\\)",
+      "entry_pattern": "(?:^|\\]: )/(?P<command>/?[A-Za-z0-9_.\\-]+(?::[A-Za-z0-9_.\\-]+)?)(?:: (?P<description>.+)| (?P<usage>.+))?$",
+      "noise_patterns": [
+        "\\]: Use /help \\[n\\] to get page n of help",
+        "\\]: [A-Za-z0-9 _.\\-]+: All commands for ",
+        "\\]: Aliases: Lists command aliases",
+        "\\]: -{3,}"
+      ],
+      "max_pages": 20,
+      "player_placeholders": [
+        "<targets>",
+        "<target>",
+        "<player>",
+        "<players>"
+      ],
+      "builtin": [
+        {
+          "name": "advancement",
+          "usage": "(grant|revoke) <targets> (everything|only|from|through|until) [<advancement>]"
+        },
+        {
+          "name": "attribute",
+          "usage": "<target> <attribute> (get|base|modifier) ..."
+        },
+        {
+          "name": "ban",
+          "usage": "<targets> [<reason>]"
+        },
+        {
+          "name": "ban-ip",
+          "usage": "<target> [<reason>]"
+        },
+        {
+          "name": "banlist",
+          "usage": "[ips|players]"
+        },
+        {
+          "name": "bossbar",
+          "usage": "(add|get|list|remove|set) ..."
+        },
+        {
+          "name": "clear",
+          "usage": "[<targets>] [<item>] [<maxCount>]"
+        },
+        {
+          "name": "clone",
+          "usage": "<begin> <end> <destination> [replace|masked|filtered]"
+        },
+        {
+          "name": "damage",
+          "usage": "<target> <amount> [<damageType>]"
+        },
+        {
+          "name": "data",
+          "usage": "(get|merge|modify|remove) (block|entity|storage) ..."
+        },
+        {
+          "name": "datapack",
+          "usage": "(enable|disable|list) ..."
+        },
+        {
+          "name": "debug",
+          "usage": "(start|stop|function)"
+        },
+        {
+          "name": "defaultgamemode",
+          "usage": "(survival|creative|adventure|spectator)"
+        },
+        {
+          "name": "deop",
+          "usage": "<targets>"
+        },
+        {
+          "name": "difficulty",
+          "usage": "[peaceful|easy|normal|hard]"
+        },
+        {
+          "name": "effect",
+          "usage": "(give|clear) <targets> [<effect>] [<seconds>] [<amplifier>]"
+        },
+        {
+          "name": "enchant",
+          "usage": "<targets> <enchantment> [<level>]"
+        },
+        {
+          "name": "execute",
+          "usage": "(align|anchored|as|at|facing|if|in|on|positioned|rotated|store|summon|unless|run) ..."
+        },
+        {
+          "name": "experience",
+          "usage": "(add|set|query) <targets> ..."
+        },
+        {
+          "name": "fill",
+          "usage": "<from> <to> <block> [replace|keep|outline|hollow|destroy]"
+        },
+        {
+          "name": "fillbiome",
+          "usage": "<from> <to> <biome> [replace <filter>]"
+        },
+        {
+          "name": "forceload",
+          "usage": "(add|remove|query) ..."
+        },
+        {
+          "name": "function",
+          "usage": "<name> [<arguments>]"
+        },
+        {
+          "name": "gamemode",
+          "usage": "(survival|creative|adventure|spectator) [<target>]"
+        },
+        {
+          "name": "gamerule",
+          "usage": "<rule> [<value>]"
+        },
+        {
+          "name": "give",
+          "usage": "<targets> <item> [<count>]"
+        },
+        {
+          "name": "help",
+          "usage": "[<command>]"
+        },
+        {
+          "name": "item",
+          "usage": "(replace|modify) (block|entity) ..."
+        },
+        {
+          "name": "jfr",
+          "usage": "(start|stop)"
+        },
+        {
+          "name": "kick",
+          "usage": "<targets> [<reason>]"
+        },
+        {
+          "name": "kill",
+          "usage": "[<targets>]"
+        },
+        {
+          "name": "list",
+          "usage": "[uuids]"
+        },
+        {
+          "name": "locate",
+          "usage": "(structure|biome|poi) <target>"
+        },
+        {
+          "name": "loot",
+          "usage": "(give|insert|replace|spawn) ..."
+        },
+        {
+          "name": "me",
+          "usage": "<action>"
+        },
+        {
+          "name": "msg",
+          "usage": "<targets> <message>"
+        },
+        {
+          "name": "op",
+          "usage": "<targets>"
+        },
+        {
+          "name": "pardon",
+          "usage": "<targets>"
+        },
+        {
+          "name": "pardon-ip",
+          "usage": "<target>"
+        },
+        {
+          "name": "particle",
+          "usage": "<name> [<pos>] ..."
+        },
+        {
+          "name": "perf",
+          "usage": "(start|stop)"
+        },
+        {
+          "name": "place",
+          "usage": "(feature|jigsaw|structure|template) ..."
+        },
+        {
+          "name": "playsound",
+          "usage": "<sound> <source> <targets> ..."
+        },
+        {
+          "name": "publish",
+          "usage": "[<allowCommands>] [<gamemode>] [<port>]"
+        },
+        {
+          "name": "recipe",
+          "usage": "(give|take) <targets> (*|<recipe>)"
+        },
+        {
+          "name": "reload"
+        },
+        {
+          "name": "return",
+          "usage": "<value>"
+        },
+        {
+          "name": "ride",
+          "usage": "<target> (mount|dismount) ..."
+        },
+        {
+          "name": "save-all",
+          "usage": "[flush]"
+        },
+        {
+          "name": "save-off"
+        },
+        {
+          "name": "save-on"
+        },
+        {
+          "name": "say",
+          "usage": "<message>"
+        },
+        {
+          "name": "schedule",
+          "usage": "(function|clear) ..."
+        },
+        {
+          "name": "scoreboard",
+          "usage": "(objectives|players) ..."
+        },
+        {
+          "name": "seed"
+        },
+        {
+          "name": "setblock",
+          "usage": "<pos> <block> [destroy|keep|replace]"
+        },
+        {
+          "name": "setidletimeout",
+          "usage": "<minutes>"
+        },
+        {
+          "name": "setworldspawn",
+          "usage": "[<pos>] [<angle>]"
+        },
+        {
+          "name": "spawnpoint",
+          "usage": "[<targets>] [<pos>] [<angle>]"
+        },
+        {
+          "name": "spectate",
+          "usage": "[<target>] [<player>]"
+        },
+        {
+          "name": "spreadplayers",
+          "usage": "<center> <spreadDistance> <maxRange> <respectTeams> <targets>"
+        },
+        {
+          "name": "stop"
+        },
+        {
+          "name": "stopsound",
+          "usage": "<targets> [<source>] [<sound>]"
+        },
+        {
+          "name": "summon",
+          "usage": "<entity> [<pos>] [<nbt>]"
+        },
+        {
+          "name": "tag",
+          "usage": "<targets> (add|remove|list) ..."
+        },
+        {
+          "name": "team",
+          "usage": "(add|empty|join|leave|list|modify|remove) ..."
+        },
+        {
+          "name": "teammsg",
+          "usage": "<message>"
+        },
+        {
+          "name": "teleport",
+          "usage": "<targets> <location>"
+        },
+        {
+          "name": "tell",
+          "usage": "<targets> <message>"
+        },
+        {
+          "name": "tellraw",
+          "usage": "<targets> <message>"
+        },
+        {
+          "name": "tick",
+          "usage": "(query|rate|freeze|unfreeze|step|sprint) ..."
+        },
+        {
+          "name": "time",
+          "usage": "(add|query|set) ..."
+        },
+        {
+          "name": "title",
+          "usage": "<targets> (clear|reset|title|subtitle|actionbar|times) ..."
+        },
+        {
+          "name": "tp",
+          "usage": "<targets> <location>"
+        },
+        {
+          "name": "transfer",
+          "usage": "<hostname> [<port>] [<players>]"
+        },
+        {
+          "name": "trigger",
+          "usage": "<objective> [add|set] [<value>]"
+        },
+        {
+          "name": "w",
+          "usage": "<targets> <message>"
+        },
+        {
+          "name": "weather",
+          "usage": "(clear|rain|thunder) [<duration>]"
+        },
+        {
+          "name": "whitelist",
+          "usage": "(add|remove|list|on|off|reload) ..."
+        },
+        {
+          "name": "worldborder",
+          "usage": "(add|center|damage|get|set|warning) ..."
+        },
+        {
+          "name": "xp",
+          "usage": "(add|set|query) <targets> ..."
+        }
+      ]
+    }
+  },
+  "players": {
+    "kind": "files",
+    "lists": {
+      "allowed": "whitelist.json",
+      "operators": "ops.json",
+      "banned": "banned-players.json"
+    },
+    "identity_file": "usercache.json"
+  },
+  "settings": [
+    {
+      "key": "motd",
+      "label_key": "setting.minecraft.motd",
+      "help_key": "setting.minecraft.motd.help",
+      "type": "text",
+      "default": "A Nebula Host Server",
+      "max_len": 59,
+      "group": "identity"
+    },
+    {
+      "key": "max-players",
+      "label_key": "setting.minecraft.max_players",
+      "type": "int",
+      "default": 20,
+      "min": 1,
+      "max": 200,
+      "group": "players"
+    },
+    {
+      "key": "white-list",
+      "label_key": "setting.minecraft.whitelist",
+      "help_key": "setting.minecraft.whitelist.help",
+      "type": "bool",
+      "default": false,
+      "group": "players"
+    },
+    {
+      "key": "online-mode",
+      "label_key": "setting.minecraft.online_mode",
+      "help_key": "setting.minecraft.online_mode.help",
+      "type": "bool",
+      "default": true,
+      "group": "players",
+      "restart_required": true
+    },
+    {
+      "key": "pvp",
+      "label_key": "setting.minecraft.pvp",
+      "type": "bool",
+      "default": true,
+      "group": "world"
+    },
+    {
+      "key": "difficulty",
+      "label_key": "setting.minecraft.difficulty",
+      "type": "choice",
+      "default": "easy",
+      "options": [
+        {
+          "value": "peaceful",
+          "label_key": "setting.minecraft.difficulty.peaceful"
+        },
+        {
+          "value": "easy",
+          "label_key": "setting.minecraft.difficulty.easy"
+        },
+        {
+          "value": "normal",
+          "label_key": "setting.minecraft.difficulty.normal"
+        },
+        {
+          "value": "hard",
+          "label_key": "setting.minecraft.difficulty.hard"
+        }
+      ],
+      "group": "world"
+    },
+    {
+      "key": "gamemode",
+      "label_key": "setting.minecraft.gamemode",
+      "type": "choice",
+      "default": "survival",
+      "options": [
+        {
+          "value": "survival",
+          "label_key": "setting.minecraft.gamemode.survival"
+        },
+        {
+          "value": "creative",
+          "label_key": "setting.minecraft.gamemode.creative"
+        },
+        {
+          "value": "adventure",
+          "label_key": "setting.minecraft.gamemode.adventure"
+        },
+        {
+          "value": "spectator",
+          "label_key": "setting.minecraft.gamemode.spectator"
+        }
+      ],
+      "group": "world"
+    },
+    {
+      "key": "hardcore",
+      "label_key": "setting.minecraft.hardcore",
+      "help_key": "setting.minecraft.hardcore.help",
+      "type": "bool",
+      "default": false,
+      "group": "world",
+      "restart_required": true
+    },
+    {
+      "key": "level-seed",
+      "label_key": "setting.minecraft.seed",
+      "help_key": "setting.minecraft.seed.help",
+      "type": "text",
+      "default": "",
+      "group": "world",
+      "restart_required": true
+    },
+    {
+      "key": "view-distance",
+      "label_key": "setting.minecraft.view_distance",
+      "help_key": "setting.minecraft.view_distance.help",
+      "type": "int",
+      "default": 10,
+      "min": 3,
+      "max": 32,
+      "unit": "chunks",
+      "group": "performance"
+    },
+    {
+      "key": "simulation-distance",
+      "label_key": "setting.minecraft.simulation_distance",
+      "help_key": "setting.minecraft.simulation_distance.help",
+      "type": "int",
+      "default": 10,
+      "min": 3,
+      "max": 32,
+      "unit": "chunks",
+      "group": "performance"
+    },
+    {
+      "key": "spawn-protection",
+      "label_key": "setting.minecraft.spawn_protection",
+      "type": "int",
+      "default": 16,
+      "min": 0,
+      "max": 256,
+      "unit": "blocks",
+      "group": "world"
+    },
+    {
+      "key": "enable-command-block",
+      "label_key": "setting.minecraft.command_blocks",
+      "type": "bool",
+      "default": false,
+      "group": "world"
+    },
+    {
+      "key": "allow-flight",
+      "label_key": "setting.minecraft.allow_flight",
+      "help_key": "setting.minecraft.allow_flight.help",
+      "type": "bool",
+      "default": false,
+      "group": "players"
+    }
+  ],
+  "logs": {
+    "latest": "logs/latest.log",
+    "crash_dir": "crash-reports"
+  },
+  "server_icon": {
+    "file": "server-icon.png",
+    "size": 64
+  },
+  "backup": {
+    "include": [
+      "world",
+      "world_nether",
+      "world_the_end",
+      "server.properties",
+      "ops.json",
+      "whitelist.json",
+      "banned-players.json",
+      "banned-ips.json",
+      "mods",
+      "plugins",
+      "config"
+    ],
+    "exclude": [
+      "**/logs/**",
+      "**/crash-reports/**",
+      "**/cache/**",
+      "**/*.log.gz"
+    ],
+    "requires_stop": false,
+    "flush_command": "save-all flush"
+  },
+  "wake": {
+    "protocol": "minecraft_java",
+    "sleeping_motd": "{name} is asleep — join to wake it",
+    "bind_setting": "server-ip"
+  }
+}

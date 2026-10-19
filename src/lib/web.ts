@@ -11,6 +11,11 @@
 /** True in a browser, false inside the desktop app. */
 export const IS_WEB = typeof window !== "undefined" && !("__TAURI_INTERNALS__" in window);
 
+/** The Android (or iOS) app: the same backend as the desktop, a phone shell
+ *  (no window keys, a status bar above the page, touch). */
+export const IS_MOBILE =
+  typeof navigator !== "undefined" && !IS_WEB && /Android|iPhone|iPad/i.test(navigator.userAgent);
+
 export interface WebSession {
   token: string;
   deviceId: string;

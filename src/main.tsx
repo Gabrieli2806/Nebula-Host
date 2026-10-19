@@ -16,10 +16,12 @@ import "./styles/global.css";
 import { App } from "./App";
 import { applyStoredDensity } from "./app/density";
 import { applyStoredTheme } from "./app/theme";
+import { IS_MOBILE } from "./lib/web";
 
 // Before the first paint, so a light-theme user never sees a dark flash and
 // a compact user never sees the rows jump.
 applyStoredTheme();
+if (IS_MOBILE) document.documentElement.dataset.mobile = "";
 applyStoredDensity();
 
 const container = document.getElementById("root");

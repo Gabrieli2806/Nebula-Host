@@ -2683,6 +2683,7 @@ dependencies = [
  "if-addrs",
  "igd-next",
  "image",
+ "libc",
  "nebula-downloader",
  "regex",
  "reqwest 0.12.28",

@@ -24,3 +24,4 @@ src-tauri/msix/staging/
 Thumbs.db
 # Reference copy of the previous implementation, kept only during the rebuild
 .legacy/
+dist-android/

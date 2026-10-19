@@ -61,6 +61,8 @@ pub fn sample(instances_running: u32) -> NodeHealth {
         .list()
         .first()
         .map(|disk| (disk.total_space(), disk.available_space()))
+        .filter(|(total, _)| *total > 0)
+        .or_else(data_volume)
         .unwrap_or((0, 0));
 
     NodeHealth {
@@ -75,6 +77,26 @@ pub fn sample(instances_running: u32) -> NodeHealth {
         os: System::long_os_version().or_else(System::name).unwrap_or_default(),
         cpu_count: system.cpus().len(),
     }
+}
+
+/// Space on the volume holding the app's data, for systems where the disk
+/// list is not readable (Android hides /proc/diskstats from apps).
+#[cfg(unix)]
+fn data_volume() -> Option<(u64, u64)> {
+    let dir = crate::store::paths::config_dir().ok()?;
+    let path = std::ffi::CString::new(dir.to_string_lossy().as_bytes()).ok()?;
+    let mut stat: libc::statvfs = unsafe { std::mem::zeroed() };
+    // SAFETY: a valid C string and a zeroed out-struct, as statvfs expects.
+    if unsafe { libc::statvfs(path.as_ptr(), &mut stat) } != 0 {
+        return None;
+    }
+    let block = stat.f_frsize as u64;
+    Some((stat.f_blocks as u64 * block, stat.f_bavail as u64 * block))
+}
+
+#[cfg(not(unix))]
+fn data_volume() -> Option<(u64, u64)> {
+    None
 }
 
 /// The first-run check: everything that has to be true before a server can
