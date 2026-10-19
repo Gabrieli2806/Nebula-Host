@@ -33,6 +33,7 @@ import {
 import type { DiskUsage, InstanceView } from "@/types/api";
 import { TransferBanner } from "@/features/server/transfer/TransferBanner";
 import { movedTo } from "@/features/server/transfer/machines";
+import { TransferProgressStrip } from "@/features/server/transfer/active";
 import { TransferDialog } from "@/features/server/transfer/TransferDialog";
 import {
   Button,
@@ -221,6 +222,8 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
 
         {actionError ? <ErrorNotice error={actionError} compact /> : null}
 
+        <TransferProgressStrip instanceId={instance.id} />
+
         {/* An older copy cannot start, and players now join the machine it
             moved to (the banner above names it): no address to hand out. */}
         {olderCopy ? null : (
@@ -290,7 +293,12 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
         </Button>
       </div>
 
-      <TransferDialog instance={instance} open={transferOpen} onClose={() => setTransferOpen(false)} />
+      <TransferDialog
+        instance={instance}
+        open={transferOpen}
+        onClose={() => setTransferOpen(false)}
+        onReopen={() => setTransferOpen(true)}
+      />
 
       <Dialog
         open={confirmDelete}

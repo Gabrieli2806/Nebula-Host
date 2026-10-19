@@ -16,13 +16,12 @@ import { useI18n } from "@/i18n";
 import { activeRemote, switchTo } from "@/lib/connection";
 import { formatBytes } from "@/lib/format";
 import { api, onAppEvent, onLocalAppEvent, toAppError } from "@/lib/ipc";
-import type { AppEvent, InstanceView, TransferMode, TransferOutcome, TransferPhase, TransferProgress } from "@/types/api";
+import type { AppEvent, InstanceView, TransferMode, TransferOutcome, TransferProgress } from "@/types/api";
 import { Button, Dialog, ErrorNotice, Icon } from "@/ui";
 
+import { beginTransfer, endTransfer, PHASES } from "./active";
 import { managedKey, useMachines, type Machine } from "./machines";
 import "./transfer.css";
-
-const PHASES: TransferPhase[] = ["prepare", "export", "upload", "verify", "adopt", "finalize"];
 
 /** Reasons the dialog answers by asking again rather than just failing. */
 const RETRYABLE = new Set(["players_online", "transfer_diverged"]);
@@ -31,11 +30,14 @@ export function TransferDialog({
   instance,
   open,
   onClose,
+  onReopen,
   bringBackFrom,
 }: {
   instance: InstanceView;
   open: boolean;
   onClose: () => void;
+  /** Asked to show the dialog again when a transfer that was hidden ends. */
+  onReopen?: () => void;
   /**
    * Bring the server back: the source is the machine it moved to (this
    * window's machine holds the older copy and is the target).
@@ -68,6 +70,7 @@ export function TransferDialog({
       transferId.current = crypto.randomUUID();
       setProgress(null);
       if (!source || !target) throw new Error("no machine");
+      beginTransfer(instance.id, transferId.current, target.name);
       return api.transfer.run({
         transferId: transferId.current,
         instanceId: instance.id,
@@ -79,6 +82,7 @@ export function TransferDialog({
       });
     },
     onSettled: () => {
+      endTransfer(instance.id);
       void client.invalidateQueries({ queryKey: keys.instances });
       void client.invalidateQueries({ queryKey: keys.instance(instance.id) });
     },
@@ -97,6 +101,13 @@ export function TransferDialog({
     if (activeRemote()) stops.push(onAppEvent(take));
     return () => stops.forEach((stop) => stop());
   }, [open]);
+
+  // A transfer hidden while it ran has ended: bring the dialog back with
+  // how it went.
+  const finished = run.isSuccess || run.isError;
+  useEffect(() => {
+    if (finished && !open) onReopen?.();
+  }, [finished, open, onReopen]);
 
   const close = () => {
     if (run.isPending) return;
@@ -139,10 +150,22 @@ export function TransferDialog({
   // -- running -------------------------------------------------------------
   if (run.isPending) {
     return (
-      <Dialog open={open} onClose={close} title={t("transfer.running", names)} width={560} dismissable={false}>
+      <Dialog
+        open={open}
+        onClose={close}
+        title={t("transfer.running", names)}
+        width={560}
+        dismissable={false}
+        footer={
+          <Button variant="quiet" onClick={onClose}>
+            {t("transfer.hide")}
+          </Button>
+        }
+      >
         <div className="flex flex-col gap-4">
           <Phases progress={progress} names={names} />
           <p className="transfer-quiet">{t("transfer.keepOpen")}</p>
+          <p className="transfer-quiet">{t("transfer.hideHint")}</p>
         </div>
       </Dialog>
     );

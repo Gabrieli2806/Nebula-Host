@@ -163,6 +163,10 @@ export const en = {
     playersConfirm: "Stop the server even though {count} players are connected",
     start: "Transfer",
     running: "Transferring to {target}",
+    hide: "Hide",
+    hideHint: "Hiding this keeps the transfer going; the server's card shows its progress.",
+    otherMachine: "another machine",
+    tagRunning: "Transferring",
     keepOpen: "Keep Nebula Host open until it finishes.",
     phase: {
       prepare: "Stop the server",

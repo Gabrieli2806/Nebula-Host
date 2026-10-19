@@ -40,6 +40,7 @@ import { formatMegabytes } from "@/lib/format";
 import { toAppError } from "@/lib/ipc";
 import type { InstanceView } from "@/types/api";
 import { Button, ErrorNotice, Icon, Ring, StatusDot, type IconName } from "@/ui";
+import { useTransferTracking } from "@/features/server/transfer/active";
 import { TitleBar } from "./TitleBar";
 
 /** The panels a server has, in the order they are worked through. */
@@ -93,6 +94,7 @@ export function AppShell() {
   const instanceId = match?.params.instanceId ?? null;
 
   useBackendEvents();
+  useTransferTracking();
 
   const narrow = useNarrow();
   const { pathname } = useLocation();

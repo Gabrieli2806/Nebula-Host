@@ -163,6 +163,10 @@ export const es: Copy = {
     playersConfirm: "Detener el servidor aunque haya {count} jugadores conectados",
     start: "Transferir",
     running: "Transfiriendo a {target}",
+    hide: "Ocultar",
+    hideHint: "Ocultarlo no detiene la transferencia; la tarjeta del servidor muestra su progreso.",
+    otherMachine: "otro equipo",
+    tagRunning: "Transfiriendo",
     keepOpen: "Mantén Nebula Host abierto hasta que termine.",
     phase: {
       prepare: "Detener el servidor",

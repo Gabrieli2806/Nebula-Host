@@ -11,6 +11,7 @@ import { useDistribution, useInstanceActions } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { formatDuration, formatMegabytes } from "@/lib/format";
 import type { InstanceView } from "@/types/api";
+import { TransferTag } from "@/features/server/transfer/active";
 import { movedTo } from "@/features/server/transfer/machines";
 import { Button, DistributionTag, ErrorNotice, ServerTile, StatusDot, identityProps, isIdle } from "@/ui";
 
@@ -88,6 +89,7 @@ export function ServerRow({ instance, onOpen }: { instance: InstanceView; onOpen
           <span className="flex items-center gap-2">
             <DistributionTag distribution={distribution} fallback={instance.build.distribution} />
             <span className="mono server-row-muted">{instance.build.version}</span>
+            <TransferTag instanceId={instance.id} />
             {movedNode ? (
               <span className="tag" title={t("transfer.cardMoved", { node: movedNode })}>
                 {t("transfer.tagOlder")}

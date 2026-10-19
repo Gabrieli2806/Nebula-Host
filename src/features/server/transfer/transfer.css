@@ -238,6 +238,97 @@
     transition: width var(--duration-fast) var(--ease);
   }
 
+  /* == progress strip (card, overview) and tag (row) ===================== */
+
+  .transfer-strip {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    border-radius: var(--radius);
+    background: var(--accent-wash);
+    color: var(--text);
+  }
+
+  .transfer-strip-head,
+  .transfer-strip-phase {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+  }
+
+  .transfer-strip-head > svg {
+    flex: none;
+    color: var(--accent);
+  }
+
+  .transfer-strip-title {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    font-weight: 600;
+    color: var(--text-heading);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .transfer-strip-step {
+    color: var(--text-faint);
+  }
+
+  .transfer-strip-phase {
+    justify-content: space-between;
+    color: var(--text-muted);
+  }
+
+  .transfer-strip-bar {
+    height: 4px;
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background: var(--groove);
+  }
+
+  .transfer-strip-bar > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+    transition: width var(--duration-fast) var(--ease);
+  }
+
+  /* No byte count yet (stopping, verifying): a sliding bar, not a full or
+     an empty one. */
+  .transfer-strip-bar[data-indeterminate] > span {
+    width: 35%;
+    animation: transfer-slide 1.4s var(--ease) infinite alternate;
+  }
+
+  @keyframes transfer-slide {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(185%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .transfer-strip-bar[data-indeterminate] > span {
+      width: 100%;
+      animation: none;
+      opacity: 0.5;
+    }
+  }
+
+  .transfer-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--accent);
+  }
+
   /* == banner (overview) and note (card) ================================ */
 
   .transfer-banner {
