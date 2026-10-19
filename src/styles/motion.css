@@ -1,0 +1,130 @@
+/*
+ * Nebula Host: motion.css. Small, quiet movement that says "this is new" or
+ * "this changed", never decoration for its own sake: content settles in when
+ * a screen or panel opens, cards arrive one after another, menus unfold from
+ * where they were opened, and numbers glide instead of jumping.
+ *
+ * Every animation here is off under prefers-reduced-motion (the duration
+ * tokens also drop to 0 there, see tokens.css).
+ */
+
+@layer components {
+  /* A screen or a server panel settles in: a few pixels up, fading in. */
+  .app-main > :not(.remote-banner),
+  .server-panel > * {
+    animation: nebula-rise 260ms var(--ease) both;
+  }
+
+  /* Cards and rows arrive in order, quickly: the first eight are staggered,
+     the rest come with the eighth so a long list never feels slow. */
+  .servers-grid > *,
+  .fleet-grid > *,
+  .servers-table tbody tr {
+    animation: nebula-rise 280ms var(--ease) both;
+    animation-delay: calc(var(--stagger, 7) * 28ms);
+  }
+
+  .servers-grid > :nth-child(1), .fleet-grid > :nth-child(1), .servers-table tbody tr:nth-child(1) { --stagger: 0; }
+  .servers-grid > :nth-child(2), .fleet-grid > :nth-child(2), .servers-table tbody tr:nth-child(2) { --stagger: 1; }
+  .servers-grid > :nth-child(3), .fleet-grid > :nth-child(3), .servers-table tbody tr:nth-child(3) { --stagger: 2; }
+  .servers-grid > :nth-child(4), .fleet-grid > :nth-child(4), .servers-table tbody tr:nth-child(4) { --stagger: 3; }
+  .servers-grid > :nth-child(5), .fleet-grid > :nth-child(5), .servers-table tbody tr:nth-child(5) { --stagger: 4; }
+  .servers-grid > :nth-child(6), .fleet-grid > :nth-child(6), .servers-table tbody tr:nth-child(6) { --stagger: 5; }
+  .servers-grid > :nth-child(7), .fleet-grid > :nth-child(7), .servers-table tbody tr:nth-child(7) { --stagger: 6; }
+
+  /* Menus unfold from the edge they hang from. */
+  .context-menu,
+  .node-switcher-menu {
+    transform-origin: top left;
+    animation: nebula-unfold 140ms var(--ease) both;
+  }
+
+  .node-switcher-menu {
+    transform-origin: top center;
+  }
+
+  /* A running server's lamp breathes, slowly enough to read as alive rather
+     than as an alert. */
+  .status-dot[data-status="online"] {
+    animation: nebula-breathe 3.2s ease-in-out infinite;
+  }
+
+  /* Numbers glide: usage bars and rings ease to their new value. */
+  .meter-fill,
+  .transfer-strip-bar > span,
+  .card-usage [role="progressbar"] > * {
+    transition: width 480ms var(--ease);
+  }
+
+  .meter-ring-value {
+    transition: stroke-dashoffset 480ms var(--ease), stroke var(--duration) var(--ease);
+  }
+
+  /* State changes cross-fade instead of snapping. */
+  .status-chip,
+  .server-pagehead-status,
+  .segment,
+  .rail-item,
+  .tag {
+    transition:
+      background-color var(--duration) var(--ease),
+      border-color var(--duration) var(--ease),
+      color var(--duration) var(--ease);
+  }
+
+  /* A newly appearing notice or strip slides in from above. */
+  .transfer-strip,
+  .transfer-banner,
+  .remote-banner,
+  .fleet-warning {
+    animation: nebula-drop 220ms var(--ease) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-main > :not(.remote-banner),
+    .server-panel > *,
+    .servers-grid > *,
+    .fleet-grid > *,
+    .servers-table tbody tr,
+    .context-menu,
+    .node-switcher-menu,
+    .status-dot[data-status="online"],
+    .transfer-strip,
+    .transfer-banner,
+    .remote-banner,
+    .fleet-warning {
+      animation: none;
+    }
+  }
+}
+
+@keyframes nebula-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes nebula-unfold {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+
+@keyframes nebula-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes nebula-breathe {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.35) drop-shadow(0 0 3px var(--status-online));
+  }
+}
