@@ -61,9 +61,17 @@ pub fn pending_dir() -> AppResult<PathBuf> {
 /// reads and writes arbitrary files on request, so a `..` that slips through
 /// here is the whole machine.
 pub fn resolve_inside(root: &Path, relative: &str) -> AppResult<PathBuf> {
-    let candidate = Path::new(relative);
+    // Paths arrive from any client: a Windows desktop managing a Linux node
+    // sends `C:/…` or `\\server\share`, which Linux would read as ordinary
+    // names. Read them the Windows way everywhere and refuse them alike.
+    let normalised = relative.replace('\\', "/");
+    let drive = normalised.as_bytes();
+    if drive.len() >= 2 && drive[0].is_ascii_alphabetic() && drive[1] == b':' {
+        return Err(outside(relative));
+    }
+    let candidate = Path::new(&normalised);
 
-    if candidate.is_absolute() {
+    if candidate.is_absolute() || normalised.starts_with('/') {
         return Err(outside(relative));
     }
 
