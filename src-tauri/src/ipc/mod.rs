@@ -135,6 +135,7 @@ macro_rules! ipc_handlers {
             $crate::ipc::settings::java_runtimes,
             $crate::ipc::settings::java_download,
             $crate::ipc::settings::java_overview,
+            $crate::ipc::settings::storage_locations,
             $crate::ipc::settings::app_log,
             $crate::ipc::settings::app_open_log_folder,
             // transfers

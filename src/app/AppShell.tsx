@@ -41,6 +41,7 @@ import { toAppError } from "@/lib/ipc";
 import type { InstanceView } from "@/types/api";
 import { Button, ErrorNotice, Icon, Ring, StatusDot, type IconName } from "@/ui";
 import { useTransferTracking } from "@/features/server/transfer/active";
+import { MobileTabs } from "./MobileTabs";
 import { TitleBar } from "./TitleBar";
 
 /** The panels a server has, in the order they are worked through. */
@@ -97,6 +98,11 @@ export function AppShell() {
   useTransferTracking();
 
   const narrow = useNarrow();
+  // Tells the stylesheet to leave room for the tab bar.
+  useEffect(() => {
+    if (narrow) document.documentElement.dataset.tabs = "";
+    else delete document.documentElement.dataset.tabs;
+  }, [narrow]);
   const { pathname } = useLocation();
   // The drawer belongs to the page it was opened on: picking a destination
   // in it closes it.
@@ -156,9 +162,8 @@ export function AppShell() {
 
   return (
     <div className="flex h-full flex-col">
-      <TitleBar
-        sidebar={{ collapsed: narrow ? !drawerOpen : collapsed, onToggle: toggleSidebar, controls: RAIL_ID }}
-      />
+      {/* Phone width: the tab bar along the bottom replaces the sidebar. */}
+      <TitleBar sidebar={narrow ? undefined : { collapsed, onToggle: toggleSidebar, controls: RAIL_ID }} />
       <div className="relative flex min-h-0 flex-1">
         {narrow && drawerOpen ? (
           <button
@@ -168,6 +173,7 @@ export function AppShell() {
             onClick={() => setDrawerOpen(false)}
           />
         ) : null}
+        {narrow ? null : (
         <nav
           id={RAIL_ID}
           className="rail"
@@ -195,12 +201,14 @@ export function AppShell() {
             )}
           </div>
         </nav>
+        )}
 
         <main ref={mainRef} className="app-main min-w-0 flex-1 overflow-auto">
           <RemoteLinkBanner />
           <Outlet />
         </main>
       </div>
+      {narrow ? <MobileTabs instanceId={instanceId} /> : null}
       {tooltip.element}
     </div>
   );

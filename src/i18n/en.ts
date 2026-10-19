@@ -100,6 +100,18 @@ export const en = {
     done: "Java {major} installed",
   },
 
+  phone: {
+    thisPhone: "This phone",
+    storage: "Where servers are stored",
+    storageHelp: "New servers go here. The phone's own storage is private to Nebula Host; an SD card holds more but can be slower. Existing servers stay where they are.",
+    internal: "Phone (private)",
+    shared: "Phone storage",
+    sd: "SD card",
+    free: "{free} GB free",
+    more: "More",
+    back: "Servers",
+  },
+
   upnp: {
     upnpTest: "Test UPnP",
     upnpTesting: "Testing…",

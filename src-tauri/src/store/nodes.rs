@@ -45,6 +45,10 @@ pub fn save(node: &Node) -> AppResult<()> {
 
 /// The machine's own name, as a starting suggestion the user can change.
 pub fn suggested_name() -> String {
+    // The Android app passes the phone's own name ("Pixel 8").
+    if let Some(name) = std::env::var("NEBULA_DEVICE_NAME").ok().filter(|n| !n.trim().is_empty()) {
+        return name.trim().to_string();
+    }
     hostname().unwrap_or_else(|| "This PC".to_string())
 }
 

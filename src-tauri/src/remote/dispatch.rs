@@ -315,6 +315,7 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             let refresh: Option<bool> = opt(args, "refresh")?;
             ok(service.java_runtimes(&id()?, refresh.unwrap_or(false)).await?)
         }
+        "storage_locations" => ok(crate::node::health::storage_locations()),
         "java_overview" => {
             let refresh: Option<bool> = opt(args, "refresh")?;
             ok(crate::service::java::java_overview(refresh.unwrap_or(false)).await?)

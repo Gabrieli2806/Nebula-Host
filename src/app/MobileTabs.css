@@ -1,0 +1,117 @@
+/* Nebula Host: MobileTabs.css. The phone tab bar and its "More" sheet. */
+
+@layer components {
+  .mobile-tabs {
+    position: fixed;
+    z-index: 30;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    justify-content: space-around;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--line);
+    background: color-mix(in srgb, var(--canvas) 92%, transparent);
+    backdrop-filter: blur(12px);
+  }
+
+  .mobile-tab {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 2px;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-faint);
+    font: inherit;
+    font-size: 11px;
+    font-weight: var(--weight-control);
+    text-decoration: none;
+    cursor: pointer;
+    transition: color var(--duration) var(--ease);
+  }
+
+  .mobile-tab > span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-tab.active,
+  .mobile-tab[data-active] {
+    color: var(--accent);
+  }
+
+  .mobile-tab.active > svg {
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 45%, transparent));
+  }
+
+  /* Room under the content for the bar (and a future banner above it). */
+  html[data-tabs] .app-main {
+    padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px) + var(--ad-slot));
+  }
+
+  .mobile-sheet-scrim {
+    position: fixed;
+    z-index: 45;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    background: var(--scrim);
+    animation: nebula-fade var(--duration-dialog) var(--ease);
+  }
+
+  .mobile-sheet {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    padding: 8px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+    border: 1px solid var(--line-strong);
+    border-bottom: 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    background: var(--card-wash), var(--surface);
+    animation: mobile-sheet-in 200ms var(--ease) both;
+  }
+
+  .mobile-sheet-grip {
+    align-self: center;
+    width: 36px;
+    height: 4px;
+    margin: 2px 0 10px;
+    border-radius: 2px;
+    background: var(--line-strong);
+  }
+
+  .mobile-sheet-item {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+    border-radius: var(--radius);
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .mobile-sheet-item.active {
+    background: var(--accent-wash);
+    color: var(--accent);
+  }
+
+  @keyframes mobile-sheet-in {
+    from {
+      transform: translateY(100%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mobile-sheet {
+      animation: none;
+    }
+  }
+}

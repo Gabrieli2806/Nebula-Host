@@ -46,6 +46,7 @@ import type {
   AppLog,
   RemoteStatus,
   UpnpCheck,
+  StorageLocation,
   FileEntry,
   GameManifest,
   InstalledAddon,
@@ -420,6 +421,11 @@ export const api = {
         throw toAppError(error);
       }
     },
+  },
+
+  storage: {
+    /** Folders the phone app can keep servers in (empty on the desktop). */
+    locations: () => call<StorageLocation[]>("storage_locations"),
   },
 
   app: {

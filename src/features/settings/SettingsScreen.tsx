@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ACCENTS, DEFAULT_ACCENT, isAccent, type Accent } from "@/app/AccentSync";
 import { useUiDensity, type UiDensity } from "@/app/density";
@@ -17,7 +17,7 @@ import { useThemePreference, type ThemePreference } from "@/app/theme";
 import { keys, useAppSettings, useNode, useSaveSettings } from "@/hooks/useBackend";
 import { useI18n, type Language } from "@/i18n";
 import { api } from "@/lib/ipc";
-import type { AppSettings } from "@/types/api";
+import type { AppSettings, StorageLocation } from "@/types/api";
 import { isRemote } from "@/lib/connection";
 import { AboutSettings, DiagnosticsSettings } from "./AboutSettings";
 import { JavaSlots } from "./JavaSlots";
@@ -93,6 +93,8 @@ export function SettingsScreen() {
       flash("name");
     },
   });
+
+  const storage = useQuery({ queryKey: ["storage", "locations"], queryFn: api.storage.locations, staleTime: 30_000 });
 
   if (!settings) return null;
 
@@ -241,6 +243,13 @@ export function SettingsScreen() {
       </Panel>
 
       <Panel title={t("settings.storage")}>
+        {storage.data?.length ? (
+          <PhoneStorage
+            locations={storage.data}
+            current={settings.instancesDir ?? null}
+            onPick={(path) => update("storage", { instancesDir: path })}
+          />
+        ) : (
         <SettingRow
           wide
           label={t("settings.instancesDir")}
@@ -272,6 +281,7 @@ export function SettingsScreen() {
             </Button>
           </div>
         </SettingRow>
+        )}
       </Panel>
 
       <Panel title={t("settings.startupNetwork")}>
@@ -486,6 +496,52 @@ function AccentPicker({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * The phone app keeps servers in its own folders (Android lets an app use
+ * them without any storage permission, and Java can open files there; a
+ * folder picked through the system's document picker could not be run from).
+ * One choice per storage volume, with its free space.
+ */
+function PhoneStorage({
+  locations,
+  current,
+  onPick,
+}: {
+  locations: StorageLocation[];
+  current: string | null;
+  onPick: (path: string | null) => void;
+}) {
+  const { t } = useI18n();
+  const selected = locations.find((location) => location.path === current) ?? locations[0];
+  return (
+    <div className="settings-row" data-wide="">
+      <div className="settings-row-text">
+        <span className="settings-row-label">{t("phone.storage")}</span>
+        <span className="settings-row-help">{t("phone.storageHelp")}</span>
+      </div>
+      <div className="phone-storage" role="radiogroup" aria-label={t("phone.storage")}>
+        {locations.map((location) => (
+          <button
+            key={location.path}
+            type="button"
+            role="radio"
+            aria-checked={location === selected}
+            className="phone-storage-option"
+            onClick={() => onPick(location.kind === "internal" ? null : location.path)}
+          >
+            <Icon name={location.kind === "sd" ? "archive" : "folder"} size={16} />
+            <span className="flex min-w-0 flex-col items-start">
+              <span className="phone-storage-name">{t(`phone.${location.kind}`)}</span>
+              <span className="phone-storage-free">{t("phone.free", { free: location.freeGb })}</span>
+            </span>
+            {location === selected ? <Icon name="check" size={15} /> : null}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

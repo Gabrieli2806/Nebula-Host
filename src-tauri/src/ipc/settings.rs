@@ -96,3 +96,9 @@ pub async fn app_open_log_folder(app: tauri::AppHandle) -> AppResult<()> {
     let folder = crate::logging::folder()?;
     crate::ipc::open_folder(&app, std::path::Path::new(&folder))
 }
+
+/// Where the phone app can keep servers (empty on the desktop).
+#[tauri::command]
+pub fn storage_locations() -> Vec<crate::node::health::StorageLocation> {
+    crate::node::health::storage_locations()
+}

@@ -82,6 +82,18 @@ pub fn run() {
                     }
                 };
 
+                // A phone set up before it knew its own name was called
+                // "This PC": give it the phone's name.
+                #[cfg(target_os = "android")]
+                let node = {
+                    let mut node = node;
+                    if node.name == "This PC" {
+                        node.name = store::nodes::suggested_name();
+                        store::nodes::save(&node)?;
+                    }
+                    node
+                };
+
                 let service = InstanceService::new(node).await?;
                 forward_events(handle.clone(), service.clone());
                 service::poller::spawn(service.clone());

@@ -100,6 +100,18 @@ export const es: Copy = {
     done: "Java {major} instalado",
   },
 
+  phone: {
+    thisPhone: "Este teléfono",
+    storage: "Dónde se guardan los servidores",
+    storageHelp: "Los servidores nuevos se crean aquí. El almacenamiento propio del teléfono es privado de Nebula Host; una tarjeta SD tiene más espacio pero puede ser más lenta. Los servidores existentes se quedan donde están.",
+    internal: "Teléfono (privado)",
+    shared: "Almacenamiento del teléfono",
+    sd: "Tarjeta SD",
+    free: "{free} GB libres",
+    more: "Más",
+    back: "Servidores",
+  },
+
   upnp: {
     upnpTest: "Probar UPnP",
     upnpTesting: "Probando…",

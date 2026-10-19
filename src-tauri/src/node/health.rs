@@ -89,7 +89,12 @@ pub fn sample(instances_running: u32) -> NodeHealth {
 /// list is not readable (Android hides /proc/diskstats from apps).
 #[cfg(unix)]
 fn data_volume() -> Option<(u64, u64)> {
-    let dir = crate::store::paths::config_dir().ok()?;
+    volume_space(&crate::store::paths::config_dir().ok()?)
+}
+
+/// (total, available) bytes of the volume holding `dir`.
+#[cfg(unix)]
+pub fn volume_space(dir: &std::path::Path) -> Option<(u64, u64)> {
     let path = std::ffi::CString::new(dir.to_string_lossy().as_bytes()).ok()?;
     let mut stat: libc::statvfs = unsafe { std::mem::zeroed() };
     // SAFETY: a valid C string and a zeroed out-struct, as statvfs expects.
@@ -103,6 +108,52 @@ fn data_volume() -> Option<(u64, u64)> {
 #[cfg(not(unix))]
 fn data_volume() -> Option<(u64, u64)> {
     None
+}
+
+#[cfg(not(unix))]
+pub fn volume_space(_dir: &std::path::Path) -> Option<(u64, u64)> {
+    None
+}
+
+/// A folder the phone app may keep servers in.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StorageLocation {
+    /// The instances folder to store in settings.
+    pub path: String,
+    /// `internal` (private to the app), `shared` (the phone's storage) or `sd`.
+    pub kind: &'static str,
+    pub free_gb: u64,
+    pub total_gb: u64,
+}
+
+/// Where the Android app can store servers without any storage permission:
+/// its private folder, and its own folder on each storage volume (the
+/// activity passes those as `NEBULA_STORAGE_DIRS`). Real folders, so Java
+/// can open the files directly, which a folder chosen through Android's
+/// document picker would not allow. Empty on the desktop, which picks any
+/// folder instead.
+pub fn storage_locations() -> Vec<StorageLocation> {
+    let Ok(raw) = std::env::var("NEBULA_STORAGE_DIRS") else { return Vec::new() };
+    let mut out = Vec::new();
+    let mut push = |path: std::path::PathBuf, kind: &'static str| {
+        let _ = std::fs::create_dir_all(&path);
+        let (total, free) = volume_space(&path).unwrap_or((0, 0));
+        out.push(StorageLocation {
+            path: path.display().to_string(),
+            kind,
+            free_gb: free / 1024 / 1024 / 1024,
+            total_gb: total / 1024 / 1024 / 1024,
+        });
+    };
+    if let Ok(internal) = crate::store::paths::default_instances_dir() {
+        push(internal, "internal");
+    }
+    for (index, dir) in raw.lines().filter(|l| !l.trim().is_empty()).enumerate() {
+        let path = std::path::PathBuf::from(dir.trim()).join("instances");
+        push(path, if index == 0 { "shared" } else { "sd" });
+    }
+    out
 }
 
 /// The first-run check: everything that has to be true before a server can
