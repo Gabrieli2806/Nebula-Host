@@ -167,3 +167,35 @@ pub fn tail(path: PathBuf, alive: impl Fn() -> bool, mut line: impl FnMut(String
         std::thread::sleep(Duration::from_millis(400));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A real child process in a known folder is found there, once, with the
+    /// pid a signal can reach. (Uses `sleep`/`ping` standing in for java.)
+    #[test]
+    fn finds_a_process_by_its_working_directory() {
+        let dir = std::env::temp_dir().join(format!("nebula-adopt-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut child = if cfg!(windows) {
+            std::process::Command::new("ping").args(["-n", "30", "127.0.0.1"]).current_dir(&dir).spawn().unwrap()
+        } else {
+            std::process::Command::new("sleep").arg("30").current_dir(&dir).spawn().unwrap()
+        };
+        std::thread::sleep(Duration::from_millis(300));
+        let mut system = System::new();
+        system.refresh_processes_specifics(
+            ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing().with_cwd(UpdateKind::Always),
+        );
+        let process = system.process(Pid::from_u32(child.id()));
+        let cwd = process.and_then(|p| p.cwd().map(|c| c.to_path_buf()));
+        let name = process.map(|p| p.name().to_string_lossy().to_string());
+        let _ = child.kill();
+        let _ = std::fs::remove_dir_all(&dir);
+        eprintln!("name={name:?} cwd={cwd:?}");
+        assert!(cwd.is_some_and(|c| same_dir(&c, &dir)), "cwd readable and equal");
+    }
+}
