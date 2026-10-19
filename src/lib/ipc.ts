@@ -10,7 +10,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 
-import { activeRemote, remoteCall, remoteEvents, uploadFromBrowser } from "@/lib/connection";
+import { activeRemote, remoteCall, remoteEvents, uploadFromBrowser, type RemoteNode } from "@/lib/connection";
 import { IS_WEB, setWebPrefs, webPrefs } from "@/lib/web";
 
 import type {
@@ -156,6 +156,18 @@ async function routed<T>(command: string, args?: Record<string, unknown>): Promi
     return saved as T;
   }
   return remoteCall<T>(node, command, args);
+}
+
+/**
+ * Ask a specific machine, whichever one this window manages: `null` is this
+ * PC. For screens that look at every machine at once (Machines).
+ */
+export async function callMachine<T>(node: RemoteNode | null, command: string, args?: Record<string, unknown>): Promise<T> {
+  try {
+    return node ? await remoteCall<T>(node, command, args) : await local<T>(command, args);
+  } catch (error) {
+    throw toAppError(error);
+  }
 }
 
 async function call<T>(command: string, args?: Record<string, unknown>): Promise<T> {

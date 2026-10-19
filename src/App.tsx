@@ -9,6 +9,7 @@ import { AgreementGate } from "@/features/server/agreement/Agreement";
 import { ServerScreen } from "@/features/server/ServerScreen";
 import { ServersScreen } from "@/features/servers/ServersScreen";
 import { SettingsScreen } from "@/features/settings/SettingsScreen";
+import { MachinesScreen } from "@/features/machines/MachinesScreen";
 import { useSuppressNativeContextMenu } from "@/ui/ContextMenu";
 import { I18nProvider } from "@/i18n";
 import { WebPair } from "@/features/web/WebPair";
@@ -57,6 +58,7 @@ function Shell() {
               />
               <Route path="/servers/:instanceId/:panel" element={<ServerScreen />} />
               <Route path="/settings" element={<SettingsScreen />} />
+              <Route path="/machines" element={<MachinesScreen />} />
             </Route>
             <Route path="*" element={<Navigate to="/servers" replace />} />
           </Routes>

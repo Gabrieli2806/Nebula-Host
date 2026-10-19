@@ -1,0 +1,183 @@
+/*
+ * Nebula Host: machines.css. Every machine at once: the all-servers table
+ * and the machine cards (load, uptime, running servers).
+ */
+
+@layer components {
+  .fleet-machine-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .fleet-machine-cell > svg {
+    color: var(--text-faint);
+  }
+
+  .fleet-empty {
+    margin: 0;
+    padding: var(--space-6) var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    text-align: center;
+  }
+
+  .fleet-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: 0;
+    color: var(--status-starting);
+    font-size: var(--text-sm);
+  }
+
+  .fleet-warning > svg {
+    flex: none;
+    margin-top: 2px;
+  }
+
+  @media (max-width: 900px) {
+    .fleet-table [data-col="address"] {
+      display: none;
+    }
+  }
+
+  /* == machine cards ==================================================== */
+
+  .fleet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    align-items: start;
+  }
+
+  .fleet-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: var(--space-5);
+  }
+
+  .fleet-card[data-managed] {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+  }
+
+  .fleet-card-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .fleet-card-head > .tag {
+    margin-left: auto;
+  }
+
+  .fleet-lamp {
+    flex: none;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--text-faint);
+  }
+
+  .fleet-lamp[data-state="up"] {
+    background: var(--status-online);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-online) 22%, transparent);
+  }
+
+  .fleet-lamp[data-state="down"] {
+    background: var(--status-crashed);
+  }
+
+  .fleet-card-title {
+    margin: 0;
+    overflow: hidden;
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--text-heading);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .fleet-card-sub {
+    overflow: hidden;
+    color: var(--text-faint);
+    font-size: var(--text-xs);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .fleet-meters {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .fleet-facts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-3) 0 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .fleet-facts dt {
+    color: var(--text-faint);
+    font-size: var(--text-xs);
+  }
+
+  .fleet-facts dd {
+    margin: 2px 0 0;
+    color: var(--text-heading);
+    font-size: var(--text-sm);
+  }
+
+  .fleet-running {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .fleet-running button {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 6px var(--space-2);
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: var(--text-sm);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .fleet-running button:hover {
+    background: var(--quiet-hover);
+  }
+
+  .fleet-running-name {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .fleet-running-meta {
+    color: var(--text-faint);
+    font-size: var(--text-xs);
+  }
+
+  .fleet-card-foot {
+    display: flex;
+    justify-content: flex-end;
+  }
+}

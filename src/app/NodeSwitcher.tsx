@@ -91,6 +91,37 @@ export function NodeSwitcher() {
             />
           ))}
           <div className="node-switcher-sep" role="separator" />
+          {/* Every machine at once: all their servers in one list, and each
+              machine's load. Only worth offering once there is another. */}
+          {nodes.length ? (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                className="node-switcher-item node-switcher-add"
+                onClick={() => {
+                  setOpen(false);
+                  window.location.hash = "#/machines?view=servers";
+                }}
+              >
+                <Icon name="servers" size={14} />
+                <span>{t("fleet.menuAllServers")}</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="node-switcher-item node-switcher-add"
+                onClick={() => {
+                  setOpen(false);
+                  window.location.hash = "#/machines?view=machines";
+                }}
+              >
+                <Icon name="activity" size={14} />
+                <span>{t("fleet.menuMachines")}</span>
+              </button>
+              <div className="node-switcher-sep" role="separator" />
+            </>
+          ) : null}
           <button
             type="button"
             role="menuitem"

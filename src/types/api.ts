@@ -209,6 +209,10 @@ export interface NodeHealth {
   disk_total_gb: number;
   lan_address?: string | null;
   instances_running: number;
+  /** Seconds since the machine booted (missing from older nodes). */
+  uptime_seconds?: number;
+  os?: string;
+  cpu_count?: number;
 }
 
 export interface Requirement {

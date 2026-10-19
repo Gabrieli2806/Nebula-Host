@@ -92,6 +92,15 @@ pub struct NodeHealth {
     /// LAN address other machines can reach this node on.
     pub lan_address: Option<String>,
     pub instances_running: u32,
+    /// Seconds since the machine itself booted.
+    #[serde(default)]
+    pub uptime_seconds: u64,
+    /// Operating system, e.g. "Windows 11 Pro" or "Ubuntu 26.04".
+    #[serde(default)]
+    pub os: String,
+    /// Logical CPUs.
+    #[serde(default)]
+    pub cpu_count: usize,
 }
 
 // ---------------------------------------------------------------------------

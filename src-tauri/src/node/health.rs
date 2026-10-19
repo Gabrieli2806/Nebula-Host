@@ -71,6 +71,9 @@ pub fn sample(instances_running: u32) -> NodeHealth {
         disk_total_gb: disk_total / 1024 / 1024 / 1024,
         lan_address: lan::primary_address().map(|addr| addr.to_string()),
         instances_running,
+        uptime_seconds: System::uptime(),
+        os: System::long_os_version().or_else(System::name).unwrap_or_default(),
+        cpu_count: system.cpus().len(),
     }
 }
 
