@@ -50,6 +50,9 @@ pub fn java_processes() -> Vec<(Found, PathBuf)> {
         .processes()
         .iter()
         .filter(|(_, process)| process.name().to_string_lossy().to_lowercase().starts_with("java"))
+        // On Linux every thread is listed beside its process; only the
+        // process itself has a pid a signal and a wait can use.
+        .filter(|(_, process)| process.thread_kind().is_none())
         .filter_map(|(pid, process)| {
             let cwd = process.cwd()?.to_path_buf();
             let started_at = Utc.timestamp_opt(process.start_time() as i64, 0).single()?;
