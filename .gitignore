@@ -30,3 +30,8 @@ dist-android/
 .cache/
 src-tauri/gen/android/app/src/main/assets/jre-*/
 src-tauri/gen/android/app/src/main/jniLibs/
+
+# Gradle caches and local assistant settings
+.gradle/
+**/.gradle/
+.claude/
