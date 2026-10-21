@@ -2,7 +2,7 @@ import { useId, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/i18n";
 import { launcherApi, toAppError } from "@/lib/ipc";
-import { Button, Dialog, ErrorNotice, LoaderIcon } from "@/ui";
+import { Button, Dialog, ErrorNotice, LoaderIcon, Select, TextInput } from "@/ui";
 import type { Loader, LauncherProfile } from "./types";
 import { LOADERS, loaderInfo } from "./loaderOptions";
 
@@ -27,12 +27,12 @@ export function CreateInstanceDialog({ onClose, onCreated }: { onClose: () => vo
   }});
   return <Dialog open onClose={onClose} title={t("launcher.newInstance")} width={700} dismissable={!create.isPending}
     header={<p className="launcher-muted">{t("launcher.createIntro")}</p>}
-    footer={<><Button onClick={onClose} disabled={create.isPending}>{t("launcher.cancel")}</Button><Button form={formId} type="submit" variant="primary" icon="plus" disabled={create.isPending || !loaderReady || !selected || !available.some(v => v.id === selected)}>{t(create.isPending ? "launcher.saving" : "launcher.createInstance")}</Button></>}>
-    <form id={formId} className="launcher launcher-create" onSubmit={e => { e.preventDefault(); if (loaderReady) create.mutate({ name: name.trim() || suggestedName, game_version: selected, loader, memory_mb: memory }); }}>
+    footer={<><Button variant="quiet" onClick={onClose} disabled={create.isPending}>{t("launcher.cancel")}</Button><Button form={formId} type="submit" variant="primary" icon="plus" disabled={create.isPending || !loaderReady || !selected || !available.some(v => v.id === selected)}>{t(create.isPending ? "launcher.saving" : "launcher.createInstance")}</Button></>}>
+    <form id={formId} className="launcher-create" onSubmit={e => { e.preventDefault(); if (loaderReady) create.mutate({ name: name.trim() || suggestedName, game_version: selected, loader, memory_mb: memory }); }}>
       <section className="launcher-create-section">
         <h3><span className="launcher-step">1</span>{t("launcher.chooseVersion")}</h3>
         <div className="launcher-version-fields">
-          <label>{t("launcher.version")}<select value={selected} disabled={!available.length || create.isPending} onChange={e => setVersion(e.target.value)}>{available.map(v => <option key={v.id}>{v.id}</option>)}</select></label>
+          <label className="launcher-field"><span className="label">{t("launcher.version")}</span><Select value={selected} disabled={!available.length || create.isPending} onChange={e => setVersion(e.target.value)}>{available.map(v => <option key={v.id}>{v.id}</option>)}</Select></label>
         </div>
         {versions.isPending ? <p role="status">{t("launcher.loading")}</p> : null}
         {versions.error ? <><ErrorNotice error={toAppError(versions.error)} /><Button onClick={() => void versions.refetch()}>{t("launcher.retry")}</Button></> : null}
@@ -48,8 +48,8 @@ export function CreateInstanceDialog({ onClose, onCreated }: { onClose: () => vo
       </fieldset>
       <section className="launcher-create-section">
         <h3><span className="launcher-step">3</span>{t("launcher.instanceDetails")}</h3>
-        <label>{t("launcher.instanceName")}<input maxLength={64} value={name} onChange={e => setName(e.target.value)} placeholder={suggestedName} disabled={create.isPending} /></label>
-        <details className="launcher-advanced"><summary>{t("launcher.advancedSettings")}</summary><label>{t("launcher.memory")}<input type="number" required min={512} max={32768} step={256} value={memory} onChange={e => setMemory(e.target.valueAsNumber)} /></label></details>
+        <label className="launcher-field"><span className="label">{t("launcher.instanceName")}</span><TextInput maxLength={64} value={name} onChange={e => setName(e.target.value)} placeholder={suggestedName} disabled={create.isPending} /></label>
+        <details className="launcher-advanced"><summary>{t("launcher.advancedSettings")}</summary><label><span className="label">{t("launcher.memory")}</span><TextInput type="number" required min={512} max={32768} step={256} value={memory} onChange={e => setMemory(e.target.valueAsNumber)} /></label></details>
         <div className="launcher-create-summary"><LoaderIcon glyph={loaderInfo(loader).glyph} size={22} /><div><strong>{name.trim() || suggestedName}</strong><p>{selected} · {loaderInfo(loader).name} · {memory / 1024} GB RAM</p></div></div>
         <p className="launcher-muted">{t("launcher.creationNote")}</p>
       </section>

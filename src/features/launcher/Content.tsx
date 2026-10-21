@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/i18n";
 import { launcherApi, toAppError } from "@/lib/ipc";
 import { formatBytes } from "@/lib/format";
-import { Button, ErrorNotice } from "@/ui";
+import { Button, ErrorNotice, Segmented } from "@/ui";
 import type { ContentKind, InstalledContent, LauncherProfile } from "./types";
 
 const KINDS: { id: Exclude<ContentKind, "modpack">; label: string }[] = [
@@ -40,12 +40,10 @@ export function InstanceContent({ profile, onBrowse }: { profile: LauncherProfil
 
   return <section className="launcher-content" aria-label={t("launcher.content")}>
     <div className="launcher-content-head">
-      <h3>{t("launcher.content")}</h3>
+      <h3 className="label">{t("launcher.content")}</h3>
       <Button size="sm" variant="primary" icon="plus" disabled={noLoader} title={noLoader ? t("launcher.vanillaNoMods") : undefined} onClick={() => onBrowse(kind)}>{t("launcher.addFromModrinth")}</Button>
     </div>
-    <div className="launcher-content-tabs" role="tablist">
-      {KINDS.map(item => <button key={item.id} type="button" role="tab" aria-selected={kind === item.id} className="launcher-content-tab" onClick={() => setKind(item.id)}>{t(item.label)} <span>{counts(item.id)}</span></button>)}
-    </div>
+    <Segmented<Exclude<ContentKind, "modpack">> size="sm" label={t("launcher.content")} value={kind} onChange={setKind} options={KINDS.map(item => ({ id: item.id, label: `${t(item.label)} ${counts(item.id)}` }))} />
     {noLoader ? <p className="launcher-muted">{t("launcher.vanillaNoMods")}</p> : null}
     {list.isPending ? <p role="status">{t("launcher.loading")}</p> : null}
     {failure ? <ErrorNotice error={toAppError(failure)} compact /> : null}
