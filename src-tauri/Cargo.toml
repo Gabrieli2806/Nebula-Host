@@ -44,7 +44,7 @@ tauri-plugin-single-instance = { version = "2", optional = true }
 nebula-downloader = { path = "../crates/nebula-downloader" }
 
 async-trait = "0.1"
-base64 = "0.22"
+base64 = "0.23"
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 chrono = { workspace = true }
 dirs = "6"
