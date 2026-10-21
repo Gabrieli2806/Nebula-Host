@@ -2,6 +2,9 @@
 //! and never exposed through the remote-node dispatch surface.
 pub mod auth;
 pub mod client;
+pub mod loaders;
+#[cfg(all(target_os = "android", feature = "desktop"))]
+pub mod android;
 
 use crate::{
     error::{AppError, AppResult, ErrorCode},
@@ -19,6 +22,8 @@ pub struct Profile {
     pub game_version: String,
     pub loader: Loader,
     pub memory_mb: u32,
+    #[serde(default)]
+    pub loader_version: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -108,6 +113,10 @@ pub async fn create(input: CreateProfile) -> AppResult<Profile> {
     if !manifest.iter().any(|v| v.id == input.game_version) {
         return Err(AppError::new(ErrorCode::VersionNotFound));
     }
+    let loader_version = if matches!(input.loader, Loader::Vanilla | Loader::Quilt) { None } else {
+        Some(loaders::versions(&input.loader, &input.game_version).await?.into_iter().next()
+            .ok_or_else(|| AppError::new(ErrorCode::VersionNotFound).with("version", &input.game_version))?)
+    };
     let _guard = STORE_LOCK.get_or_init(Default::default).lock().await;
     let mut profiles = read_profiles()?;
     let profile = Profile {
@@ -116,6 +125,7 @@ pub async fn create(input: CreateProfile) -> AppResult<Profile> {
         game_version: input.game_version,
         loader: input.loader,
         memory_mb: input.memory_mb,
+        loader_version,
     };
     profiles.push(profile.clone());
     save_profiles(&profiles)?;

@@ -85,6 +85,11 @@ pub async fn launcher_remove(id: uuid::Uuid) -> AppResult<()> {
 pub async fn launcher_versions() -> AppResult<Vec<GameVersion>> {
     launcher::versions().await
 }
+
+#[tauri::command]
+pub async fn launcher_loader_versions(loader: launcher::Loader, game_version: String) -> AppResult<Vec<String>> {
+    launcher::loaders::versions(&loader, &game_version).await
+}
 #[tauri::command]
 pub async fn launcher_search(
     query: String,

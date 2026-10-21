@@ -78,7 +78,7 @@
 .launcher-create-section h3, .launcher-create-section legend { font-weight: 650; font-size: 14px; }
 .launcher-create-section legend { margin-bottom: 14px; }
 .launcher-step { display: inline-grid; place-items: center; width: 23px; height: 23px; font-size: 11px; color: var(--accent-base); border: 1px solid var(--line-strong); border-radius: 7px; margin-right: 9px; }
-.launcher-version-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.launcher-version-fields { display: grid; grid-template-columns: 1fr; gap: 12px; }
 .launcher-loader-options { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .launcher .launcher-loader-option { position: relative; display: flex; align-items: center; flex-direction: column; justify-content: center; gap: 8px; padding: 17px 5px; border: 1px solid var(--line-strong); background: var(--surface-sunken); border-radius: 11px; cursor: pointer; text-align: center; min-width: 0; }
 .launcher-loader-option input { position: absolute; width: 1px; height: 1px; opacity: 0; }

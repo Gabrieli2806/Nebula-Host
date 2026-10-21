@@ -18,22 +18,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(|v| !v.starts_with('-'))
         .cloned()
         .unwrap_or_else(|| "1.21.4".into());
+    let loader = match args.iter().position(|a| a == "--loader").and_then(|i| args.get(i + 1)).map(String::as_str).unwrap_or("vanilla") {
+        "vanilla" => Loader::Vanilla, "fabric" => Loader::Fabric, "forge" => Loader::Forge, "neoforge" => Loader::Neoforge,
+        _ => return Err("Unsupported loader".into()),
+    };
+    let loader_name = format!("{loader:?}");
     let input = nebula_host_lib::launcher::CreateProfile {
         name: "Desktop demo test".into(),
         game_version: version.clone(),
-        loader: Loader::Vanilla,
+        loader: loader.clone(),
         memory_mb: 2048,
     };
     nebula_host_lib::launcher::validate_profile(&input)?;
     let id = uuid::Uuid::new_v3(
         &uuid::Uuid::NAMESPACE_OID,
-        format!("nebula-demo-{version}").as_bytes(),
+        format!("nebula-demo-{version}-{loader_name}").as_bytes(),
     );
     let profile = Profile {
+        loader_version: None,
         id,
         name: input.name,
         game_version: version,
-        loader: Loader::Vanilla,
+        loader,
         memory_mb: 2048,
     };
     let engine = Arc::new(ClientEngine::default());

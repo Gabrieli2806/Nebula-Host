@@ -1,0 +1,1041 @@
+Initialized native services in: C:\Users\gabri\.gradle\native
+Initialized jansi services in: C:\Users\gabri\.gradle\native
+The client will now receive all logging from the daemon (pid: 31288). The daemon log file: C:\Users\gabri\.gradle\daemon\8.14.3\daemon-31288.out.log
+Starting 3rd build in daemon [uptime: 1 mins 0.439 secs, performance: 100%, GC rate: 0.00/s, heap usage: 0% of 2 GiB]
+Using 24 worker leases.
+Now considering [C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\buildSrc] as hierarchies to watch
+Now considering [C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\buildSrc, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android] as hierarchies to watch
+Watching the file system is configured to be enabled if available
+File system watching is active
+Starting Build
+Settings evaluated using settings file 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\settings.gradle'.
+Projects loaded. Root project using build file 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\build.gradle.kts'.
+Included projects: [root project 'android', project ':app', project ':tauri-android', project ':tauri-plugin-dialog', project ':tauri-plugin-opener']
+
+> Configure project :buildSrc
+Evaluating project ':buildSrc' using build file 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\buildSrc\build.gradle.kts'.
+Resolved plugin [id: 'org.gradle.kotlin.kotlin-dsl', version: '5.2.0']
+Using Kotlin Gradle Plugin gradle85 variant
+kotlin scripting plugin: created the scripting discovery configuration: kotlinScriptDef
+kotlin scripting plugin: created the scripting discovery configuration: testKotlinScriptDef
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\buildSrc\src\main\kotlin', not found
+Resolve mutations for :buildSrc:checkKotlinGradlePluginConfigurationErrors (Thread[#754,Execution worker,5,main]) started.
+:buildSrc:checkKotlinGradlePluginConfigurationErrors (Thread[#754,Execution worker,5,main]) started.
+
+> Task :buildSrc:checkKotlinGradlePluginConfigurationErrors SKIPPED
+Skipping task ':buildSrc:checkKotlinGradlePluginConfigurationErrors' as task onlyIf 'errorDiagnostics are present' is false.
+Resolve mutations for :buildSrc:compileKotlin (Thread[#754,Execution worker,5,main]) started.
+:buildSrc:compileKotlin (Thread[#754,Execution worker,5,main]) started.
+
+> Task :buildSrc:compileKotlin UP-TO-DATE
+Caching disabled for task ':buildSrc:compileKotlin' because:
+  Build cache is disabled
+Skipping task ':buildSrc:compileKotlin' as it is up-to-date.
+Resolve mutations for :buildSrc:compileJava (Thread[#754,Execution worker,5,main]) started.
+:buildSrc:compileJava (Thread[#754,Execution worker,5,main]) started.
+
+> Task :buildSrc:compileJava NO-SOURCE
+Skipping task ':buildSrc:compileJava' as it has no source files and no previous output files.
+Resolve mutations for :buildSrc:compileGroovy (Thread[#754,Execution worker,5,main]) started.
+:buildSrc:compileGroovy (Thread[#754,Execution worker,5,main]) started.
+
+> Task :buildSrc:compileGroovy NO-SOURCE
+Skipping task ':buildSrc:compileGroovy' as it has no source files and no previous output files.
+Resolve mutations for :buildSrc:pluginDescriptors (Thread[#754,Execution worker,5,main]) started.
+:buildSrc:pluginDescriptors (Thread[#775,Execution worker Thread 21,5,main]) started.
+
+> Task :buildSrc:pluginDescriptors UP-TO-DATE
+Caching disabled for task ':buildSrc:pluginDescriptors' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':buildSrc:pluginDescriptors' as it is up-to-date.
+Resolve mutations for :buildSrc:processResources (Thread[#775,Execution worker Thread 21,5,main]) started.
+:buildSrc:processResources (Thread[#775,Execution worker Thread 21,5,main]) started.
+
+> Task :buildSrc:processResources UP-TO-DATE
+Caching disabled for task ':buildSrc:processResources' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':buildSrc:processResources' as it is up-to-date.
+Resolve mutations for :buildSrc:classes (Thread[#775,Execution worker Thread 21,5,main]) started.
+:buildSrc:classes (Thread[#757,Execution worker Thread 4,5,main]) started.
+
+> Task :buildSrc:classes UP-TO-DATE
+Skipping task ':buildSrc:classes' as it has no actions.
+Resolve mutations for :buildSrc:jar (Thread[#757,Execution worker Thread 4,5,main]) started.
+:buildSrc:jar (Thread[#757,Execution worker Thread 4,5,main]) started.
+
+> Task :buildSrc:jar UP-TO-DATE
+Caching disabled for task ':buildSrc:jar' because:
+  Build cache is disabled
+  Not worth caching
+Skipping task ':buildSrc:jar' as it is up-to-date.
+
+> Configure project :
+Evaluating root project 'android' using build file 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\build.gradle.kts'.
+
+> Configure project :app
+Evaluating project ':app' using build file 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build.gradle.kts'.
+Resolved plugin [id: 'com.android.application']
+Resolved plugin [id: 'org.jetbrains.kotlin.android']
+Resolved plugin [id: 'rust']
+Using default execution profile
+Using Kotlin Gradle Plugin gradle82 variant
+
+> Configure project :tauri-android
+Evaluating project ':tauri-android' using build file 'C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build.gradle.kts'.
+Resolved plugin [id: 'com.android.library']
+Resolved plugin [id: 'org.jetbrains.kotlin.android']
+Using default execution profile
+Using Kotlin Gradle Plugin gradle82 variant
+
+> Configure project :tauri-plugin-dialog
+Evaluating project ':tauri-plugin-dialog' using build file 'C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\build.gradle.kts'.
+Resolved plugin [id: 'com.android.library']
+Resolved plugin [id: 'org.jetbrains.kotlin.android']
+Using default execution profile
+Using Kotlin Gradle Plugin gradle82 variant
+
+> Configure project :tauri-plugin-opener
+Evaluating project ':tauri-plugin-opener' using build file 'C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-opener-2.5.4\android\build.gradle.kts'.
+Resolved plugin [id: 'com.android.library']
+Resolved plugin [id: 'org.jetbrains.kotlin.android']
+Using default execution profile
+Using Kotlin Gradle Plugin gradle82 variant
+All projects evaluated.
+Task name matched 'assembleDebug'
+Selected primary task 'assembleDebug' from project :
+Tasks to be executed: [task ':app:buildNebulaLauncher', task ':app:preBuild', task ':app:preArm64DebugBuild', task ':app:mergeArm64DebugNativeDebugMetadata', task ':app:checkKotlinGradlePluginConfigurationErrors', task ':app:generateArm64DebugBuildConfig', task ':tauri-android:preBuild', task ':tauri-android:preDebugBuild', task ':tauri-android:writeDebugAarMetadata', task ':tauri-plugin-dialog:preBuild', task ':tauri-plugin-dialog:preDebugBuild', task ':tauri-plugin-dialog:writeDebugAarMetadata', task ':tauri-plugin-opener:preBuild', task ':tauri-plugin-opener:preDebugBuild', task ':tauri-plugin-opener:writeDebugAarMetadata', task ':app:checkArm64DebugAarMetadata', task ':app:generateArm64DebugResValues', task ':tauri-android:generateDebugResValues', task ':tauri-android:generateDebugResources', task ':tauri-android:packageDebugResources', task ':tauri-plugin-dialog:generateDebugResValues', task ':tauri-plugin-dialog:generateDebugResources', task ':tauri-plugin-dialog:packageDebugResources', task ':tauri-plugin-opener:generateDebugResValues', task ':tauri-plugin-opener:generateDebugResources', task ':tauri-plugin-opener:packageDebugResources', task ':app:mapArm64DebugSourceSetPaths', task ':app:generateArm64DebugResources', task ':app:mergeArm64DebugResources', task ':app:packageArm64DebugResources', task ':app:parseArm64DebugLocalResources', task ':app:createArm64DebugCompatibleScreenManifests', task ':app:extractDeepLinksArm64Debug', task ':tauri-android:extractDeepLinksDebug', task ':tauri-android:processDebugManifest', task ':tauri-plugin-dialog:extractDeepLinksDebug', task ':tauri-plugin-dialog:processDebugManifest', task ':tauri-plugin-opener:extractDeepLinksDebug', task ':tauri-plugin-opener:processDebugManifest', task ':app:processArm64DebugMainManifest', task ':app:processArm64DebugManifest', task ':app:processArm64DebugManifestForPackage', task ':tauri-android:compileDebugLibraryResources', task ':tauri-android:parseDebugLocalResources', task ':tauri-android:generateDebugRFile', task ':tauri-plugin-dialog:compileDebugLibraryResources', task ':tauri-plugin-dialog:parseDebugLocalResources', task ':tauri-plugin-dialog:generateDebugRFile', task ':tauri-plugin-opener:compileDebugLibraryResources', task ':tauri-plugin-opener:parseDebugLocalResources', task ':tauri-plugin-opener:generateDebugRFile', task ':app:processArm64DebugResources', task ':tauri-android:checkKotlinGradlePluginConfigurationErrors', task ':tauri-android:generateDebugBuildConfig', task ':tauri-android:compileDebugKotlin', task ':tauri-android:javaPreCompileDebug', task ':tauri-android:compileDebugJavaWithJavac', task ':tauri-android:bundleLibCompileToJarDebug', task ':tauri-plugin-dialog:checkKotlinGradlePluginConfigurationErrors', task ':tauri-plugin-dialog:compileDebugKotlin', task ':tauri-plugin-dialog:javaPreCompileDebug', task ':tauri-plugin-dialog:compileDebugJavaWithJavac', task ':tauri-plugin-dialog:bundleLibCompileToJarDebug', task ':tauri-plugin-opener:checkKotlinGradlePluginConfigurationErrors', task ':tauri-plugin-opener:compileDebugKotlin', task ':tauri-plugin-opener:javaPreCompileDebug', task ':tauri-plugin-opener:compileDebugJavaWithJavac', task ':tauri-plugin-opener:bundleLibCompileToJarDebug', task ':app:compileArm64DebugKotlin', task ':app:javaPreCompileArm64Debug', task ':app:compileArm64DebugJavaWithJavac', task ':app:mergeArm64DebugShaders', task ':app:compileArm64DebugShaders', task ':app:generateArm64DebugAssets', task ':tauri-android:mergeDebugShaders', task ':tauri-android:compileDebugShaders', task ':tauri-android:generateDebugAssets', task ':tauri-android:mergeDebugAssets', task ':tauri-plugin-dialog:mergeDebugShaders', task ':tauri-plugin-dialog:compileDebugShaders', task ':tauri-plugin-dialog:generateDebugAssets', task ':tauri-plugin-dialog:mergeDebugAssets', task ':tauri-plugin-opener:mergeDebugShaders', task ':tauri-plugin-opener:compileDebugShaders', task ':tauri-plugin-opener:generateDebugAssets', task ':tauri-plugin-opener:mergeDebugAssets', task ':app:mergeArm64DebugAssets', task ':app:compressArm64DebugAssets', task ':app:processArm64DebugJavaRes', task ':tauri-android:processDebugJavaRes', task ':tauri-plugin-dialog:processDebugJavaRes', task ':tauri-plugin-opener:processDebugJavaRes', task ':app:mergeArm64DebugJavaResource', task ':app:checkArm64DebugDuplicateClasses', task ':app:desugarArm64DebugFileDependencies', task ':app:mergeExtDexArm64Debug', task ':tauri-plugin-dialog:bundleLibRuntimeToDirDebug', task ':tauri-plugin-opener:bundleLibRuntimeToDirDebug', task ':tauri-android:bundleLibRuntimeToDirDebug', task ':app:mergeLibDexArm64Debug', task ':app:dexBuilderArm64Debug', task ':app:mergeProjectDexArm64Debug', task ':app:rustBuildArm64Debug', task ':app:mergeArm64DebugJniLibFolders', task ':tauri-android:mergeDebugJniLibFolders', task ':tauri-android:mergeDebugNativeLibs', task ':tauri-android:copyDebugJniLibsProjectOnly', task ':tauri-plugin-dialog:mergeDebugJniLibFolders', task ':tauri-plugin-dialog:mergeDebugNativeLibs', task ':tauri-plugin-dialog:copyDebugJniLibsProjectOnly', task ':tauri-plugin-opener:mergeDebugJniLibFolders', task ':tauri-plugin-opener:mergeDebugNativeLibs', task ':tauri-plugin-opener:copyDebugJniLibsProjectOnly', task ':app:mergeArm64DebugNativeLibs', task ':app:stripArm64DebugDebugSymbols', task ':app:validateSigningArm64Debug', task ':app:writeArm64DebugAppMetadata', task ':app:writeArm64DebugSigningConfigVersions', task ':app:packageArm64Debug', task ':app:createArm64DebugApkListingFileRedirect', task ':app:assembleArm64Debug', task ':app:preArmDebugBuild', task ':app:mergeArmDebugNativeDebugMetadata', task ':app:generateArmDebugBuildConfig', task ':app:checkArmDebugAarMetadata', task ':app:generateArmDebugResValues', task ':app:mapArmDebugSourceSetPaths', task ':app:generateArmDebugResources', task ':app:mergeArmDebugResources', task ':app:packageArmDebugResources', task ':app:parseArmDebugLocalResources', task ':app:createArmDebugCompatibleScreenManifests', task ':app:extractDeepLinksArmDebug', task ':app:processArmDebugMainManifest', task ':app:processArmDebugManifest', task ':app:processArmDebugManifestForPackage', task ':app:processArmDebugResources', task ':app:compileArmDebugKotlin', task ':app:javaPreCompileArmDebug', task ':app:compileArmDebugJavaWithJavac', task ':app:mergeArmDebugShaders', task ':app:compileArmDebugShaders', task ':app:generateArmDebugAssets', task ':app:mergeArmDebugAssets', task ':app:compressArmDebugAssets', task ':app:processArmDebugJavaRes', task ':app:mergeArmDebugJavaResource', task ':app:checkArmDebugDuplicateClasses', task ':app:desugarArmDebugFileDependencies', task ':app:mergeExtDexArmDebug', task ':app:mergeLibDexArmDebug', task ':app:dexBuilderArmDebug', task ':app:mergeProjectDexArmDebug', task ':app:rustBuildArmDebug', task ':app:mergeArmDebugJniLibFolders', task ':app:mergeArmDebugNativeLibs', task ':app:stripArmDebugDebugSymbols', task ':app:validateSigningArmDebug', task ':app:writeArmDebugAppMetadata', task ':app:writeArmDebugSigningConfigVersions', task ':app:packageArmDebug', task ':app:createArmDebugApkListingFileRedirect', task ':app:assembleArmDebug', task ':app:preUniversalDebugBuild', task ':app:mergeUniversalDebugNativeDebugMetadata', task ':app:generateUniversalDebugBuildConfig', task ':app:checkUniversalDebugAarMetadata', task ':app:generateUniversalDebugResValues', task ':app:mapUniversalDebugSourceSetPaths', task ':app:generateUniversalDebugResources', task ':app:mergeUniversalDebugResources', task ':app:packageUniversalDebugResources', task ':app:parseUniversalDebugLocalResources', task ':app:createUniversalDebugCompatibleScreenManifests', task ':app:extractDeepLinksUniversalDebug', task ':app:processUniversalDebugMainManifest', task ':app:processUniversalDebugManifest', task ':app:processUniversalDebugManifestForPackage', task ':app:processUniversalDebugResources', task ':app:compileUniversalDebugKotlin', task ':app:javaPreCompileUniversalDebug', task ':app:compileUniversalDebugJavaWithJavac', task ':app:mergeUniversalDebugShaders', task ':app:compileUniversalDebugShaders', task ':app:generateUniversalDebugAssets', task ':app:mergeUniversalDebugAssets', task ':app:compressUniversalDebugAssets', task ':app:checkUniversalDebugDuplicateClasses', task ':app:desugarUniversalDebugFileDependencies', task ':app:mergeExtDexUniversalDebug', task ':app:mergeLibDexUniversalDebug', task ':app:dexBuilderUniversalDebug', task ':app:mergeProjectDexUniversalDebug', task ':app:processUniversalDebugJavaRes', task ':app:mergeUniversalDebugJavaResource', task ':app:rustBuildX86Debug', task ':app:rustBuildX86_64Debug', task ':app:rustBuildUniversalDebug', task ':app:mergeUniversalDebugJniLibFolders', task ':app:mergeUniversalDebugNativeLibs', task ':app:stripUniversalDebugDebugSymbols', task ':app:validateSigningUniversalDebug', task ':app:writeUniversalDebugAppMetadata', task ':app:writeUniversalDebugSigningConfigVersions', task ':app:packageUniversalDebug', task ':app:createUniversalDebugApkListingFileRedirect', task ':app:assembleUniversalDebug', task ':app:preX86DebugBuild', task ':app:mergeX86DebugNativeDebugMetadata', task ':app:generateX86DebugBuildConfig', task ':app:checkX86DebugAarMetadata', task ':app:generateX86DebugResValues', task ':app:mapX86DebugSourceSetPaths', task ':app:generateX86DebugResources', task ':app:mergeX86DebugResources', task ':app:packageX86DebugResources', task ':app:parseX86DebugLocalResources', task ':app:createX86DebugCompatibleScreenManifests', task ':app:extractDeepLinksX86Debug', task ':app:processX86DebugMainManifest', task ':app:processX86DebugManifest', task ':app:processX86DebugManifestForPackage', task ':app:processX86DebugResources', task ':app:compileX86DebugKotlin', task ':app:javaPreCompileX86Debug', task ':app:compileX86DebugJavaWithJavac', task ':app:mergeX86DebugShaders', task ':app:compileX86DebugShaders', task ':app:generateX86DebugAssets', task ':app:mergeX86DebugAssets', task ':app:compressX86DebugAssets', task ':app:checkX86DebugDuplicateClasses', task ':app:desugarX86DebugFileDependencies', task ':app:mergeExtDexX86Debug', task ':app:mergeLibDexX86Debug', task ':app:dexBuilderX86Debug', task ':app:mergeProjectDexX86Debug', task ':app:processX86DebugJavaRes', task ':app:mergeX86DebugJavaResource', task ':app:mergeX86DebugJniLibFolders', task ':app:mergeX86DebugNativeLibs', task ':app:stripX86DebugDebugSymbols', task ':app:validateSigningX86Debug', task ':app:writeX86DebugAppMetadata', task ':app:writeX86DebugSigningConfigVersions', task ':app:packageX86Debug', task ':app:createX86DebugApkListingFileRedirect', task ':app:assembleX86Debug', task ':app:preX86_64DebugBuild', task ':app:mergeX86_64DebugNativeDebugMetadata', task ':app:generateX86_64DebugBuildConfig', task ':app:checkX86_64DebugAarMetadata', task ':app:generateX86_64DebugResValues', task ':app:mapX86_64DebugSourceSetPaths', task ':app:generateX86_64DebugResources', task ':app:mergeX86_64DebugResources', task ':app:packageX86_64DebugResources', task ':app:parseX86_64DebugLocalResources', task ':app:createX86_64DebugCompatibleScreenManifests', task ':app:extractDeepLinksX86_64Debug', task ':app:processX86_64DebugMainManifest', task ':app:processX86_64DebugManifest', task ':app:processX86_64DebugManifestForPackage', task ':app:processX86_64DebugResources', task ':app:compileX86_64DebugKotlin', task ':app:javaPreCompileX86_64Debug', task ':app:compileX86_64DebugJavaWithJavac', task ':app:mergeX86_64DebugShaders', task ':app:compileX86_64DebugShaders', task ':app:generateX86_64DebugAssets', task ':app:mergeX86_64DebugAssets', task ':app:compressX86_64DebugAssets', task ':app:checkX86_64DebugDuplicateClasses', task ':app:desugarX86_64DebugFileDependencies', task ':app:mergeExtDexX86_64Debug', task ':app:mergeLibDexX86_64Debug', task ':app:dexBuilderX86_64Debug', task ':app:mergeProjectDexX86_64Debug', task ':app:processX86_64DebugJavaRes', task ':app:mergeX86_64DebugJavaResource', task ':app:mergeX86_64DebugJniLibFolders', task ':app:mergeX86_64DebugNativeLibs', task ':app:stripX86_64DebugDebugSymbols', task ':app:validateSigningX86_64Debug', task ':app:writeX86_64DebugAppMetadata', task ':app:writeX86_64DebugSigningConfigVersions', task ':app:packageX86_64Debug', task ':app:createX86_64DebugApkListingFileRedirect', task ':app:assembleX86_64Debug', task ':app:assembleDebug', task ':tauri-android:stripDebugDebugSymbols', task ':tauri-android:copyDebugJniLibsProjectAndLocalJars', task ':tauri-android:extractDebugAnnotations', task ':tauri-android:extractDeepLinksForAarDebug', task ':tauri-android:mergeDebugGeneratedProguardFiles', task ':tauri-android:mergeDebugConsumerProguardFiles', task ':tauri-android:prepareDebugArtProfile', task ':tauri-android:prepareLintJarForPublish', task ':tauri-android:mergeDebugJavaResource', task ':tauri-android:syncDebugLibJars', task ':tauri-android:bundleDebugAar', task ':tauri-android:assembleDebug', task ':tauri-plugin-dialog:stripDebugDebugSymbols', task ':tauri-plugin-dialog:copyDebugJniLibsProjectAndLocalJars', task ':tauri-plugin-dialog:extractDebugAnnotations', task ':tauri-plugin-dialog:extractDeepLinksForAarDebug', task ':tauri-plugin-dialog:mergeDebugGeneratedProguardFiles', task ':tauri-plugin-dialog:mergeDebugConsumerProguardFiles', task ':tauri-plugin-dialog:prepareDebugArtProfile', task ':tauri-plugin-dialog:prepareLintJarForPublish', task ':tauri-plugin-dialog:mergeDebugJavaResource', task ':tauri-plugin-dialog:syncDebugLibJars', task ':tauri-plugin-dialog:bundleDebugAar', task ':tauri-plugin-dialog:assembleDebug', task ':tauri-plugin-opener:stripDebugDebugSymbols', task ':tauri-plugin-opener:copyDebugJniLibsProjectAndLocalJars', task ':tauri-plugin-opener:extractDebugAnnotations', task ':tauri-plugin-opener:extractDeepLinksForAarDebug', task ':tauri-plugin-opener:mergeDebugGeneratedProguardFiles', task ':tauri-plugin-opener:mergeDebugConsumerProguardFiles', task ':tauri-plugin-opener:prepareDebugArtProfile', task ':tauri-plugin-opener:prepareLintJarForPublish', task ':tauri-plugin-opener:mergeDebugJavaResource', task ':tauri-plugin-opener:syncDebugLibJars', task ':tauri-plugin-opener:bundleDebugAar', task ':tauri-plugin-opener:assembleDebug']
+Tasks that were excluded: []
+work action Parameters of ClassesDirToClassesTransform (Thread[#766,Execution worker Thread 13,5,main]) started.
+work action Parameters of DexingNoClasspathTransform (Thread[#766,Execution worker Thread 13,5,main]) started.
+Resolve mutations for :app:buildNebulaLauncher (Thread[#766,Execution worker Thread 13,5,main]) started.
+:app:buildNebulaLauncher (Thread[#766,Execution worker Thread 13,5,main]) started.
+
+> Task :app:buildNebulaLauncher UP-TO-DATE
+Custom actions are attached to task ':app:buildNebulaLauncher'.
+Caching disabled for task ':app:buildNebulaLauncher' because:
+  Build cache is disabled
+  Gradle would require more information to cache this task
+Skipping task ':app:buildNebulaLauncher' as it is up-to-date.
+Resolve mutations for :app:preBuild (Thread[#766,Execution worker Thread 13,5,main]) started.
+:app:preBuild (Thread[#776,Execution worker Thread 22,5,main]) started.
+
+> Task :app:preBuild UP-TO-DATE
+Skipping task ':app:preBuild' as it has no actions.
+Resolve mutations for :app:preArm64DebugBuild (Thread[#766,Execution worker Thread 13,5,main]) started.
+:app:preArm64DebugBuild (Thread[#766,Execution worker Thread 13,5,main]) started.
+
+> Task :app:preArm64DebugBuild UP-TO-DATE
+Skipping task ':app:preArm64DebugBuild' as it has no actions.
+Resolve mutations for :app:mergeArm64DebugNativeDebugMetadata (Thread[#766,Execution worker Thread 13,5,main]) started.
+:app:mergeArm64DebugNativeDebugMetadata (Thread[#766,Execution worker Thread 13,5,main]) started.
+
+> Task :app:mergeArm64DebugNativeDebugMetadata NO-SOURCE
+Skipping task ':app:mergeArm64DebugNativeDebugMetadata' as it has no source files and no previous output files.
+Resolve mutations for :app:checkKotlinGradlePluginConfigurationErrors (Thread[#766,Execution worker Thread 13,5,main]) started.
+:app:checkKotlinGradlePluginConfigurationErrors (Thread[#766,Execution worker Thread 13,5,main]) started.
+
+> Task :app:checkKotlinGradlePluginConfigurationErrors
+Caching disabled for task ':app:checkKotlinGradlePluginConfigurationErrors' because:
+  Build cache is disabled
+Task ':app:checkKotlinGradlePluginConfigurationErrors' is not up-to-date because:
+  Task has not declared any outputs despite executing actions.
+Resolve mutations for :app:generateArm64DebugBuildConfig (Thread[#766,Execution worker Thread 13,5,main]) started.
+:app:generateArm64DebugBuildConfig (Thread[#766,Execution worker Thread 13,5,main]) started.
+
+> Task :app:generateArm64DebugBuildConfig UP-TO-DATE
+Caching disabled for task ':app:generateArm64DebugBuildConfig' because:
+  Build cache is disabled
+Skipping task ':app:generateArm64DebugBuildConfig' as it is up-to-date.
+Resolve mutations for :tauri-android:preBuild (Thread[#766,Execution worker Thread 13,5,main]) started.
+:tauri-android:preBuild (Thread[#766,Execution worker Thread 13,5,main]) started.
+
+> Task :tauri-android:preBuild UP-TO-DATE
+Skipping task ':tauri-android:preBuild' as it has no actions.
+Resolve mutations for :tauri-android:preDebugBuild (Thread[#766,Execution worker Thread 13,5,main]) started.
+:tauri-android:preDebugBuild (Thread[#766,Execution worker Thread 13,5,main]) started.
+
+> Task :tauri-android:preDebugBuild UP-TO-DATE
+Skipping task ':tauri-android:preDebugBuild' as it has no actions.
+Resolve mutations for :tauri-android:writeDebugAarMetadata (Thread[#766,Execution worker Thread 13,5,main]) started.
+:tauri-android:writeDebugAarMetadata (Thread[#766,Execution worker Thread 13,5,main]) started.
+
+> Task :tauri-android:writeDebugAarMetadata UP-TO-DATE
+Caching disabled for task ':tauri-android:writeDebugAarMetadata' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Skipping task ':tauri-android:writeDebugAarMetadata' as it is up-to-date.
+work action resolve aar-metadata.properties (project :tauri-android) (Thread[#766,Execution worker Thread 13,5,main]) started.
+Resolve mutations for :tauri-plugin-dialog:preBuild (Thread[#766,Execution worker Thread 13,5,main]) started.
+:tauri-plugin-dialog:preBuild (Thread[#759,Execution worker Thread 6,5,main]) started.
+
+> Task :tauri-plugin-dialog:preBuild UP-TO-DATE
+Skipping task ':tauri-plugin-dialog:preBuild' as it has no actions.
+Resolve mutations for :tauri-plugin-dialog:preDebugBuild (Thread[#759,Execution worker Thread 6,5,main]) started.
+:tauri-plugin-dialog:preDebugBuild (Thread[#759,Execution worker Thread 6,5,main]) started.
+
+> Task :tauri-plugin-dialog:preDebugBuild UP-TO-DATE
+Skipping task ':tauri-plugin-dialog:preDebugBuild' as it has no actions.
+Resolve mutations for :tauri-plugin-dialog:writeDebugAarMetadata (Thread[#759,Execution worker Thread 6,5,main]) started.
+:tauri-plugin-dialog:writeDebugAarMetadata (Thread[#759,Execution worker Thread 6,5,main]) started.
+
+> Task :tauri-plugin-dialog:writeDebugAarMetadata UP-TO-DATE
+Caching disabled for task ':tauri-plugin-dialog:writeDebugAarMetadata' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Skipping task ':tauri-plugin-dialog:writeDebugAarMetadata' as it is up-to-date.
+work action resolve aar-metadata.properties (project :tauri-plugin-dialog) (Thread[#759,Execution worker Thread 6,5,main]) started.
+Resolve mutations for :tauri-plugin-opener:preBuild (Thread[#759,Execution worker Thread 6,5,main]) started.
+:tauri-plugin-opener:preBuild (Thread[#759,Execution worker Thread 6,5,main]) started.
+
+> Task :tauri-plugin-opener:preBuild UP-TO-DATE
+Skipping task ':tauri-plugin-opener:preBuild' as it has no actions.
+Resolve mutations for :tauri-plugin-opener:preDebugBuild (Thread[#759,Execution worker Thread 6,5,main]) started.
+:tauri-plugin-opener:preDebugBuild (Thread[#753,included builds,5,main]) started.
+
+> Task :tauri-plugin-opener:preDebugBuild UP-TO-DATE
+Skipping task ':tauri-plugin-opener:preDebugBuild' as it has no actions.
+Resolve mutations for :tauri-plugin-opener:writeDebugAarMetadata (Thread[#753,included builds,5,main]) started.
+:tauri-plugin-opener:writeDebugAarMetadata (Thread[#775,Execution worker Thread 21,5,main]) started.
+
+> Task :tauri-plugin-opener:writeDebugAarMetadata UP-TO-DATE
+Caching disabled for task ':tauri-plugin-opener:writeDebugAarMetadata' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Skipping task ':tauri-plugin-opener:writeDebugAarMetadata' as it is up-to-date.
+work action resolve aar-metadata.properties (project :tauri-plugin-opener) (Thread[#775,Execution worker Thread 21,5,main]) started.
+Resolve mutations for :app:checkArm64DebugAarMetadata (Thread[#775,Execution worker Thread 21,5,main]) started.
+:app:checkArm64DebugAarMetadata (Thread[#775,Execution worker Thread 21,5,main]) started.
+
+> Task :app:checkArm64DebugAarMetadata UP-TO-DATE
+Caching disabled for task ':app:checkArm64DebugAarMetadata' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Skipping task ':app:checkArm64DebugAarMetadata' as it is up-to-date.
+Resolve mutations for :app:generateArm64DebugResValues (Thread[#770,Execution worker Thread 16,5,main]) started.
+:app:generateArm64DebugResValues (Thread[#775,Execution worker Thread 21,5,main]) started.
+
+> Task :app:generateArm64DebugResValues UP-TO-DATE
+Caching disabled for task ':app:generateArm64DebugResValues' because:
+  Build cache is disabled
+Skipping task ':app:generateArm64DebugResValues' as it is up-to-date.
+Resolve mutations for :tauri-android:generateDebugResValues (Thread[#775,Execution worker Thread 21,5,main]) started.
+:tauri-android:generateDebugResValues (Thread[#756,Execution worker Thread 3,5,main]) started.
+
+> Task :tauri-android:generateDebugResValues UP-TO-DATE
+Caching disabled for task ':tauri-android:generateDebugResValues' because:
+  Build cache is disabled
+Skipping task ':tauri-android:generateDebugResValues' as it is up-to-date.
+Resolve mutations for :tauri-android:generateDebugResources (Thread[#756,Execution worker Thread 3,5,main]) started.
+:tauri-android:generateDebugResources (Thread[#756,Execution worker Thread 3,5,main]) started.
+
+> Task :tauri-android:generateDebugResources UP-TO-DATE
+Caching disabled for task ':tauri-android:generateDebugResources' because:
+  Build cache is disabled
+Skipping task ':tauri-android:generateDebugResources' as it is up-to-date.
+Resolve mutations for :tauri-android:packageDebugResources (Thread[#756,Execution worker Thread 3,5,main]) started.
+:tauri-android:packageDebugResources (Thread[#756,Execution worker Thread 3,5,main]) started.
+
+> Task :tauri-android:packageDebugResources UP-TO-DATE
+Caching disabled for task ':tauri-android:packageDebugResources' because:
+  Build cache is disabled
+Skipping task ':tauri-android:packageDebugResources' as it is up-to-date.
+work action resolve packageDebugResources (project :tauri-android) (Thread[#756,Execution worker Thread 3,5,main]) started.
+Resolve mutations for :tauri-plugin-dialog:generateDebugResValues (Thread[#756,Execution worker Thread 3,5,main]) started.
+:tauri-plugin-dialog:generateDebugResValues (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :tauri-plugin-dialog:generateDebugResValues UP-TO-DATE
+Caching disabled for task ':tauri-plugin-dialog:generateDebugResValues' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-dialog:generateDebugResValues' as it is up-to-date.
+Resolve mutations for :tauri-plugin-dialog:generateDebugResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+:tauri-plugin-dialog:generateDebugResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :tauri-plugin-dialog:generateDebugResources UP-TO-DATE
+Caching disabled for task ':tauri-plugin-dialog:generateDebugResources' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-dialog:generateDebugResources' as it is up-to-date.
+Resolve mutations for :tauri-plugin-dialog:packageDebugResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+:tauri-plugin-dialog:packageDebugResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :tauri-plugin-dialog:packageDebugResources UP-TO-DATE
+Caching disabled for task ':tauri-plugin-dialog:packageDebugResources' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-dialog:packageDebugResources' as it is up-to-date.
+work action resolve packageDebugResources (project :tauri-plugin-dialog) (Thread[#755,Execution worker Thread 2,5,main]) started.
+Resolve mutations for :tauri-plugin-opener:generateDebugResValues (Thread[#755,Execution worker Thread 2,5,main]) started.
+:tauri-plugin-opener:generateDebugResValues (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :tauri-plugin-opener:generateDebugResValues UP-TO-DATE
+Caching disabled for task ':tauri-plugin-opener:generateDebugResValues' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-opener:generateDebugResValues' as it is up-to-date.
+Resolve mutations for :tauri-plugin-opener:generateDebugResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+:tauri-plugin-opener:generateDebugResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :tauri-plugin-opener:generateDebugResources UP-TO-DATE
+Caching disabled for task ':tauri-plugin-opener:generateDebugResources' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-opener:generateDebugResources' as it is up-to-date.
+Resolve mutations for :tauri-plugin-opener:packageDebugResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+:tauri-plugin-opener:packageDebugResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :tauri-plugin-opener:packageDebugResources UP-TO-DATE
+Caching disabled for task ':tauri-plugin-opener:packageDebugResources' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-opener:packageDebugResources' as it is up-to-date.
+work action resolve packageDebugResources (project :tauri-plugin-opener) (Thread[#755,Execution worker Thread 2,5,main]) started.
+Resolve mutations for :app:mapArm64DebugSourceSetPaths (Thread[#755,Execution worker Thread 2,5,main]) started.
+:app:mapArm64DebugSourceSetPaths (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :app:mapArm64DebugSourceSetPaths UP-TO-DATE
+Caching disabled for task ':app:mapArm64DebugSourceSetPaths' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Skipping task ':app:mapArm64DebugSourceSetPaths' as it is up-to-date.
+Resolve mutations for :app:generateArm64DebugResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+:app:generateArm64DebugResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :app:generateArm64DebugResources UP-TO-DATE
+Caching disabled for task ':app:generateArm64DebugResources' because:
+  Build cache is disabled
+Skipping task ':app:generateArm64DebugResources' as it is up-to-date.
+Resolve mutations for :app:mergeArm64DebugResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+:app:mergeArm64DebugResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :app:mergeArm64DebugResources UP-TO-DATE
+Caching disabled for task ':app:mergeArm64DebugResources' because:
+  Build cache is disabled
+Skipping task ':app:mergeArm64DebugResources' as it is up-to-date.
+Resolve mutations for :app:packageArm64DebugResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+:app:packageArm64DebugResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :app:packageArm64DebugResources UP-TO-DATE
+Caching disabled for task ':app:packageArm64DebugResources' because:
+  Build cache is disabled
+Skipping task ':app:packageArm64DebugResources' as it is up-to-date.
+Resolve mutations for :app:parseArm64DebugLocalResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+:app:parseArm64DebugLocalResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :app:parseArm64DebugLocalResources UP-TO-DATE
+Caching disabled for task ':app:parseArm64DebugLocalResources' because:
+  Build cache is disabled
+Skipping task ':app:parseArm64DebugLocalResources' as it is up-to-date.
+Resolve mutations for :app:createArm64DebugCompatibleScreenManifests (Thread[#755,Execution worker Thread 2,5,main]) started.
+:app:createArm64DebugCompatibleScreenManifests (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :app:createArm64DebugCompatibleScreenManifests UP-TO-DATE
+Caching disabled for task ':app:createArm64DebugCompatibleScreenManifests' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Skipping task ':app:createArm64DebugCompatibleScreenManifests' as it is up-to-date.
+Resolve mutations for :app:extractDeepLinksArm64Debug (Thread[#755,Execution worker Thread 2,5,main]) started.
+:app:extractDeepLinksArm64Debug (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :app:extractDeepLinksArm64Debug UP-TO-DATE
+Caching disabled for task ':app:extractDeepLinksArm64Debug' because:
+  Build cache is disabled
+Skipping task ':app:extractDeepLinksArm64Debug' as it is up-to-date.
+Resolve mutations for :tauri-android:extractDeepLinksDebug (Thread[#755,Execution worker Thread 2,5,main]) started.
+:tauri-android:extractDeepLinksDebug (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :tauri-android:extractDeepLinksDebug UP-TO-DATE
+Caching disabled for task ':tauri-android:extractDeepLinksDebug' because:
+  Build cache is disabled
+Skipping task ':tauri-android:extractDeepLinksDebug' as it is up-to-date.
+work action resolve navigation.json (project :tauri-android) (Thread[#755,Execution worker Thread 2,5,main]) started.
+Resolve mutations for :tauri-android:processDebugManifest (Thread[#755,Execution worker Thread 2,5,main]) started.
+:tauri-android:processDebugManifest (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :tauri-android:processDebugManifest UP-TO-DATE
+Caching disabled for task ':tauri-android:processDebugManifest' because:
+  Build cache is disabled
+Skipping task ':tauri-android:processDebugManifest' as it is up-to-date.
+work action resolve AndroidManifest.xml (project :tauri-android) (Thread[#755,Execution worker Thread 2,5,main]) started.
+Resolve mutations for :tauri-plugin-dialog:extractDeepLinksDebug (Thread[#755,Execution worker Thread 2,5,main]) started.
+:tauri-plugin-dialog:extractDeepLinksDebug (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :tauri-plugin-dialog:extractDeepLinksDebug UP-TO-DATE
+Caching disabled for task ':tauri-plugin-dialog:extractDeepLinksDebug' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-dialog:extractDeepLinksDebug' as it is up-to-date.
+work action resolve navigation.json (project :tauri-plugin-dialog) (Thread[#755,Execution worker Thread 2,5,main]) started.
+Resolve mutations for :tauri-plugin-dialog:processDebugManifest (Thread[#755,Execution worker Thread 2,5,main]) started.
+:tauri-plugin-dialog:processDebugManifest (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :tauri-plugin-dialog:processDebugManifest UP-TO-DATE
+Caching disabled for task ':tauri-plugin-dialog:processDebugManifest' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-dialog:processDebugManifest' as it is up-to-date.
+work action resolve AndroidManifest.xml (project :tauri-plugin-dialog) (Thread[#755,Execution worker Thread 2,5,main]) started.
+Resolve mutations for :tauri-plugin-opener:extractDeepLinksDebug (Thread[#755,Execution worker Thread 2,5,main]) started.
+:tauri-plugin-opener:extractDeepLinksDebug (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :tauri-plugin-opener:extractDeepLinksDebug UP-TO-DATE
+Caching disabled for task ':tauri-plugin-opener:extractDeepLinksDebug' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-opener:extractDeepLinksDebug' as it is up-to-date.
+work action resolve navigation.json (project :tauri-plugin-opener) (Thread[#755,Execution worker Thread 2,5,main]) started.
+Resolve mutations for :tauri-plugin-opener:processDebugManifest (Thread[#755,Execution worker Thread 2,5,main]) started.
+:tauri-plugin-opener:processDebugManifest (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :tauri-plugin-opener:processDebugManifest UP-TO-DATE
+Caching disabled for task ':tauri-plugin-opener:processDebugManifest' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-opener:processDebugManifest' as it is up-to-date.
+work action resolve AndroidManifest.xml (project :tauri-plugin-opener) (Thread[#755,Execution worker Thread 2,5,main]) started.
+Resolve mutations for :app:processArm64DebugMainManifest (Thread[#755,Execution worker Thread 2,5,main]) started.
+:app:processArm64DebugMainManifest (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :app:processArm64DebugMainManifest UP-TO-DATE
+Caching disabled for task ':app:processArm64DebugMainManifest' because:
+  Build cache is disabled
+Skipping task ':app:processArm64DebugMainManifest' as it is up-to-date.
+Resolve mutations for :app:processArm64DebugManifest (Thread[#755,Execution worker Thread 2,5,main]) started.
+:app:processArm64DebugManifest (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :app:processArm64DebugManifest UP-TO-DATE
+Caching disabled for task ':app:processArm64DebugManifest' because:
+  Build cache is disabled
+Skipping task ':app:processArm64DebugManifest' as it is up-to-date.
+Resolve mutations for :app:processArm64DebugManifestForPackage (Thread[#755,Execution worker Thread 2,5,main]) started.
+:app:processArm64DebugManifestForPackage (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :app:processArm64DebugManifestForPackage UP-TO-DATE
+Custom actions are attached to task ':app:processArm64DebugManifestForPackage'.
+Caching disabled for task ':app:processArm64DebugManifestForPackage' because:
+  Build cache is disabled
+Skipping task ':app:processArm64DebugManifestForPackage' as it is up-to-date.
+Resolve mutations for :tauri-android:compileDebugLibraryResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+:tauri-android:compileDebugLibraryResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :tauri-android:compileDebugLibraryResources UP-TO-DATE
+Caching disabled for task ':tauri-android:compileDebugLibraryResources' because:
+  Build cache is disabled
+Skipping task ':tauri-android:compileDebugLibraryResources' as it is up-to-date.
+work action resolve out (project :tauri-android) (Thread[#755,Execution worker Thread 2,5,main]) started.
+Resolve mutations for :tauri-android:parseDebugLocalResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+:tauri-android:parseDebugLocalResources (Thread[#755,Execution worker Thread 2,5,main]) started.
+
+> Task :tauri-android:parseDebugLocalResources UP-TO-DATE
+Caching disabled for task ':tauri-android:parseDebugLocalResources' because:
+  Build cache is disabled
+Skipping task ':tauri-android:parseDebugLocalResources' as it is up-to-date.
+Resolve mutations for :tauri-android:generateDebugRFile (Thread[#755,Execution worker Thread 2,5,main]) started.
+:tauri-android:generateDebugRFile (Thread[#766,Execution worker Thread 13,5,main]) started.
+
+> Task :tauri-android:generateDebugRFile UP-TO-DATE
+Caching disabled for task ':tauri-android:generateDebugRFile' because:
+  Build cache is disabled
+Skipping task ':tauri-android:generateDebugRFile' as it is up-to-date.
+work action resolve package-aware-r.txt (project :tauri-android) (Thread[#766,Execution worker Thread 13,5,main]) started.
+Resolve mutations for :tauri-plugin-dialog:compileDebugLibraryResources (Thread[#766,Execution worker Thread 13,5,main]) started.
+:tauri-plugin-dialog:compileDebugLibraryResources (Thread[#766,Execution worker Thread 13,5,main]) started.
+
+> Task :tauri-plugin-dialog:compileDebugLibraryResources UP-TO-DATE
+Caching disabled for task ':tauri-plugin-dialog:compileDebugLibraryResources' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-dialog:compileDebugLibraryResources' as it is up-to-date.
+work action resolve out (project :tauri-plugin-dialog) (Thread[#766,Execution worker Thread 13,5,main]) started.
+Resolve mutations for :tauri-plugin-dialog:parseDebugLocalResources (Thread[#776,Execution worker Thread 22,5,main]) started.
+:tauri-plugin-dialog:parseDebugLocalResources (Thread[#771,Execution worker Thread 17,5,main]) started.
+
+> Task :tauri-plugin-dialog:parseDebugLocalResources UP-TO-DATE
+Caching disabled for task ':tauri-plugin-dialog:parseDebugLocalResources' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-dialog:parseDebugLocalResources' as it is up-to-date.
+Resolve mutations for :tauri-plugin-dialog:generateDebugRFile (Thread[#771,Execution worker Thread 17,5,main]) started.
+:tauri-plugin-dialog:generateDebugRFile (Thread[#771,Execution worker Thread 17,5,main]) started.
+
+> Task :tauri-plugin-dialog:generateDebugRFile UP-TO-DATE
+Caching disabled for task ':tauri-plugin-dialog:generateDebugRFile' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-dialog:generateDebugRFile' as it is up-to-date.
+work action resolve package-aware-r.txt (project :tauri-plugin-dialog) (Thread[#771,Execution worker Thread 17,5,main]) started.
+Resolve mutations for :tauri-plugin-opener:compileDebugLibraryResources (Thread[#771,Execution worker Thread 17,5,main]) started.
+:tauri-plugin-opener:compileDebugLibraryResources (Thread[#771,Execution worker Thread 17,5,main]) started.
+
+> Task :tauri-plugin-opener:compileDebugLibraryResources UP-TO-DATE
+Caching disabled for task ':tauri-plugin-opener:compileDebugLibraryResources' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-opener:compileDebugLibraryResources' as it is up-to-date.
+work action resolve out (project :tauri-plugin-opener) (Thread[#771,Execution worker Thread 17,5,main]) started.
+Resolve mutations for :tauri-plugin-opener:parseDebugLocalResources (Thread[#771,Execution worker Thread 17,5,main]) started.
+:tauri-plugin-opener:parseDebugLocalResources (Thread[#759,Execution worker Thread 6,5,main]) started.
+
+> Task :tauri-plugin-opener:parseDebugLocalResources UP-TO-DATE
+Caching disabled for task ':tauri-plugin-opener:parseDebugLocalResources' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-opener:parseDebugLocalResources' as it is up-to-date.
+Resolve mutations for :tauri-plugin-opener:generateDebugRFile (Thread[#759,Execution worker Thread 6,5,main]) started.
+:tauri-plugin-opener:generateDebugRFile (Thread[#759,Execution worker Thread 6,5,main]) started.
+
+> Task :tauri-plugin-opener:generateDebugRFile UP-TO-DATE
+Caching disabled for task ':tauri-plugin-opener:generateDebugRFile' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-opener:generateDebugRFile' as it is up-to-date.
+work action resolve package-aware-r.txt (project :tauri-plugin-opener) (Thread[#759,Execution worker Thread 6,5,main]) started.
+Resolve mutations for :app:processArm64DebugResources (Thread[#759,Execution worker Thread 6,5,main]) started.
+:app:processArm64DebugResources (Thread[#759,Execution worker Thread 6,5,main]) started.
+
+> Task :app:processArm64DebugResources UP-TO-DATE
+Caching disabled for task ':app:processArm64DebugResources' because:
+  Build cache is disabled
+Skipping task ':app:processArm64DebugResources' as it is up-to-date.
+Resolve mutations for :tauri-android:checkKotlinGradlePluginConfigurationErrors (Thread[#759,Execution worker Thread 6,5,main]) started.
+:tauri-android:checkKotlinGradlePluginConfigurationErrors (Thread[#759,Execution worker Thread 6,5,main]) started.
+
+> Task :tauri-android:checkKotlinGradlePluginConfigurationErrors
+Caching disabled for task ':tauri-android:checkKotlinGradlePluginConfigurationErrors' because:
+  Build cache is disabled
+Task ':tauri-android:checkKotlinGradlePluginConfigurationErrors' is not up-to-date because:
+  Task has not declared any outputs despite executing actions.
+Resolve mutations for :tauri-android:generateDebugBuildConfig (Thread[#759,Execution worker Thread 6,5,main]) started.
+:tauri-android:generateDebugBuildConfig (Thread[#759,Execution worker Thread 6,5,main]) started.
+
+> Task :tauri-android:generateDebugBuildConfig UP-TO-DATE
+Caching disabled for task ':tauri-android:generateDebugBuildConfig' because:
+  Build cache is disabled
+Skipping task ':tauri-android:generateDebugBuildConfig' as it is up-to-date.
+Resolve mutations for :tauri-android:compileDebugKotlin (Thread[#759,Execution worker Thread 6,5,main]) started.
+:tauri-android:compileDebugKotlin (Thread[#759,Execution worker Thread 6,5,main]) started.
+
+> Task :tauri-android:compileDebugKotlin UP-TO-DATE
+Caching disabled for task ':tauri-android:compileDebugKotlin' because:
+  Build cache is disabled
+Skipping task ':tauri-android:compileDebugKotlin' as it is up-to-date.
+Resolve mutations for :tauri-android:javaPreCompileDebug (Thread[#759,Execution worker Thread 6,5,main]) started.
+:tauri-android:javaPreCompileDebug (Thread[#759,Execution worker Thread 6,5,main]) started.
+
+> Task :tauri-android:javaPreCompileDebug UP-TO-DATE
+Caching disabled for task ':tauri-android:javaPreCompileDebug' because:
+  Build cache is disabled
+Skipping task ':tauri-android:javaPreCompileDebug' as it is up-to-date.
+Resolve mutations for :tauri-android:compileDebugJavaWithJavac (Thread[#759,Execution worker Thread 6,5,main]) started.
+:tauri-android:compileDebugJavaWithJavac (Thread[#759,Execution worker Thread 6,5,main]) started.
+
+> Task :tauri-android:compileDebugJavaWithJavac UP-TO-DATE
+Custom actions are attached to task ':tauri-android:compileDebugJavaWithJavac'.
+Caching disabled for task ':tauri-android:compileDebugJavaWithJavac' because:
+  Build cache is disabled
+Skipping task ':tauri-android:compileDebugJavaWithJavac' as it is up-to-date.
+No compile result for :tauri-android:compileDebugJavaWithJavac
+No compile result for :tauri-android:compileDebugJavaWithJavac
+Resolve mutations for :tauri-android:bundleLibCompileToJarDebug (Thread[#759,Execution worker Thread 6,5,main]) started.
+:tauri-android:bundleLibCompileToJarDebug (Thread[#759,Execution worker Thread 6,5,main]) started.
+
+> Task :tauri-android:bundleLibCompileToJarDebug UP-TO-DATE
+Caching disabled for task ':tauri-android:bundleLibCompileToJarDebug' because:
+  Build cache is disabled
+  Simple merging task
+Skipping task ':tauri-android:bundleLibCompileToJarDebug' as it is up-to-date.
+work action resolve classes.jar (project :tauri-android) (Thread[#759,Execution worker Thread 6,5,main]) started.
+Resolve mutations for :tauri-plugin-dialog:checkKotlinGradlePluginConfigurationErrors (Thread[#759,Execution worker Thread 6,5,main]) started.
+:tauri-plugin-dialog:checkKotlinGradlePluginConfigurationErrors (Thread[#753,included builds,5,main]) started.
+
+> Task :tauri-plugin-dialog:checkKotlinGradlePluginConfigurationErrors
+Caching disabled for task ':tauri-plugin-dialog:checkKotlinGradlePluginConfigurationErrors' because:
+  Build cache is disabled
+Task ':tauri-plugin-dialog:checkKotlinGradlePluginConfigurationErrors' is not up-to-date because:
+  Task has not declared any outputs despite executing actions.
+Resolve mutations for :tauri-plugin-dialog:compileDebugKotlin (Thread[#753,included builds,5,main]) started.
+:tauri-plugin-dialog:compileDebugKotlin (Thread[#753,included builds,5,main]) started.
+
+> Task :tauri-plugin-dialog:compileDebugKotlin UP-TO-DATE
+Caching disabled for task ':tauri-plugin-dialog:compileDebugKotlin' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-dialog:compileDebugKotlin' as it is up-to-date.
+Resolve mutations for :tauri-plugin-dialog:javaPreCompileDebug (Thread[#753,included builds,5,main]) started.
+:tauri-plugin-dialog:javaPreCompileDebug (Thread[#753,included builds,5,main]) started.
+
+> Task :tauri-plugin-dialog:javaPreCompileDebug UP-TO-DATE
+Caching disabled for task ':tauri-plugin-dialog:javaPreCompileDebug' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-dialog:javaPreCompileDebug' as it is up-to-date.
+Resolve mutations for :tauri-plugin-dialog:compileDebugJavaWithJavac (Thread[#753,included builds,5,main]) started.
+:tauri-plugin-dialog:compileDebugJavaWithJavac (Thread[#753,included builds,5,main]) started.
+
+> Task :tauri-plugin-dialog:compileDebugJavaWithJavac NO-SOURCE
+Skipping task ':tauri-plugin-dialog:compileDebugJavaWithJavac' as it has no source files and no previous output files.
+Resolve mutations for :tauri-plugin-dialog:bundleLibCompileToJarDebug (Thread[#753,included builds,5,main]) started.
+:tauri-plugin-dialog:bundleLibCompileToJarDebug (Thread[#761,Execution worker Thread 8,5,main]) started.
+
+> Task :tauri-plugin-dialog:bundleLibCompileToJarDebug UP-TO-DATE
+Caching disabled for task ':tauri-plugin-dialog:bundleLibCompileToJarDebug' because:
+  Build cache is disabled
+  Simple merging task
+Skipping task ':tauri-plugin-dialog:bundleLibCompileToJarDebug' as it is up-to-date.
+work action resolve classes.jar (project :tauri-plugin-dialog) (Thread[#761,Execution worker Thread 8,5,main]) started.
+Resolve mutations for :tauri-plugin-opener:checkKotlinGradlePluginConfigurationErrors (Thread[#761,Execution worker Thread 8,5,main]) started.
+:tauri-plugin-opener:checkKotlinGradlePluginConfigurationErrors (Thread[#756,Execution worker Thread 3,5,main]) started.
+
+> Task :tauri-plugin-opener:checkKotlinGradlePluginConfigurationErrors
+Caching disabled for task ':tauri-plugin-opener:checkKotlinGradlePluginConfigurationErrors' because:
+  Build cache is disabled
+Task ':tauri-plugin-opener:checkKotlinGradlePluginConfigurationErrors' is not up-to-date because:
+  Task has not declared any outputs despite executing actions.
+Resolve mutations for :tauri-plugin-opener:compileDebugKotlin (Thread[#756,Execution worker Thread 3,5,main]) started.
+:tauri-plugin-opener:compileDebugKotlin (Thread[#756,Execution worker Thread 3,5,main]) started.
+
+> Task :tauri-plugin-opener:compileDebugKotlin UP-TO-DATE
+Caching disabled for task ':tauri-plugin-opener:compileDebugKotlin' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-opener:compileDebugKotlin' as it is up-to-date.
+Resolve mutations for :tauri-plugin-opener:javaPreCompileDebug (Thread[#756,Execution worker Thread 3,5,main]) started.
+:tauri-plugin-opener:javaPreCompileDebug (Thread[#756,Execution worker Thread 3,5,main]) started.
+
+> Task :tauri-plugin-opener:javaPreCompileDebug UP-TO-DATE
+Caching disabled for task ':tauri-plugin-opener:javaPreCompileDebug' because:
+  Build cache is disabled
+Skipping task ':tauri-plugin-opener:javaPreCompileDebug' as it is up-to-date.
+Resolve mutations for :tauri-plugin-opener:compileDebugJavaWithJavac (Thread[#756,Execution worker Thread 3,5,main]) started.
+:tauri-plugin-opener:compileDebugJavaWithJavac (Thread[#756,Execution worker Thread 3,5,main]) started.
+
+> Task :tauri-plugin-opener:compileDebugJavaWithJavac NO-SOURCE
+Skipping task ':tauri-plugin-opener:compileDebugJavaWithJavac' as it has no source files and no previous output files.
+Resolve mutations for :tauri-plugin-opener:bundleLibCompileToJarDebug (Thread[#756,Execution worker Thread 3,5,main]) started.
+:tauri-plugin-opener:bundleLibCompileToJarDebug (Thread[#756,Execution worker Thread 3,5,main]) started.
+
+> Task :tauri-plugin-opener:bundleLibCompileToJarDebug UP-TO-DATE
+Caching disabled for task ':tauri-plugin-opener:bundleLibCompileToJarDebug' because:
+  Build cache is disabled
+  Simple merging task
+Skipping task ':tauri-plugin-opener:bundleLibCompileToJarDebug' as it is up-to-date.
+work action resolve classes.jar (project :tauri-plugin-opener) (Thread[#756,Execution worker Thread 3,5,main]) started.
+Resolve mutations for :app:compileArm64DebugKotlin (Thread[#756,Execution worker Thread 3,5,main]) started.
+:app:compileArm64DebugKotlin (Thread[#756,Execution worker Thread 3,5,main]) started.
+
+> Task :app:compileArm64DebugKotlin UP-TO-DATE
+Caching disabled for task ':app:compileArm64DebugKotlin' because:
+  Build cache is disabled
+Skipping task ':app:compileArm64DebugKotlin' as it is up-to-date.
+Resolve mutations for :app:javaPreCompileArm64Debug (Thread[#756,Execution worker Thread 3,5,main]) started.
+:app:javaPreCompileArm64Debug (Thread[#756,Execution worker Thread 3,5,main]) started.
+
+> Task :app:javaPreCompileArm64Debug UP-TO-DATE
+Caching disabled for task ':app:javaPreCompileArm64Debug' because:
+  Build cache is disabled
+Skipping task ':app:javaPreCompileArm64Debug' as it is up-to-date.
+Resolve mutations for :app:compileArm64DebugJavaWithJavac (Thread[#756,Execution worker Thread 3,5,main]) started.
+:app:compileArm64DebugJavaWithJavac (Thread[#756,Execution worker Thread 3,5,main]) started.
+
+> Task :app:compileArm64DebugJavaWithJavac
+Custom actions are attached to task ':app:compileArm64DebugJavaWithJavac'.
+Caching disabled for task ':app:compileArm64DebugJavaWithJavac' because:
+  Build cache is disabled
+Task ':app:compileArm64DebugJavaWithJavac' is not up-to-date because:
+  No history is available.
+The input changes require a full rebuild for incremental task ':app:compileArm64DebugJavaWithJavac'.
+Java compiler version 21 has deprecated support for compiling with source/target version 8.
+Try one of the following options:
+    1. [Recommended] Use Java toolchain with a lower language version
+    2. Set a higher source/target version
+    3. Use a lower version of the JDK running the build (if you're not using Java toolchain)
+For more details on how to configure these settings, see https://developer.android.com/build/jdks.
+To suppress this warning, set android.javaCompile.suppressSourceTargetDeprecationWarning=true in gradle.properties.
+Compilation mode: in-process compilation
+Full recompilation is required because no incremental change information is available. This is usually caused by clean builds or changing compiler arguments.
+Compiling with toolchain 'C:\Program Files\Java\jdk-21.0.10'.
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\arm64\java', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\debug\java', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\arm64Debug\java', not found
+Compiling with JDK Java compiler API.
+Class dependency analysis for incremental compilation took 0.014 secs.
+Created classpath snapshot for incremental compilation in 0.115 secs.
+Resolve mutations for :app:mergeArm64DebugShaders (Thread[#756,Execution worker Thread 3,5,main]) started.
+:app:mergeArm64DebugShaders (Thread[#756,Execution worker Thread 3,5,main]) started.
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+> Task :app:mergeArm64DebugShaders UP-TO-DATE
+Caching disabled for task ':app:mergeArm64DebugShaders' because:
+  Build cache is disabled
+  Simple merging task
+Skipping task ':app:mergeArm64DebugShaders' as it is up-to-date.
+Resolve mutations for :app:compileArm64DebugShaders (Thread[#760,Execution worker Thread 7,5,main]) started.
+:app:compileArm64DebugShaders (Thread[#760,Execution worker Thread 7,5,main]) started.
+
+> Task :app:compileArm64DebugShaders NO-SOURCE
+Skipping task ':app:compileArm64DebugShaders' as it has no source files and no previous output files.
+Resolve mutations for :app:generateArm64DebugAssets (Thread[#760,Execution worker Thread 7,5,main]) started.
+:app:generateArm64DebugAssets (Thread[#760,Execution worker Thread 7,5,main]) started.
+
+> Task :app:generateArm64DebugAssets UP-TO-DATE
+Skipping task ':app:generateArm64DebugAssets' as it has no actions.
+Resolve mutations for :tauri-android:mergeDebugShaders (Thread[#760,Execution worker Thread 7,5,main]) started.
+:tauri-android:mergeDebugShaders (Thread[#760,Execution worker Thread 7,5,main]) started.
+
+> Task :tauri-android:mergeDebugShaders UP-TO-DATE
+Caching disabled for task ':tauri-android:mergeDebugShaders' because:
+  Build cache is disabled
+  Simple merging task
+Skipping task ':tauri-android:mergeDebugShaders' as it is up-to-date.
+Resolve mutations for :tauri-android:compileDebugShaders (Thread[#760,Execution worker Thread 7,5,main]) started.
+:tauri-android:compileDebugShaders (Thread[#760,Execution worker Thread 7,5,main]) started.
+
+> Task :tauri-android:compileDebugShaders NO-SOURCE
+Skipping task ':tauri-android:compileDebugShaders' as it has no source files and no previous output files.
+Resolve mutations for :tauri-android:generateDebugAssets (Thread[#760,Execution worker Thread 7,5,main]) started.
+:tauri-android:generateDebugAssets (Thread[#760,Execution worker Thread 7,5,main]) started.
+
+> Task :tauri-android:generateDebugAssets UP-TO-DATE
+Skipping task ':tauri-android:generateDebugAssets' as it has no actions.
+Resolve mutations for :tauri-android:mergeDebugAssets (Thread[#760,Execution worker Thread 7,5,main]) started.
+:tauri-android:mergeDebugAssets (Thread[#771,Execution worker Thread 17,5,main]) started.
+
+> Task :tauri-android:mergeDebugAssets UP-TO-DATE
+Caching disabled for task ':tauri-android:mergeDebugAssets' because:
+  Build cache is disabled
+  Simple merging task
+Skipping task ':tauri-android:mergeDebugAssets' as it is up-to-date.
+work action resolve mergeDebugAssets (project :tauri-android) (Thread[#771,Execution worker Thread 17,5,main]) started.
+Resolve mutations for :tauri-plugin-dialog:mergeDebugShaders (Thread[#771,Execution worker Thread 17,5,main]) started.
+:tauri-plugin-dialog:mergeDebugShaders (Thread[#771,Execution worker Thread 17,5,main]) started.
+
+> Task :tauri-plugin-dialog:mergeDebugShaders UP-TO-DATE
+Caching disabled for task ':tauri-plugin-dialog:mergeDebugShaders' because:
+  Build cache is disabled
+  Simple merging task
+Skipping task ':tauri-plugin-dialog:mergeDebugShaders' as it is up-to-date.
+Resolve mutations for :tauri-plugin-dialog:compileDebugShaders (Thread[#771,Execution worker Thread 17,5,main]) started.
+:tauri-plugin-dialog:compileDebugShaders (Thread[#759,Execution worker Thread 6,5,main]) started.
+
+> Task :tauri-plugin-dialog:compileDebugShaders NO-SOURCE
+Skipping task ':tauri-plugin-dialog:compileDebugShaders' as it has no source files and no previous output files.
+Resolve mutations for :tauri-plugin-dialog:generateDebugAssets (Thread[#759,Execution worker Thread 6,5,main]) started.
+:tauri-plugin-dialog:generateDebugAssets (Thread[#763,Execution worker Thread 10,5,main]) started.
+
+> Task :tauri-plugin-dialog:generateDebugAssets UP-TO-DATE
+Skipping task ':tauri-plugin-dialog:generateDebugAssets' as it has no actions.
+Resolve mutations for :tauri-plugin-dialog:mergeDebugAssets (Thread[#763,Execution worker Thread 10,5,main]) started.
+:tauri-plugin-dialog:mergeDebugAssets (Thread[#763,Execution worker Thread 10,5,main]) started.
+
+> Task :tauri-plugin-dialog:mergeDebugAssets UP-TO-DATE
+Caching disabled for task ':tauri-plugin-dialog:mergeDebugAssets' because:
+  Build cache is disabled
+  Simple merging task
+Skipping task ':tauri-plugin-dialog:mergeDebugAssets' as it is up-to-date.
+work action resolve mergeDebugAssets (project :tauri-plugin-dialog) (Thread[#763,Execution worker Thread 10,5,main]) started.
+Resolve mutations for :tauri-plugin-opener:mergeDebugShaders (Thread[#763,Execution worker Thread 10,5,main]) started.
+:tauri-plugin-opener:mergeDebugShaders (Thread[#763,Execution worker Thread 10,5,main]) started.
+
+> Task :tauri-plugin-opener:mergeDebugShaders UP-TO-DATE
+Caching disabled for task ':tauri-plugin-opener:mergeDebugShaders' because:
+  Build cache is disabled
+  Simple merging task
+Skipping task ':tauri-plugin-opener:mergeDebugShaders' as it is up-to-date.
+Resolve mutations for :tauri-plugin-opener:compileDebugShaders (Thread[#763,Execution worker Thread 10,5,main]) started.
+:tauri-plugin-opener:compileDebugShaders (Thread[#763,Execution worker Thread 10,5,main]) started.
+
+> Task :tauri-plugin-opener:compileDebugShaders NO-SOURCE
+Skipping task ':tauri-plugin-opener:compileDebugShaders' as it has no source files and no previous output files.
+Resolve mutations for :tauri-plugin-opener:generateDebugAssets (Thread[#763,Execution worker Thread 10,5,main]) started.
+:tauri-plugin-opener:generateDebugAssets (Thread[#763,Execution worker Thread 10,5,main]) started.
+
+> Task :tauri-plugin-opener:generateDebugAssets UP-TO-DATE
+Skipping task ':tauri-plugin-opener:generateDebugAssets' as it has no actions.
+Resolve mutations for :tauri-plugin-opener:mergeDebugAssets (Thread[#763,Execution worker Thread 10,5,main]) started.
+:tauri-plugin-opener:mergeDebugAssets (Thread[#763,Execution worker Thread 10,5,main]) started.
+
+> Task :tauri-plugin-opener:mergeDebugAssets UP-TO-DATE
+Caching disabled for task ':tauri-plugin-opener:mergeDebugAssets' because:
+  Build cache is disabled
+  Simple merging task
+Skipping task ':tauri-plugin-opener:mergeDebugAssets' as it is up-to-date.
+work action resolve mergeDebugAssets (project :tauri-plugin-opener) (Thread[#763,Execution worker Thread 10,5,main]) started.
+Resolve mutations for :app:mergeArm64DebugAssets (Thread[#763,Execution worker Thread 10,5,main]) started.
+:app:mergeArm64DebugAssets (Thread[#763,Execution worker Thread 10,5,main]) started.
+
+> Task :app:mergeArm64DebugAssets UP-TO-DATE
+Caching disabled for task ':app:mergeArm64DebugAssets' because:
+  Build cache is disabled
+  Simple merging task
+Skipping task ':app:mergeArm64DebugAssets' as it is up-to-date.
+Resolve mutations for :app:compressArm64DebugAssets (Thread[#763,Execution worker Thread 10,5,main]) started.
+:app:compressArm64DebugAssets (Thread[#763,Execution worker Thread 10,5,main]) started.
+
+> Task :app:compressArm64DebugAssets UP-TO-DATE
+Caching disabled for task ':app:compressArm64DebugAssets' because:
+  Build cache is disabled
+Skipping task ':app:compressArm64DebugAssets' as it is up-to-date.
+Resolve mutations for :app:processArm64DebugJavaRes (Thread[#763,Execution worker Thread 10,5,main]) started.
+:app:processArm64DebugJavaRes (Thread[#763,Execution worker Thread 10,5,main]) started.
+
+> Task :app:processArm64DebugJavaRes
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\main\resources', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\arm64\resources', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\debug\resources', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\arm64Debug\resources', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\main\resources', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\arm64\resources', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\debug\resources', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\arm64Debug\resources', not found
+Caching disabled for task ':app:processArm64DebugJavaRes' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Task ':app:processArm64DebugJavaRes' is not up-to-date because:
+  No history is available.
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\main\resources', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\arm64\resources', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\debug\resources', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\arm64Debug\resources', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\main\resources', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\arm64\resources', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\debug\resources', not found
+file or directory 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\src\arm64Debug\resources', not found
+Resolve mutations for :tauri-android:processDebugJavaRes (Thread[#777,Execution worker Thread 23,5,main]) started.
+:tauri-android:processDebugJavaRes (Thread[#777,Execution worker Thread 23,5,main]) started.
+
+> Task :tauri-android:processDebugJavaRes UP-TO-DATE
+file or directory 'C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\src\main\resources', not found
+file or directory 'C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\src\debug\resources', not found
+file or directory 'C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\src\main\resources', not found
+file or directory 'C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\src\debug\resources', not found
+Caching disabled for task ':tauri-android:processDebugJavaRes' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Skipping task ':tauri-android:processDebugJavaRes' as it is up-to-date.
+work action resolve out (project :tauri-android) (Thread[#777,Execution worker Thread 23,5,main]) started.
+Resolve mutations for :tauri-plugin-dialog:processDebugJavaRes (Thread[#777,Execution worker Thread 23,5,main]) started.
+:tauri-plugin-dialog:processDebugJavaRes (Thread[#777,Execution worker Thread 23,5,main]) started.
+
+> Task :tauri-plugin-dialog:processDebugJavaRes UP-TO-DATE
+file or directory 'C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\src\main\resources', not found
+file or directory 'C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\src\debug\resources', not found
+file or directory 'C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\src\main\resources', not found
+file or directory 'C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\src\debug\resources', not found
+Caching disabled for task ':tauri-plugin-dialog:processDebugJavaRes' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Skipping task ':tauri-plugin-dialog:processDebugJavaRes' as it is up-to-date.
+work action resolve out (project :tauri-plugin-dialog) (Thread[#777,Execution worker Thread 23,5,main]) started.
+Resolve mutations for :tauri-plugin-opener:processDebugJavaRes (Thread[#777,Execution worker Thread 23,5,main]) started.
+:tauri-plugin-opener:processDebugJavaRes (Thread[#777,Execution worker Thread 23,5,main]) started.
+
+> Task :tauri-plugin-opener:processDebugJavaRes UP-TO-DATE
+file or directory 'C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-opener-2.5.4\android\src\main\resources', not found
+file or directory 'C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-opener-2.5.4\android\src\debug\resources', not found
+file or directory 'C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-opener-2.5.4\android\src\main\resources', not found
+file or directory 'C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-opener-2.5.4\android\src\debug\resources', not found
+Caching disabled for task ':tauri-plugin-opener:processDebugJavaRes' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Skipping task ':tauri-plugin-opener:processDebugJavaRes' as it is up-to-date.
+work action resolve out (project :tauri-plugin-opener) (Thread[#777,Execution worker Thread 23,5,main]) started.
+Resolve mutations for :app:mergeArm64DebugJavaResource (Thread[#777,Execution worker Thread 23,5,main]) started.
+:app:mergeArm64DebugJavaResource (Thread[#777,Execution worker Thread 23,5,main]) started.
+Resolve mutations for :app:checkArm64DebugDuplicateClasses (Thread[#759,Execution worker Thread 6,5,main]) started.
+:app:checkArm64DebugDuplicateClasses (Thread[#772,Execution worker Thread 18,5,main]) started.
+
+> Task :app:checkArm64DebugDuplicateClasses UP-TO-DATE
+Caching disabled for task ':app:checkArm64DebugDuplicateClasses' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Skipping task ':app:checkArm64DebugDuplicateClasses' as it is up-to-date.
+Resolve mutations for :app:desugarArm64DebugFileDependencies (Thread[#772,Execution worker Thread 18,5,main]) started.
+:app:desugarArm64DebugFileDependencies (Thread[#772,Execution worker Thread 18,5,main]) started.
+
+> Task :app:desugarArm64DebugFileDependencies UP-TO-DATE
+Caching disabled for task ':app:desugarArm64DebugFileDependencies' because:
+  Build cache is disabled
+Skipping task ':app:desugarArm64DebugFileDependencies' as it is up-to-date.
+Resolve mutations for :app:mergeExtDexArm64Debug (Thread[#772,Execution worker Thread 18,5,main]) started.
+:app:mergeExtDexArm64Debug (Thread[#772,Execution worker Thread 18,5,main]) started.
+
+> Task :app:mergeExtDexArm64Debug UP-TO-DATE
+Caching disabled for task ':app:mergeExtDexArm64Debug' because:
+  Build cache is disabled
+Skipping task ':app:mergeExtDexArm64Debug' as it is up-to-date.
+Resolve mutations for :tauri-plugin-dialog:bundleLibRuntimeToDirDebug (Thread[#772,Execution worker Thread 18,5,main]) started.
+:tauri-plugin-dialog:bundleLibRuntimeToDirDebug (Thread[#775,Execution worker Thread 21,5,main]) started.
+
+> Task :tauri-plugin-dialog:bundleLibRuntimeToDirDebug UP-TO-DATE
+Caching disabled for task ':tauri-plugin-dialog:bundleLibRuntimeToDirDebug' because:
+  Build cache is disabled
+  Simple merging task
+Skipping task ':tauri-plugin-dialog:bundleLibRuntimeToDirDebug' as it is up-to-date.
+work action resolve bundleLibRuntimeToDirDebug (project :tauri-plugin-dialog) (Thread[#775,Execution worker Thread 21,5,main]) started.
+ClassesDirToClassesTransform (Thread[#775,Execution worker Thread 21,5,main]) started.
+Resolve mutations for :tauri-plugin-opener:bundleLibRuntimeToDirDebug (Thread[#753,included builds,5,main]) started.
+:tauri-plugin-opener:bundleLibRuntimeToDirDebug (Thread[#753,included builds,5,main]) started.
+DexingNoClasspathTransform (Thread[#775,Execution worker Thread 21,5,main]) started.
+
+> Task :tauri-plugin-opener:bundleLibRuntimeToDirDebug UP-TO-DATE
+Caching disabled for task ':tauri-plugin-opener:bundleLibRuntimeToDirDebug' because:
+  Build cache is disabled
+  Simple merging task
+Skipping task ':tauri-plugin-opener:bundleLibRuntimeToDirDebug' as it is up-to-date.
+work action resolve bundleLibRuntimeToDirDebug (project :tauri-plugin-opener) (Thread[#753,included builds,5,main]) started.
+ClassesDirToClassesTransform (Thread[#753,included builds,5,main]) started.
+Resolve mutations for :tauri-android:bundleLibRuntimeToDirDebug (Thread[#764,Execution worker Thread 11,5,main]) started.
+DexingNoClasspathTransform (Thread[#753,included builds,5,main]) started.
+:tauri-android:bundleLibRuntimeToDirDebug (Thread[#764,Execution worker Thread 11,5,main]) started.
+
+> Transform bundleLibRuntimeToDirDebug (project :tauri-plugin-dialog) with DexingNoClasspathTransform
+Caching disabled for DexingNoClasspathTransform: C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\build\intermediates\runtime_library_classes_dir\debug\bundleLibRuntimeToDirDebug because:
+  Build cache is disabled
+Skipping DexingNoClasspathTransform: C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\build\intermediates\runtime_library_classes_dir\debug\bundleLibRuntimeToDirDebug as it is up-to-date.
+
+> Task :tauri-android:bundleLibRuntimeToDirDebug UP-TO-DATE
+Caching disabled for task ':tauri-android:bundleLibRuntimeToDirDebug' because:
+  Build cache is disabled
+  Simple merging task
+Skipping task ':tauri-android:bundleLibRuntimeToDirDebug' as it is up-to-date.
+work action resolve bundleLibRuntimeToDirDebug (project :tauri-android) (Thread[#764,Execution worker Thread 11,5,main]) started.
+
+> Transform bundleLibRuntimeToDirDebug (project :tauri-plugin-opener) with DexingNoClasspathTransform
+Caching disabled for DexingNoClasspathTransform: C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-opener-2.5.4\android\build\intermediates\runtime_library_classes_dir\debug\bundleLibRuntimeToDirDebug because:
+  Build cache is disabled
+Skipping DexingNoClasspathTransform: C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-opener-2.5.4\android\build\intermediates\runtime_library_classes_dir\debug\bundleLibRuntimeToDirDebug as it is up-to-date.
+ClassesDirToClassesTransform (Thread[#764,Execution worker Thread 11,5,main]) started.
+Resolve mutations for :app:dexBuilderArm64Debug (Thread[#753,included builds,5,main]) started.
+DexingNoClasspathTransform (Thread[#764,Execution worker Thread 11,5,main]) started.
+:app:dexBuilderArm64Debug (Thread[#753,included builds,5,main]) started.
+
+> Transform bundleLibRuntimeToDirDebug (project :tauri-android) with DexingNoClasspathTransform
+Caching disabled for DexingNoClasspathTransform: C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\intermediates\runtime_library_classes_dir\debug\bundleLibRuntimeToDirDebug because:
+  Build cache is disabled
+Skipping DexingNoClasspathTransform: C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\intermediates\runtime_library_classes_dir\debug\bundleLibRuntimeToDirDebug as it is up-to-date.
+
+> Task :app:mergeArm64DebugJavaResource
+Caching disabled for task ':app:mergeArm64DebugJavaResource' because:
+  Build cache is disabled
+  Caching has been disabled for the task
+Task ':app:mergeArm64DebugJavaResource' is not up-to-date because:
+  No history is available.
+The input changes require a full rebuild for incremental task ':app:mergeArm64DebugJavaResource'.
+
+> Task :app:dexBuilderArm64Debug
+Caching disabled for task ':app:dexBuilderArm64Debug' because:
+  Build cache is disabled
+Task ':app:dexBuilderArm64Debug' is not up-to-date because:
+  No history is available.
+The input changes require a full rebuild for incremental task ':app:dexBuilderArm64Debug'.
+Dex builder is incremental : false 
+Processing input C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\tmp\kotlin-classes\arm64Debug
+Processing input C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\javac\arm64Debug\compileArm64DebugJavaWithJavac\classes
+Dexing C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\tmp\kotlin-classes\arm64Debug
+Dexing C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\javac\arm64Debug\compileArm64DebugJavaWithJavac\classes
+Processing input C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\arm64Debug\processArm64DebugResources\R.jar
+Dexing C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\arm64Debug\processArm64DebugResources\R.jar
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\tmp\kotlin-classes\arm64Debug' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\tmp\kotlin-classes\arm64Debug' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\tmp\kotlin-classes\arm64Debug' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\tmp\kotlin-classes\arm64Debug' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\tmp\kotlin-classes\arm64Debug' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\tmp\kotlin-classes\arm64Debug' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\javac\arm64Debug\compileArm64DebugJavaWithJavac\classes' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\tmp\kotlin-classes\arm64Debug' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\arm64Debug\processArm64DebugResources\R.jar' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_0.jar'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\tmp\kotlin-classes\arm64Debug' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\tmp\kotlin-classes\arm64Debug' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\tmp\kotlin-classes\arm64Debug' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\tmp\kotlin-classes\arm64Debug' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\javac\arm64Debug\compileArm64DebugJavaWithJavac\classes' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\tmp\kotlin-classes\arm64Debug' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\javac\arm64Debug\compileArm64DebugJavaWithJavac\classes' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\javac\arm64Debug\compileArm64DebugJavaWithJavac\classes' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\javac\arm64Debug\compileArm64DebugJavaWithJavac\classes' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\javac\arm64Debug\compileArm64DebugJavaWithJavac\classes' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\javac\arm64Debug\compileArm64DebugJavaWithJavac\classes' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\javac\arm64Debug\compileArm64DebugJavaWithJavac\classes' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\javac\arm64Debug\compileArm64DebugJavaWithJavac\classes' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\javac\arm64Debug\compileArm64DebugJavaWithJavac\classes' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\javac\arm64Debug\compileArm64DebugJavaWithJavac\classes' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\arm64Debug\processArm64DebugResources\R.jar' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_1.jar'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\javac\arm64Debug\compileArm64DebugJavaWithJavac\classes' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\arm64Debug\processArm64DebugResources\R.jar' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_2.jar'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\arm64Debug\processArm64DebugResources\R.jar' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_3.jar'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\arm64Debug\processArm64DebugResources\R.jar' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_4.jar'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\arm64Debug\processArm64DebugResources\R.jar' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_5.jar'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\arm64Debug\processArm64DebugResources\R.jar' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_6.jar'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\arm64Debug\processArm64DebugResources\R.jar' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_7.jar'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\arm64Debug\processArm64DebugResources\R.jar' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_8.jar'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\arm64Debug\processArm64DebugResources\R.jar' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_9.jar'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\arm64Debug\processArm64DebugResources\R.jar' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_10.jar'
+Dexing 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\arm64Debug\processArm64DebugResources\R.jar' to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_11.jar'
+Done with all dex archive conversions
+Resolve mutations for :app:mergeLibDexArm64Debug (Thread[#753,included builds,5,main]) started.
+:app:mergeLibDexArm64Debug (Thread[#771,Execution worker Thread 17,5,main]) started.
+Resolve mutations for :app:mergeProjectDexArm64Debug (Thread[#753,included builds,5,main]) started.
+:app:mergeProjectDexArm64Debug (Thread[#753,included builds,5,main]) started.
+Resolve mutations for :app:rustBuildArm64Debug (Thread[#759,Execution worker Thread 6,5,main]) started.
+:app:rustBuildArm64Debug (Thread[#759,Execution worker Thread 6,5,main]) started.
+
+> Task :app:mergeLibDexArm64Debug
+Caching disabled for task ':app:mergeLibDexArm64Debug' because:
+  Build cache is disabled
+Task ':app:mergeLibDexArm64Debug' is not up-to-date because:
+  No history is available.
+The input changes require a full rebuild for incremental task ':app:mergeLibDexArm64Debug'.
+Merging to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\dex\arm64Debug\mergeLibDexArm64Debug\1' with D8 from all or a subset of dex files in C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, and from all global synthetics files in 
+Merging to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\dex\arm64Debug\mergeLibDexArm64Debug\12' with D8 from all or a subset of dex files in C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-opener-2.5.4\android\build\.transforms\80e3fcccf973a86ffaf508a6877c8ef5\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-opener-2.5.4\android\build\.transforms\80e3fcccf973a86ffaf508a6877c8ef5\transformed\bundleLibRuntimeToDirDebug, and from all global synthetics files in 
+Merging to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\dex\arm64Debug\mergeLibDexArm64Debug\10' with D8 from all or a subset of dex files in C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, and from all global synthetics files in 
+Merging to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\dex\arm64Debug\mergeLibDexArm64Debug\3' with D8 from all or a subset of dex files in C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.11.5\mobile\android\build\.transforms\3cc8cde095fe7af1af422b6e3012b201\transformed\bundleLibRuntimeToDirDebug, and from all global synthetics files in 
+Merging to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\dex\arm64Debug\mergeLibDexArm64Debug\15' with D8 from all or a subset of dex files in C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\build\.transforms\fa6f54749ab4b594bce4394232f54f84\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\build\.transforms\fa6f54749ab4b594bce4394232f54f84\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\build\.transforms\fa6f54749ab4b594bce4394232f54f84\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\build\.transforms\fa6f54749ab4b594bce4394232f54f84\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\build\.transforms\fa6f54749ab4b594bce4394232f54f84\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\build\.transforms\fa6f54749ab4b594bce4394232f54f84\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\build\.transforms\fa6f54749ab4b594bce4394232f54f84\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\build\.transforms\fa6f54749ab4b594bce4394232f54f84\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\build\.transforms\fa6f54749ab4b594bce4394232f54f84\transformed\bundleLibRuntimeToDirDebug, C:\Users\gabri\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-plugin-dialog-2.7.2\android\build\.transforms\fa6f54749ab4b594bce4394232f54f84\transformed\bundleLibRuntimeToDirDebug, and from all global synthetics files in 
+
+> Task :app:mergeProjectDexArm64Debug
+Caching disabled for task ':app:mergeProjectDexArm64Debug' because:
+  Build cache is disabled
+Task ':app:mergeProjectDexArm64Debug' is not up-to-date because:
+  No history is available.
+The input changes require a full rebuild for incremental task ':app:mergeProjectDexArm64Debug'.
+Merging to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\dex\arm64Debug\mergeProjectDexArm64Debug\0' with D8 from all or a subset of dex files in C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_0.jar, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_1.jar, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_10.jar, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_11.jar, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_2.jar, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_3.jar, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_4.jar, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_5.jar, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_6.jar, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_7.jar, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_8.jar, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out\d03df8daa172e4c68f7d9f78ba1e2a363f3646626de12c1f9a4612724c86e936_9.jar, and from all global synthetics files in 
+Merging to 'C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\dex\arm64Debug\mergeProjectDexArm64Debug\15' with D8 from all or a subset of dex files in C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android\app\build\intermediates\project_dex_archive\arm64Debug\dexBuilderArm64Debug\out, and from all global synthetics files in 
+
+> Task :app:rustBuildArm64Debug
+Caching disabled for task ':app:rustBuildArm64Debug' because:
+  Build cache is disabled
+Task ':app:rustBuildArm64Debug' is not up-to-date because:
+  Task has not declared any outputs despite executing actions.
+Starting process 'command 'npm''. Working directory: C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri Command: npm run -- tauri android android-studio-script -v --target aarch64
+Starting process 'command 'npm.exe''. Working directory: C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri Command: npm.exe run -- tauri android android-studio-script -v --target aarch64
+Starting process 'command 'npm.cmd''. Working directory: C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri Command: npm.cmd run -- tauri android android-studio-script -v --target aarch64
+Successfully started process 'command 'npm.cmd''
+
+> nebula-host@0.5.1 tauri
+> tauri android android-studio-script -v --target aarch64
+
+       Debug [tauri_cli::helpers::app_paths] Found Tauri project inside C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri on early lookup
+       Debug [jsonrpsee-client] Connecting to target: Target { host: "127.0.0.1", host_header: "127.0.0.1:51464", _mode: Plain, path_and_query: "/", basic_auth: None }
+       Debug [jsonrpsee-client] Failed to connect to sockaddr: 127.0.0.1:51464
+       Debug [jsonrpsee-client] Connecting to target: Target { host: "127.0.0.1", host_header: "127.0.0.1:51464", _mode: Plain, path_and_query: "/", basic_auth: None }
+       Debug [jsonrpsee-client] Connecting to target: Target { host: "127.0.0.1", host_header: "127.0.0.1:51464", _mode: Plain, path_and_query: "/", basic_auth: None }
+       Debug [jsonrpsee-client] Connecting to target: Target { host: "127.0.0.1", host_header: "127.0.0.1:51464", _mode: Plain, path_and_query: "/", basic_auth: None }
+       Debug [jsonrpsee-client] Connecting to target: Target { host: "127.0.0.1", host_header: "127.0.0.1:51464", _mode: Plain, path_and_query: "/", basic_auth: None }
+
+thread '<unnamed>' (27756) panicked at crates\tauri-cli\src\mobile\mod.rs:403:6:
+failed to read CLI options: Context("failed to build WebSocket client", Io(Os { code: 10061, kind: ConnectionRefused, message: "No connection could be made because the target machine actively refused it." }))
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+Starting process 'command 'npm.bat''. Working directory: C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri Command: npm.bat run -- tauri android android-studio-script -v --target aarch64
+
+> Task :app:rustBuildArm64Debug FAILED
+Could not execute [report metric STATISTICS_COLLECT_METRICS_OVERHEAD]
+
+Could not execute [report metric STATISTICS_COLLECT_METRICS_OVERHEAD]
+
+[Incubating] Problems report is available at: file:///C:/Users/gabri/Documents/CodingRepos/1.Personal/Nebula-Host/src-tauri/gen/android/build/reports/problems/problems-report.html
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:rustBuildArm64Debug'.
+> A problem occurred starting process 'command 'npm.bat''
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+88 actionable tasks: 11 executed, 77 up-to-date
+Watched directory hierarchies: [C:\Users\gabri\Documents\CodingRepos\1.Personal\Nebula-Host\src-tauri\gen\android]
+BUILD FAILED in 8s

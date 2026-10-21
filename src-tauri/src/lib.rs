@@ -68,6 +68,8 @@ pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init());
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(launcher::android::init());
     #[cfg(desktop)]
     let builder = if launcher_preview { builder } else { builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
         // A second launch focuses the window that is already hosting.

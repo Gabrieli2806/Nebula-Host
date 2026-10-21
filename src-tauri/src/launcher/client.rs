@@ -50,12 +50,12 @@ pub struct Credentials {
     pub expires: Option<std::time::Instant>,
 }
 pub fn supported() -> bool {
-    cfg!(all(target_os = "windows", target_arch = "x86_64"))
+    cfg!(all(target_os = "windows", target_arch = "x86_64")) || cfg!(all(target_os = "android", target_arch = "aarch64", feature = "desktop"))
 }
-fn failure(message: &str) -> AppError {
+pub(super) fn failure(message: &str) -> AppError {
     AppError::new(ErrorCode::InstallFailed).detail(message)
 }
-fn string<'a>(value: &'a Value, key: &str) -> AppResult<&'a str> {
+pub(super) fn string<'a>(value: &'a Value, key: &str) -> AppResult<&'a str> {
     value[key]
         .as_str()
         .ok_or_else(|| failure(&format!("Missing client metadata: {key}")))
@@ -65,7 +65,7 @@ fn directory() -> AppResult<PathBuf> {
     std::fs::create_dir_all(&dir)?;
     Ok(dir)
 }
-fn check_cancel(cancel: &AtomicBool) -> AppResult<()> {
+pub(super) fn check_cancel(cancel: &AtomicBool) -> AppResult<()> {
     if cancel.load(Ordering::Relaxed) {
         Err(AppError::new(ErrorCode::Cancelled))
     } else {
@@ -78,6 +78,21 @@ impl ClientEngine {
         self.status.read().await.clone()
     }
     pub fn logs(&self, id: Uuid) -> Vec<String> {
+        #[cfg(target_os = "android")]
+        if let Ok(root) = directory() {
+            use std::io::{Seek, SeekFrom};
+            if let Ok(mut file) = std::fs::File::open(root.join("profiles").join(id.to_string()).join("latest-client.log")) {
+                let length = file.metadata().map(|m| m.len()).unwrap_or(0);
+                let _ = file.seek(SeekFrom::Start(length.saturating_sub(512 * 1024)));
+                let mut bytes = Vec::new();
+                if file.take(512 * 1024).read_to_end(&mut bytes).is_ok() {
+                    let text = String::from_utf8_lossy(&bytes);
+                    let mut lines: Vec<_> = text.lines().rev().take(300).map(|line| redact_line(line).chars().take(2000).collect()).collect();
+                    lines.reverse();
+                    return lines;
+                }
+            }
+        }
         self.logs
             .lock()
             .map(|logs| logs.get(&id).cloned().unwrap_or_default())
@@ -109,9 +124,9 @@ impl ClientEngine {
         profile: Profile,
         credentials: Option<Credentials>,
     ) -> AppResult<()> {
-        if !supported() || !matches!(profile.loader, Loader::Vanilla) {
+        if !supported() || matches!(profile.loader, Loader::Quilt) {
             return Err(AppError::new(ErrorCode::GameNotSupported)
-                .with("platform", "Windows x64 / Vanilla"));
+                .with("platform", "Windows x64 / Vanilla, Fabric, Forge, NeoForge"));
         }
         let guard = self
             .operation
@@ -120,7 +135,7 @@ impl ClientEngine {
         let mut states = self.status.write().await;
         if states
             .get(&profile.id)
-            .is_some_and(|s| matches!(s.phase.as_str(), "installing" | "running"))
+            .is_some_and(|s| matches!(s.phase.as_str(), "installing" | "running" | "stopping"))
         {
             return Err(AppError::new(ErrorCode::InstanceAlreadyRunning));
         }
@@ -186,6 +201,12 @@ impl ClientEngine {
         Ok(())
     }
     pub async fn stop(&self, id: Uuid) -> AppResult<()> {
+        #[cfg(all(target_os = "android", feature = "desktop"))]
+        if self.status.read().await.get(&id).is_some_and(|s| s.phase == "running") {
+            super::android::stop()?;
+            self.status.write().await.insert(id, ClientStatus { phase: "ready".into(), ..Default::default() });
+            return Ok(());
+        }
         if let Some(cancel) = self.cancel.read().await.get(&id) {
             cancel.store(true, Ordering::Relaxed);
             return Ok(());
@@ -199,6 +220,30 @@ impl ClientEngine {
         Ok(())
     }
     async fn watch(&self, id: Uuid) {
+        #[cfg(all(target_os = "android", feature = "desktop"))]
+        {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                if self.status.read().await.get(&id).is_some_and(|s| s.phase != "running") { return; }
+                match super::android::running() {
+                    Ok(true) => {},
+                    Ok(false) => {
+                        let code = directory().ok().and_then(|root| std::fs::read_to_string(root.join("profiles").join(id.to_string()).join(".nebula-game-exit")).ok()).and_then(|value| value.trim().parse::<i32>().ok()).unwrap_or(-1);
+                        self.status.write().await.insert(id, ClientStatus {
+                            phase: if code == 0 { "ready" } else { "failed" }.into(), exit_code: Some(code),
+                            error: if code == 0 { None } else { Some(AppError::new(ErrorCode::InstanceCrashed).with("code", code)) },
+                            ..Default::default()
+                        });
+                        return;
+                    },
+                    Err(error) => {
+                        self.status.write().await.insert(id, ClientStatus { phase: "failed".into(), error: Some(error), ..Default::default() });
+                        return;
+                    }
+                }
+            }
+        }
+        #[cfg(not(target_os = "android"))]
         loop {
             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
             let mut children = self.children.lock().await;
@@ -257,7 +302,7 @@ impl ClientEngine {
             .ok_or_else(|| AppError::new(ErrorCode::VersionNotFound))?;
         let metadata_path = version_dir.join("version.json");
         fetch(version, &metadata_path, cancel).await?;
-        let metadata: Value = serde_json::from_slice(&std::fs::read(&metadata_path)?)?;
+        let mut metadata: Value = serde_json::from_slice(&std::fs::read(&metadata_path)?)?;
         // Only modern clients with the current assets layout and patched Log4j.
         if !modern_version(&profile.game_version) || !metadata["arguments"]["game"].is_array() {
             return Err(AppError::new(ErrorCode::GameNotSupported)
@@ -280,9 +325,16 @@ impl ClientEngine {
             return Err(AppError::new(ErrorCode::JavaTooOld).with("major", major));
         }
         check_cancel(cancel)?;
-        let client_jar = version_dir.join("client.jar");
+        // NeoForge's published ignoreList identifies the untouched client by
+        // version_name.jar. A generic client.jar becomes a duplicate module.
+        let client_jar = version_dir.join(format!("{}.jar", profile.game_version));
         self.stage(profile.id, "client", 0, 1).await;
         fetch(&metadata["downloads"]["client"], &client_jar, cancel).await?;
+        if !matches!(profile.loader, Loader::Vanilla) {
+            self.stage(profile.id, "loader", 0, 0).await;
+            let overlay = super::loaders::install(profile, &root, Path::new(&java.path), &client_jar, cancel).await?;
+            super::loaders::merge(&mut metadata, overlay)?;
+        }
         let libraries_dir = root.join("libraries");
         let libraries = metadata["libraries"]
             .as_array()
@@ -290,6 +342,7 @@ impl ClientEngine {
         let libraries: Vec<_> = libraries
             .iter()
             .filter(|lib| rules_allow(&lib["rules"], false))
+            .filter(|lib| !cfg!(target_os = "android") || (!lib["name"].as_str().unwrap_or_default().starts_with("org.lwjgl:") && !lib["name"].as_str().unwrap_or_default().contains(":natives-")))
             .collect();
         let mut classpath = Vec::new();
         let natives = version_dir.join("natives");
@@ -297,9 +350,8 @@ impl ClientEngine {
         for (i, library) in libraries.iter().enumerate() {
             self.stage(profile.id, "libraries", i as u64, libraries.len() as u64)
                 .await;
-            if let Some(artifact) = library["downloads"].get("artifact") {
-                let path = paths::resolve_inside(&libraries_dir, string(artifact, "path")?)?;
-                fetch(artifact, &path, cancel).await?;
+            if library["downloads"].get("artifact").is_some() || library.get("downloads").is_none() {
+                let path = super::loaders::artifact(library, &libraries_dir, cancel).await?;
                 classpath.push(path);
             }
             // Legacy native classifiers are extracted through a bounded path.
@@ -382,11 +434,11 @@ impl ClientEngine {
             return Err(AppError::new(ErrorCode::UpstreamRejected)
                 .detail("Minecraft session expired. Sign in again."));
         }
-        let mut children = self.children.lock().await;
         let classpath = std::env::join_paths(&prepared.classpath)
             .map_err(AppError::unexpected)?
             .to_string_lossy()
             .to_string();
+        let classpath = if cfg!(target_os = "android") { "__NEBULA_ANDROID_CLASSPATH__".into() } else { classpath };
         let mut substitutions = BTreeMap::new();
         for (key, value) in [
             ("auth_player_name", credentials.name.clone()),
@@ -410,6 +462,8 @@ impl ClientEngine {
             ("launcher_name", "Nebula".into()),
             ("launcher_version", env!("CARGO_PKG_VERSION").into()),
             ("classpath", classpath),
+            ("classpath_separator", if cfg!(windows) { ";" } else { ":" }.into()),
+            ("library_directory", directory()?.join("libraries").display().to_string()),
             ("resolution_width", "1100".into()),
             ("resolution_height", "720".into()),
         ] {
@@ -427,7 +481,19 @@ impl ClientEngine {
             &substitutions,
             credentials.demo,
         )?);
-        let mut command = std::process::Command::new(&prepared.java);
+        #[cfg(all(target_os = "android", feature = "desktop"))]
+        {
+            let _ = std::fs::remove_file(prepared.game_dir.join(".nebula-game-exit"));
+            super::android::start(json!({
+                "id": profile.id.to_string(), "name": profile.name, "memory": profile.memory_mb,
+                "root": directory()?, "gameDir": prepared.game_dir,
+                "metadata": prepared.metadata, "classpath": prepared.classpath, "args": args,
+            }))
+        }
+        #[cfg(not(all(target_os = "android", feature = "desktop")))]
+        {
+        let mut children = self.children.lock().await;
+        let mut command = java::java_command(&prepared.java);
         java::configure_no_window_command(&mut command);
         let mut child = command
             .args(args)
@@ -468,6 +534,7 @@ impl ClientEngine {
         }
         children.insert(profile.id, child);
         Ok(())
+        }
     }
 }
 
@@ -504,13 +571,13 @@ pub fn modern_version(version: &str) -> bool {
     }
 }
 
-fn validate_hash(hash: &str) -> AppResult<()> {
+pub(super) fn validate_hash(hash: &str) -> AppResult<()> {
     if hash.len() != 40 || !hash.bytes().all(|b| b.is_ascii_hexdigit()) {
         return Err(failure("Invalid SHA-1"));
     }
     Ok(())
 }
-fn cached(path: &Path, hash: &str, size: Option<u64>) -> bool {
+pub(super) fn cached(path: &Path, hash: &str, size: Option<u64>) -> bool {
     let Ok(mut file) = std::fs::File::open(path) else {
         return false;
     };
@@ -528,7 +595,7 @@ fn cached(path: &Path, hash: &str, size: Option<u64>) -> bool {
     }
     hex::encode(digest.finalize()).eq_ignore_ascii_case(hash)
 }
-async fn fetch(desc: &Value, destination: &Path, cancel: &AtomicBool) -> AppResult<()> {
+pub(super) async fn fetch(desc: &Value, destination: &Path, cancel: &AtomicBool) -> AppResult<()> {
     check_cancel(cancel)?;
     let hash = string(desc, "sha1")?;
     validate_hash(hash)?;
@@ -536,26 +603,9 @@ async fn fetch(desc: &Value, destination: &Path, cancel: &AtomicBool) -> AppResu
     if cached(destination, hash, size) {
         return Ok(());
     }
-    let url = reqwest::Url::parse(string(desc, "url")?).map_err(AppError::unexpected)?;
-    if url.scheme() != "https"
-        || !matches!(
-            url.host_str(),
-            Some(
-                "piston-meta.mojang.com"
-                    | "piston-data.mojang.com"
-                    | "libraries.minecraft.net"
-                    | "resources.download.minecraft.net"
-                    | "launchermeta.mojang.com"
-                    | "launcher.mojang.com"
-            )
-        )
-    {
-        return Err(failure("Untrusted client download host"));
-    }
+    let url = validate_download_url(string(desc, "url")?)?;
     std::fs::create_dir_all(
-        destination
-            .parent()
-            .ok_or_else(|| failure("Invalid cache path"))?,
+        destination.parent().ok_or_else(|| failure("Invalid cache path"))?,
     )?;
     let temp = destination.with_extension("nebula-part");
     let checksum = nebula_downloader::Checksum::Sha1(hash.into());
@@ -579,6 +629,30 @@ async fn fetch(desc: &Value, destination: &Path, cancel: &AtomicBool) -> AppResu
     Ok(())
 }
 
+pub(super) fn validate_download_url(value: &str) -> AppResult<reqwest::Url> {
+    let url = reqwest::Url::parse(value).map_err(AppError::unexpected)?;
+    if url.scheme() != "https"
+        || !matches!(
+            url.host_str(),
+            Some(
+                "piston-meta.mojang.com"
+                    | "piston-data.mojang.com"
+                    | "libraries.minecraft.net"
+                    | "resources.download.minecraft.net"
+                    | "launchermeta.mojang.com"
+                    | "launcher.mojang.com"
+                    | "maven.fabricmc.net"
+                    | "maven.minecraftforge.net"
+                    | "maven.neoforged.net"
+                    | "repo.maven.apache.org"
+            )
+        )
+    {
+        return Err(failure("Untrusted client download host"));
+    }
+    Ok(url)
+}
+
 pub fn rules_allow(rules: &Value, demo: bool) -> bool {
     let Some(rules) = rules.as_array() else {
         return true;
@@ -586,7 +660,8 @@ pub fn rules_allow(rules: &Value, demo: bool) -> bool {
     let mut allowed = false;
     for rule in rules {
         let os = &rule["os"];
-        if os["name"].as_str().is_some_and(|name| name != "windows") {
+        let os_name = if cfg!(target_os = "android") { "linux" } else { "windows" };
+        if os["name"].as_str().is_some_and(|name| name != os_name) {
             continue;
         }
         if os["arch"]

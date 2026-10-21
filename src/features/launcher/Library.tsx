@@ -41,7 +41,7 @@ export function Library({ renderControls }: { renderControls: (profile: Launcher
       {visible.map(profile => {
         const info = loaderInfo(profile.loader);
         const phase = statuses.data?.[profile.id]?.phase;
-        const status = phase === "running" ? "launcher.runningShort" : phase === "installing" ? "launcher.installingShort" : phase === "failed" ? "launcher.failedShort" : profile.loader !== "vanilla" ? "launcher.configOnly" : "launcher.vanillaInstance";
+        const status = phase === "running" ? "launcher.runningShort" : phase === "installing" ? "launcher.installingShort" : phase === "failed" ? "launcher.failedShort" : profile.loader === "quilt" ? "launcher.configOnly" : phase === "ready" ? "launcher.ready" : "launcher.vanillaInstance";
         return <button type="button" className="launcher-instance-card" data-loader={profile.loader} data-selected={selected?.id === profile.id ? "" : undefined} aria-pressed={selected?.id === profile.id} key={profile.id} onClick={() => setSelectedId(profile.id)}>
           <span className="launcher-instance-cover" aria-hidden="true"><span className="launcher-instance-emblem"><LoaderIcon glyph={info.glyph} size={40} /></span><span className="launcher-cover-version">{profile.game_version}</span></span>
           <span className="launcher-instance-body"><strong>{profile.name}</strong><span className="launcher-instance-meta"><LoaderIcon glyph={info.glyph} size={13} />{info.name}<span>·</span>{profile.memory_mb / 1024} GB</span><span className="launcher-instance-status" data-phase={phase}>{t(status)}</span></span>
@@ -52,7 +52,8 @@ export function Library({ renderControls }: { renderControls: (profile: Launcher
     {selected ? <aside className="launcher-instance-detail launcher-panel" aria-label={t("launcher.instanceDetails")} key={selected.id}>
       <div className="launcher-detail-heading"><span className="launcher-detail-icon"><LoaderIcon glyph={loaderInfo(selected.loader).glyph} size={25} /></span><div><p className="label">MINECRAFT JAVA</p><h2>{selected.name}</h2></div></div>
       <dl className="launcher-instance-specs"><div><dt>{t("launcher.version")}</dt><dd>{selected.game_version}</dd></div><div><dt>{t("launcher.loader")}</dt><dd>{loaderInfo(selected.loader).name}</dd></div><div><dt>{t("launcher.memoryShort")}</dt><dd>{selected.memory_mb / 1024} GB</dd></div></dl>
-      {caps.data?.can_launch && selected.loader === "vanilla" ? renderControls(selected) : <p className="launcher-notice">{t(selected.loader !== "vanilla" ? "launcher.loaderPending" : "launcher.androidRuntime")}</p>}
+      {selected.loader_version ? <p className="launcher-muted">{loaderInfo(selected.loader).name} {selected.loader_version}</p> : null}
+      {caps.data?.can_launch && selected.loader !== "quilt" ? renderControls(selected) : <p className="launcher-notice">{t(selected.loader === "quilt" ? "launcher.loaderPending" : "launcher.androidRuntime")}</p>}
       <div className="launcher-detail-footer"><Button icon="trash" variant="quiet" disabled={isBusy(selected.id)} onClick={() => { remove.reset(); setDeleting(selected); }}>{t("launcher.removeInstance")}</Button></div>
     </aside> : null}</div> : null}
     {caps.data?.platform === "android" ? <p className="launcher-muted">{t("launcher.androidRuntime")}</p> : <p className="launcher-library-footnote"><Icon name="info" size={14} />{t("launcher.libraryFootnote")}</p>}

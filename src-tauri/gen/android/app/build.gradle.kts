@@ -50,6 +50,10 @@ android {
         // unpacked there rather than mapped out of the APK.
         jniLibs {
             useLegacyPackaging = true
+            pickFirsts.add("**/libbytehook.so")
+            pickFirsts.add("**/libc++_shared.so")
+            pickFirsts.add("**/libglxshim.so")
+            pickFirsts.add("**/libandroidnsbypass.so")
         }
     }
     kotlinOptions {
@@ -92,6 +96,7 @@ val buildNebulaLauncher = tasks.register("buildNebulaLauncher") {
 tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(buildNebulaLauncher) }
 
 dependencies {
+    implementation(project(":game-runtime"))
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("androidx.activity:activity-ktx:1.10.1")
