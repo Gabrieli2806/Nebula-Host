@@ -60,7 +60,7 @@ pub(super) fn string<'a>(value: &'a Value, key: &str) -> AppResult<&'a str> {
         .as_str()
         .ok_or_else(|| failure(&format!("Missing client metadata: {key}")))
 }
-fn directory() -> AppResult<PathBuf> {
+pub(super) fn directory() -> AppResult<PathBuf> {
     let dir = paths::default_instances_dir()?.with_file_name("launcher");
     std::fs::create_dir_all(&dir)?;
     Ok(dir)

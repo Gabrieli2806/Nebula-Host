@@ -108,3 +108,16 @@
   .launcher-loader-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .launcher-version-fields { grid-template-columns: 1fr; }
 }
+
+.launcher-content { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.launcher-content-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.launcher-content-head h3 { margin: 0; font-size: 14px; }
+.launcher-content-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.launcher-content-tab { padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--text-muted); font: inherit; font-size: 12px; cursor: pointer; }
+.launcher-content-tab span { color: var(--text-faint); margin-left: 4px; }
+.launcher-content-tab[aria-selected="true"] { border-color: var(--accent-base); color: var(--text); background: color-mix(in srgb, var(--accent-base) 10%, transparent); }
+.launcher-content-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; max-height: 280px; overflow: auto; }
+.launcher-content-list li { display: flex; align-items: center; gap: 8px; padding: 6px 2px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.launcher-content-list li[data-disabled] .launcher-content-name { opacity: 0.5; text-decoration: line-through; }
+.launcher-content-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.launcher-install-target { display: flex; flex-direction: column; gap: 6px; max-width: 520px; }

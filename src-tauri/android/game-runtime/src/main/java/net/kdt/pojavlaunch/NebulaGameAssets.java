@@ -26,6 +26,10 @@ final class NebulaGameAssets {
         int major = request.getJSONObject("metadata").getJSONObject("javaVersion").getInt("majorVersion");
         File runtime = new File(Tools.MULTIRT_HOME, "Nebula-" + major);
         if (!new File(runtime, "release").isFile()) copyAssets("game-jre/" + major, runtime);
+        // The runtime ships without libawt_xawt.so; AWT initialisation (used by the
+        // game's agents) fails without a stand-in, so install it from the app's
+        // native libraries. Done every time: cheap, and it repairs older copies.
+        net.kdt.pojavlaunch.multirt.MultiRTUtils.postPrepare("Nebula-" + major);
         request.put("runtime", "Nebula-" + major);
     }
 

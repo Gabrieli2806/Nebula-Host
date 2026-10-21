@@ -5,7 +5,7 @@ import { launcherApi, toAppError } from "@/lib/ipc";
 import { openExternal } from "@/lib/external";
 import { IS_WEB } from "@/lib/web";
 import { Button, ErrorNotice } from "@/ui";
-import type { ContentKind, DeviceLogin, LauncherProfile } from "./types";
+import type { ContentKind, DeviceLogin, LauncherProfile, LauncherProject } from "./types";
 import { Library } from "./Library";
 import "./launcher.css";
 
@@ -14,13 +14,17 @@ const ROOT = ["launcher"];
 export function LauncherScreen() {
   const { t } = useI18n();
   const [tab, setTab] = useState<"library" | "discover" | "accounts">("library");
+  // The instance (and kind of content) Discover installs into, when the person
+  // came from an instance's "Add from Modrinth".
+  const [target, setTarget] = useState<{ profile: LauncherProfile; kind: ContentKind } | null>(null);
+  const [lastProfile, setLastProfile] = useState<string | null>(null);
   if (IS_WEB) return <div className="launcher"><h1>Launcher</h1><p>{t("launcher.localOnly")}</p></div>;
   return <div className="launcher">
     <header><p className="label">MINECRAFT JAVA EDITION</p><h1>Launcher</h1><p>{t("launcher.subtitle")}</p></header>
     <nav className="launcher-tabs" aria-label="Launcher">
       {(["library", "discover", "accounts"] as const).map(id => <Button key={id} aria-pressed={tab === id} variant={tab === id ? "primary" : "default"} onClick={() => setTab(id)}>{t(`launcher.${id}`)}</Button>)}
     </nav>
-    {tab === "library" ? <Library renderControls={profile => <ProfileControls profile={profile} />} /> : tab === "discover" ? <Discover /> : <Accounts />}
+    {tab === "library" ? <Library focusId={lastProfile} renderControls={profile => <ProfileControls profile={profile} />} onBrowse={(profile, kind) => { setTarget({ profile, kind }); setTab("discover"); }} /> : tab === "discover" ? <Discover target={target} onOpenInstance={id => { setLastProfile(id); setTab("library"); }} /> : <Accounts />}
   </div>;
 }
 
@@ -59,11 +63,33 @@ function ProfileControls({ profile }: { profile: LauncherProfile }) {
   </div>;
 }
 
-function Discover() {
+function Discover({ target, onOpenInstance }: { target: { profile: LauncherProfile; kind: ContentKind } | null; onOpenInstance: (id: string) => void }) {
   const { t } = useI18n();
+  const client = useQueryClient();
   const [input, setInput] = useState("");
   const [query, setQuery] = useState("");
-  const [kind, setKind] = useState<ContentKind>("modpack");
+  const [kind, setKind] = useState<ContentKind>(target?.kind ?? "modpack");
+  const profiles = useQuery({ queryKey: [...ROOT, "profiles"], queryFn: launcherApi.profiles });
+  const caps = useQuery({ queryKey: [...ROOT, "capabilities"], queryFn: launcherApi.capabilities });
+  const [instanceId, setInstanceId] = useState(target?.profile.id ?? "");
+  const chosen = profiles.data?.find(p => p.id === instanceId) ?? profiles.data?.find(p => p.id === target?.profile.id) ?? profiles.data?.[0];
+  const canInstall = !!caps.data?.can_launch;
+  const install = useMutation({
+    mutationFn: async (project: LauncherProject) => {
+      if (kind === "modpack") {
+        const profile = await launcherApi.modpackInstall(project.project_id);
+        return { project: project.project_id, profile, files: [] as string[] };
+      }
+      if (!chosen) throw { code: "invalid_input", params: { reason: "no instance" } };
+      const files = await launcherApi.contentInstall(chosen.id, project.project_id, kind);
+      return { project: project.project_id, profile: chosen, files };
+    },
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: [...ROOT, "profiles"] });
+      await client.invalidateQueries({ queryKey: [...ROOT, "content"] });
+    },
+  });
+  const done = install.data;
   const [offset, setOffset] = useState(0);
   const result = useQuery({ queryKey: [...ROOT, "search", query, kind, offset], queryFn: () => launcherApi.search(query, kind, offset), staleTime: 120_000 });
   const [openError, setOpenError] = useState(false);
@@ -73,7 +99,17 @@ function Discover() {
       <select aria-label={t("launcher.contentType")} value={kind} onChange={e => { setKind(e.target.value as ContentKind); setOffset(0); }}>{(["modpack", "mod", "resourcepack", "shader"] as const).map(id => <option key={id} value={id}>{t(`launcher.${id}`)}</option>)}</select>
       <Button type="submit" icon="search">{t("launcher.searchAction")}</Button>
     </form>
+    {canInstall ? (kind === "modpack"
+      ? <p className="launcher-muted">{t("launcher.packCreatesInstance")}</p>
+      : <label className="launcher-install-target">{t("launcher.installInto")}
+          <select value={chosen?.id ?? ""} disabled={!profiles.data?.length || install.isPending} onChange={e => setInstanceId(e.target.value)}>
+            {profiles.data?.map(p => <option key={p.id} value={p.id}>{p.name} · {p.game_version} · {p.loader}</option>)}
+          </select>
+        </label>) : null}
+    {canInstall && kind !== "modpack" && profiles.data?.length === 0 ? <p className="launcher-notice">{t("launcher.createInstanceFirst")}</p> : null}
     <p className="launcher-muted">{t("launcher.catalogNote")}</p>
+    {install.error ? <Failure error={install.error} /> : null}
+    {done ? <p className="launcher-notice" role="status">{kind === "modpack" ? t("launcher.packCreated", { name: done.profile.name }) : done.files.length ? t("launcher.installedFiles", { count: done.files.length, name: done.profile.name }) : t("launcher.alreadyInstalled", { name: done.profile.name })} <Button size="sm" onClick={() => onOpenInstance(done.profile.id)}>{t("launcher.openInstance")}</Button></p> : null}
     <Failure error={result.error} />
     {result.isError ? <Button onClick={() => void result.refetch()}>{t("launcher.retry")}</Button> : null}
     {openError ? <p role="alert">{t("launcher.openFailed")}</p> : null}
@@ -83,7 +119,10 @@ function Discover() {
       {project.icon_url?.startsWith("https://") ? <img src={project.icon_url} alt="" loading="lazy" referrerPolicy="no-referrer" /> : null}
       <div><h2>{project.title}</h2><p className="launcher-muted">{project.author} · {project.downloads.toLocaleString()} {t("launcher.downloads")}</p></div>
       <p className="launcher-description">{project.description}</p>
-      <Button icon="external" onClick={() => { void openExternal(`https://modrinth.com/project/${encodeURIComponent(project.project_id)}`).then(ok => setOpenError(!ok)); }}>{t("launcher.viewProject")}</Button>
+      <div className="launcher-actions">
+        {canInstall ? <Button variant="primary" icon={kind === "modpack" ? "plus" : "download"} disabled={install.isPending || (kind !== "modpack" && !chosen)} onClick={() => install.mutate(project)}>{install.isPending && install.variables?.project_id === project.project_id ? t("launcher.installing") : t(kind === "modpack" ? "launcher.createFromPack" : "launcher.install")}</Button> : null}
+        <Button icon="external" onClick={() => { void openExternal(`https://modrinth.com/project/${encodeURIComponent(project.project_id)}`).then(ok => setOpenError(!ok)); }}>{t("launcher.viewProject")}</Button>
+      </div>
     </article>)}</div>
     <div className="launcher-actions"><Button disabled={!offset || result.isFetching} onClick={() => setOffset(Math.max(0, offset - 20))}>{t("launcher.previous")}</Button><span>{Math.floor(offset / 20) + 1}</span><Button disabled={!result.data || offset + 20 >= result.data.total_hits || offset >= 10000 || result.isFetching} onClick={() => setOffset(offset + 20)}>{t("launcher.next")}</Button></div>
   </>;

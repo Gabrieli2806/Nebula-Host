@@ -4,17 +4,18 @@ import { useI18n } from "@/i18n";
 import { launcherApi, toAppError } from "@/lib/ipc";
 import { Button, Dialog, ErrorNotice, Icon, LoaderIcon } from "@/ui";
 import { CreateInstanceDialog } from "./CreateInstanceDialog";
+import { InstanceContent } from "./Content";
 import { LOADERS, loaderInfo } from "./loaderOptions";
-import type { LauncherProfile, Loader } from "./types";
+import type { ContentKind, LauncherProfile, Loader } from "./types";
 
-export function Library({ renderControls }: { renderControls: (profile: LauncherProfile) => ReactNode }) {
+export function Library({ renderControls, onBrowse, focusId }: { renderControls: (profile: LauncherProfile) => ReactNode; onBrowse: (profile: LauncherProfile, kind: ContentKind) => void; focusId?: string | null }) {
   const { t } = useI18n();
   const client = useQueryClient();
   const profiles = useQuery({ queryKey: ["launcher", "profiles"], queryFn: launcherApi.profiles });
   const caps = useQuery({ queryKey: ["launcher", "capabilities"], queryFn: launcherApi.capabilities });
   const statuses = useQuery({ queryKey: ["launcher", "status"], queryFn: launcherApi.status, refetchInterval: 1000 });
   const [creating, setCreating] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(focusId ?? null);
   const [search, setSearch] = useState("");
   const [loader, setLoader] = useState<Loader | "all">("all");
   const [deleting, setDeleting] = useState<LauncherProfile | null>(null);
@@ -54,6 +55,7 @@ export function Library({ renderControls }: { renderControls: (profile: Launcher
       <dl className="launcher-instance-specs"><div><dt>{t("launcher.version")}</dt><dd>{selected.game_version}</dd></div><div><dt>{t("launcher.loader")}</dt><dd>{loaderInfo(selected.loader).name}</dd></div><div><dt>{t("launcher.memoryShort")}</dt><dd>{selected.memory_mb / 1024} GB</dd></div></dl>
       {selected.loader_version ? <p className="launcher-muted">{loaderInfo(selected.loader).name} {selected.loader_version}</p> : null}
       {caps.data?.can_launch && selected.loader !== "quilt" ? renderControls(selected) : <p className="launcher-notice">{t(selected.loader === "quilt" ? "launcher.loaderPending" : "launcher.androidRuntime")}</p>}
+      {caps.data?.platform === "android" || caps.data?.can_launch ? <InstanceContent profile={selected} onBrowse={kind => onBrowse(selected, kind)} /> : null}
       <div className="launcher-detail-footer"><Button icon="trash" variant="quiet" disabled={isBusy(selected.id)} onClick={() => { remove.reset(); setDeleting(selected); }}>{t("launcher.removeInstance")}</Button></div>
     </aside> : null}</div> : null}
     {caps.data?.platform === "android" ? <p className="launcher-muted">{t("launcher.androidRuntime")}</p> : <p className="launcher-library-footnote"><Icon name="info" size={14} />{t("launcher.libraryFootnote")}</p>}

@@ -2,6 +2,7 @@
 //! and never exposed through the remote-node dispatch surface.
 pub mod auth;
 pub mod client;
+pub mod content;
 pub mod loaders;
 #[cfg(all(target_os = "android", feature = "desktop"))]
 pub mod android;
@@ -130,6 +131,17 @@ pub async fn create(input: CreateProfile) -> AppResult<Profile> {
     profiles.push(profile.clone());
     save_profiles(&profiles)?;
     Ok(profile)
+}
+
+/// Pin the loader build an instance uses (a modpack names its own).
+pub async fn set_loader_version(id: uuid::Uuid, version: String) -> AppResult<Profile> {
+    let _guard = STORE_LOCK.get_or_init(Default::default).lock().await;
+    let mut profiles = read_profiles()?;
+    let profile = profiles.iter_mut().find(|p| p.id == id).ok_or_else(|| AppError::new(ErrorCode::NotFound))?;
+    profile.loader_version = Some(version);
+    let updated = profile.clone();
+    save_profiles(&profiles)?;
+    Ok(updated)
 }
 
 pub async fn remove(id: uuid::Uuid) -> AppResult<()> {

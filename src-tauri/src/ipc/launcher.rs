@@ -129,3 +129,39 @@ pub async fn launcher_logout(state: tauri::State<'_, AuthState>, id: String) -> 
     state.logout(id).await;
     Ok(())
 }
+
+async fn profile_by_id(id: uuid::Uuid) -> AppResult<Profile> {
+    launcher::profiles()
+        .await?
+        .into_iter()
+        .find(|p| p.id == id)
+        .ok_or_else(|| crate::error::AppError::new(crate::error::ErrorCode::NotFound))
+}
+
+/// What an instance has installed: mods, resource packs, shaders.
+#[tauri::command]
+pub async fn launcher_content_list(id: uuid::Uuid) -> AppResult<Vec<launcher::content::Installed>> {
+    launcher::content::list(&profile_by_id(id).await?)
+}
+
+/// Install a Modrinth mod, resource pack or shader into an instance.
+#[tauri::command]
+pub async fn launcher_content_install(id: uuid::Uuid, project_id: String, kind: ContentKind) -> AppResult<Vec<String>> {
+    launcher::content::install(&profile_by_id(id).await?, &project_id, kind).await
+}
+
+#[tauri::command]
+pub async fn launcher_content_remove(id: uuid::Uuid, kind: ContentKind, file: String) -> AppResult<()> {
+    launcher::content::remove(&profile_by_id(id).await?, kind, &file)
+}
+
+#[tauri::command]
+pub async fn launcher_content_set_enabled(id: uuid::Uuid, kind: ContentKind, file: String, enabled: bool) -> AppResult<()> {
+    launcher::content::set_enabled(&profile_by_id(id).await?, kind, &file, enabled)
+}
+
+/// Create a new instance from a Modrinth modpack.
+#[tauri::command]
+pub async fn launcher_modpack_install(project_id: String) -> AppResult<Profile> {
+    launcher::content::install_modpack(&project_id).await
+}
