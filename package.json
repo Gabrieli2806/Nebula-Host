@@ -1,7 +1,7 @@
 {
   "name": "nebula-host",
   "private": true,
-  "version": "0.5.1",
+  "version": "1.0.0",
   "type": "module",
   "author": "Gabrieli2806",
   "scripts": {

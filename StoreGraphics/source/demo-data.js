@@ -15,7 +15,7 @@
     address: "192.168.1.20:25565", public_address: status === "online" ? "play.example.net:25565" : null, icon_url: null, ...extra,
   });
   const instances = [
-    mk("i1", "Survival", "minecraft", "paper", "1.21.4", "online", 6, 20, 14, 2310, 372),
+    mk("i1", "Survival", "minecraft", "paper", "1.21.4", "online", 8, 20, 14, 2310, 372),
     mk("i2", "Creative", "minecraft", "fabric", "1.21.4", "online", 2, 10, 6, 1480, 95, { ports: { game: 25566 } }),
     mk("i3", "Modded", "minecraft", "neoforge", "1.21.1", "offline", 0, 20, 0, 0, 60 * 30, { ports: { game: 25567 } }),
     mk("i4", "Minigames", "minecraft", "purpur", "1.21.4", "online", 9, 30, 22, 2890, 640, { ports: { game: 25568 } }),
@@ -43,12 +43,12 @@
   const games = [{ id: "minecraft", name: "Minecraft", accent: "emerald", icon: "minecraft", distributions: [{ id: "vanilla", name: "Vanilla", accent: "#6f8f4e", summary_key: "games.minecraft.vanilla", has_loader_version: false, glyph: "vanilla", addon_loaders: ["vanilla"], addon_dir: "mods", addon_project_type: "mod" }, { id: "paper", name: "Paper", accent: "#3b82f6", summary_key: "games.minecraft.paper", has_loader_version: false, glyph: "paper", addon_loaders: ["paper"], addon_dir: "plugins", addon_project_type: "plugin" }, { id: "fabric", name: "Fabric", accent: "#c9b79c", summary_key: "games.minecraft.fabric", has_loader_version: true, glyph: "fabric", addon_loaders: ["fabric"], addon_dir: "mods", addon_project_type: "mod" }, { id: "neoforge", name: "NeoForge", accent: "#e8903a", summary_key: "games.minecraft.neoforge", has_loader_version: true, glyph: "neoforge", addon_loaders: ["neoforge"], addon_dir: "mods", addon_project_type: "mod" }, { id: "purpur", name: "Purpur", accent: "#a855f7", summary_key: "games.minecraft.purpur", has_loader_version: false, glyph: "purpur", addon_loaders: ["purpur"], addon_dir: "plugins", addon_project_type: "plugin" }],
     runtime: { kind: "java", min_major: 21 }, ports: [{ key: "game", default: 25565, protocol: "tcp", primary: true }], settings: [], agreement: { url: "https://aka.ms/MinecraftEULA" } }];
   const pl = (n) => ({ name: n, uuid: null });
-  const players = { allowed: [pl("Gabrieli2806"), pl("Troxtrunks"), pl("nightmare_33n"), pl("Diluza"), pl("Steve"), pl("Alex")], operators: [{ name: "Gabrieli2806", level: 4 }], banned: [] };
+  const players = { allowed: [pl("Gabrieli2806"), pl("Troxtrunks"), pl("nightmare_33n"), pl("Diluza"), pl("Steve"), pl("Alex"), pl("megato13"), pl("helloworld1040")], operators: [{ name: "Gabrieli2806", level: 4 }], banned: [] };
   const fixtures = {
     instances_list: instances, instance_get: (a) => instances.find((i) => i.id === a.instanceId || i.id === a.id) || instances[0],
     node_get: node, node_health: health, settings_get: settings, games_list: games,
     node_requirements: [{ id: "java", status: "ready", found: "Java 21" }, { id: "docker", status: "optional" }, { id: "memory", status: "ready" }, { id: "disk", status: "ready" }],
-    instance_console: consoleLines, players_online: ["Gabrieli2806", "Troxtrunks", "nightmare_33n", "Diluza", "Steve", "Alex"], players_lists: players, players_identities: {},
+    instance_console: consoleLines, players_online: ["Gabrieli2806", "Troxtrunks", "nightmare_33n", "Diluza", "Steve", "Alex", "megato13", "helloworld1040"], players_lists: players, players_identities: {},
     backups_list: [], files_list: [], addons_installed: [], addons_list: [], java_overview: [], java_runtimes: [], storage_locations: [],
     instance_disk_usage: { totalBytes: 2400000000, fileCount: 18420, computedAt: new Date().toISOString(), largest: [
       { name: "world", isDir: true, bytes: 1650000000 }, { name: "world_nether", isDir: true, bytes: 310000000 }, { name: "plugins", isDir: true, bytes: 214000000 },
