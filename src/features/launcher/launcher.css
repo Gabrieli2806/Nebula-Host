@@ -390,25 +390,6 @@
     gap: var(--space-3);
   }
 
-  .launcher-developer {
-    flex-basis: 100%;
-  }
-
-  .launcher-developer summary {
-    margin-bottom: var(--space-3);
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: var(--text-sm);
-  }
-
-  .launcher-developer .launcher-field {
-    max-width: 520px;
-  }
-
-  .launcher-developer p {
-    margin-top: var(--space-2);
-  }
-
   .launcher-account {
     display: flex;
     align-items: center;

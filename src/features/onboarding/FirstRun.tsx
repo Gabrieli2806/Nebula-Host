@@ -60,8 +60,15 @@ export function FirstRun() {
     },
     onSuccess: () => {
       localStorage.setItem(FIRST_RUN_KEY, "1");
-      // ServersScreen opens the create dialog when it sees create=1.
-      navigate("/servers?create=1", { replace: true });
+      // ServersScreen opens the create dialog when it sees create=1; the
+      // first time, the tour is shown instead, so two dialogs do not stack.
+      let toured = true;
+      try {
+        toured = localStorage.getItem("nebula.tourDone") === "1";
+      } catch {
+        // Storage blocked: no tour either.
+      }
+      navigate(toured ? "/servers?create=1" : "/servers", { replace: true });
     },
   });
 

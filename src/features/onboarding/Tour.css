@@ -1,0 +1,83 @@
+/* Nebula Host: Tour.css. The first-launch walkthrough dialog. */
+
+@layer components {
+  .tour-dots {
+    display: flex;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .tour-dots li {
+    width: 18px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+    transition: background var(--duration-fast, 150ms) ease, width var(--duration-fast, 150ms) ease;
+  }
+
+  .tour-dots li[data-state="done"] {
+    background: color-mix(in srgb, var(--accent) 50%, var(--line));
+  }
+
+  .tour-dots li[data-state="current"] {
+    width: 30px;
+    background: var(--accent);
+  }
+
+  .tour-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .tour-lead {
+    margin: 0;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+
+  .tour-items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .tour-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .tour-item-icon {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    flex: none;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    color: var(--accent);
+  }
+
+  .tour-item-title {
+    font-weight: var(--weight-control, 600);
+  }
+
+  .tour-item-text {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tour-dots li {
+      transition: none;
+    }
+  }
+}

@@ -9,8 +9,6 @@
 
 export const en = {
   launcher: {
-    microsoftPortal: "Open Microsoft Entra",
-    registrationGuide: "Registration guide",
     yourInstances: "Your instances",
     libraryIntro: "A separate space for each way you play.",
     newInstance: "New instance",
@@ -47,8 +45,6 @@ export const en = {
     confirmRemoveInstance: "Remove “{name}” from your library?",
     keepGameFiles: "Worlds and game files will stay on this device. Only the library configuration is removed.",
     libraryFootnote: "Minecraft 1.20.5+ · Vanilla, Fabric, Forge and NeoForge · Each instance keeps its own worlds.",
-    accountSetupNeeded: "Microsoft sign-in has not been configured for this development build of Nebula. You can try the official demo from Library without an account.",
-    developerSetup: "Application setup · For developers",
     comingSoon: "Coming soon",
     playAs: "Play as",
     officialDemo: "Official Minecraft demo",
@@ -125,8 +121,6 @@ export const en = {
     "previous": "Previous",
     "next": "Next",
     "accountsNote": "Sign in with Microsoft to verify a Minecraft Java profile. Sessions remain on this device and end when Nebula closes or the token expires.",
-    "clientId": "Microsoft application ID",
-    "clientIdHelp": "Use your own Microsoft public-client registration with device authorization and permission to access Minecraft services. You can also configure NEBULA_MICROSOFT_CLIENT_ID before opening Nebula.",
     "signIn": "Sign in with Microsoft",
     "verified": "Minecraft Java profile verified · Current session",
     "signOut": "Sign out",
@@ -251,6 +245,52 @@ export const en = {
     hostWarning: "Hosting on a phone works for small games: it uses battery and memory, warms the phone, and players need the same Wi-Fi. A computer is the better host for anything bigger.",
     emptyTitle: "Nothing here yet",
     emptyHint: "Connect to the computer that hosts your servers, or host one on this phone.",
+  },
+
+  tour: {
+    progress: "Step {n} of {total}",
+    skip: "Skip",
+    back: "Back",
+    next: "Next",
+    done: "Get started",
+    showAgain: "Show the tour",
+    showAgainHelp: "A short walkthrough of what each part of Nebula Host is for.",
+    welcome: {
+      title: "Welcome to Nebula Host",
+      lead: "Nebula Host runs game servers on your own computer, so friends can join without renting a host. This takes a minute and explains where things are.",
+    },
+    servers: {
+      title: "Your servers",
+      lead: "The Servers screen lists everything you host. Click a server to open it.",
+      create: { title: "Create or import", text: "Pick a game and version and Nebula downloads and sets it up. You can also bring in an existing world or server folder." },
+      control: { title: "Start and stop", text: "Each card shows if the server is running, who is online and how much memory it uses. Start, stop and restart are one click away." },
+      menu: { title: "Right-click for more", text: "Right-click a server (or press and hold on a phone) for quick actions such as opening its folder or copying its address." },
+    },
+    server: {
+      title: "Inside a server",
+      lead: "Opening a server shows its panels in the sidebar.",
+      console: { title: "Console", text: "Watch the live log and type commands, just as in a terminal." },
+      files: { title: "Files", text: "Browse and edit the server's files, including its settings and world." },
+      players: { title: "Players", text: "See who is online, and manage the whitelist, operators and bans." },
+      addons: { title: "Add-ons", text: "Install mods and plugins from Modrinth without leaving the app." },
+      backups: { title: "Backups", text: "Back up the world on demand or on a schedule, and restore it if something breaks." },
+    },
+    launcher: {
+      title: "Launcher",
+      lead: "The Launcher is where you play Minecraft yourself. Keep a separate instance for each way you play, add mods from Modrinth, and sign in with your Microsoft account to play with your own profile. Nothing is shared with your servers unless you choose to.",
+    },
+    machines: {
+      title: "More than one machine",
+      lead: "Nebula can manage servers on other computers too, from a single place.",
+      pair: { title: "Switch machine", text: "The machine name in the sidebar lets you switch to a phone, a Raspberry Pi or another PC you have paired with a code." },
+      fleet: { title: "See everything at once", text: "The Machines view shows every server on every machine, with CPU and memory side by side." },
+    },
+    settings: {
+      title: "Settings and help",
+      lead: "Everything else lives in Settings.",
+      options: { title: "Make it yours", text: "Language, theme, Java versions, remote access, automatic backups and more. Nebula keeps running servers in the tray when you close the window." },
+      help: { title: "Need a hand?", text: "Settings > About has the logs to send with a bug report, the Discord community, and this tour whenever you want it again." },
+    },
   },
 
   upnp: {

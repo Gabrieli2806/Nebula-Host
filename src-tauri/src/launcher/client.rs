@@ -458,7 +458,7 @@ impl ClientEngine {
             ("auth_xuid", String::new()),
             (
                 "clientid",
-                super::auth::configured_client_id().unwrap_or_default(),
+                super::auth::client_id().to_string(),
             ),
             ("user_type", "msa".into()),
             ("version_name", profile.game_version.clone()),

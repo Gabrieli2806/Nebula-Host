@@ -49,7 +49,6 @@ pub struct CreateProfile {
 pub struct Capabilities {
     pub platform: &'static str,
     pub can_launch: bool,
-    pub microsoft_configured: bool,
 }
 
 pub fn capabilities() -> Capabilities {
@@ -57,7 +56,6 @@ pub fn capabilities() -> Capabilities {
         platform: std::env::consts::OS,
         // The server JVM cannot run a graphical Minecraft client on Android.
         can_launch: client::supported(),
-        microsoft_configured: auth::configured_client_id().is_some(),
     }
 }
 

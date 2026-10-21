@@ -42,6 +42,7 @@ import { IS_WEB } from "@/lib/web";
 import type { InstanceView } from "@/types/api";
 import { Button, ErrorNotice, Icon, Ring, StatusDot, type IconName } from "@/ui";
 import { useTransferTracking } from "@/features/server/transfer/active";
+import { Tour } from "@/features/onboarding/Tour";
 import { MobileTabs } from "./MobileTabs";
 import { TitleBar } from "./TitleBar";
 
@@ -210,6 +211,7 @@ export function AppShell() {
         </main>
       </div>
       {narrow ? <MobileTabs instanceId={instanceId} /> : null}
+      <Tour />
       {tooltip.element}
     </div>
   );

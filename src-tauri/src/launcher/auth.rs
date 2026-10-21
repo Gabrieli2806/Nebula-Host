@@ -53,10 +53,14 @@ pub enum LoginResult {
     Complete { account: Account },
 }
 
-pub fn configured_client_id() -> Option<String> {
-    std::env::var("NEBULA_MICROSOFT_CLIENT_ID")
-        .ok()
-        .filter(|id| uuid::Uuid::parse_str(id).is_ok())
+/// Nebula Host's own Entra registration (public client, personal accounts,
+/// device code). It is an identifier, not a secret, and the only one Nebula
+/// signs in with: it cannot be replaced from the app or the environment.
+/// Minecraft services accept it because Mojang approved it.
+const NEBULA_CLIENT_ID: &str = "185747c5-d848-40be-8a49-c92efdc1ae88";
+
+pub fn client_id() -> &'static str {
+    NEBULA_CLIENT_ID
 }
 fn rejected(stage: &str) -> AppError {
     // Never include upstream response bodies: they can contain credentials.
@@ -88,14 +92,8 @@ impl AuthState {
             expires: Some(session.expires),
         })
     }
-    pub async fn begin(&self, client_id: Option<String>) -> AppResult<DeviceLogin> {
-        let client_id = client_id
-            .filter(|id| !id.trim().is_empty())
-            .or_else(configured_client_id)
-            .ok_or_else(|| AppError::new(ErrorCode::InvalidInput).with("field", "client_id"))?;
-        if uuid::Uuid::parse_str(&client_id).is_err() {
-            return Err(AppError::new(ErrorCode::InvalidInput));
-        }
+    pub async fn begin(&self) -> AppResult<DeviceLogin> {
+        let client_id = client_id().to_string();
         let response = crate::game::http_client()
             .post(format!("{AUTH}/devicecode"))
             .form(&[

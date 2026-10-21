@@ -22,10 +22,11 @@ Mod-loader installation and modpack import remain pending. Android still needs a
 native graphical runtime and touch controls. Account tokens stay in Rust memory;
 persistent accounts and refresh require platform secure storage.
 
-Microsoft login requires your own public-client application registration with
-device authorization enabled and permission to use Minecraft services. Supply its
-application ID in the Accounts tab, or set `NEBULA_MICROSOFT_CLIENT_ID` before
-starting Nebula. Never use another launcher's application ID or a client secret.
+Microsoft login uses Nebula Host's own public-client application registration
+(device authorization, personal accounts), approved by Mojang for Minecraft
+services. It is fixed in `src-tauri/src/launcher/auth.rs` and cannot be changed
+from the app. Forks must register and get their own application approved: never
+reuse another launcher's application ID, and never add a client secret.
 See [docs/LAUNCHER.md](docs/LAUNCHER.md) for architecture, references and remaining work.
 
 For local testing, `tauri dev -- -- --launcher-preview` opens a debug-only window

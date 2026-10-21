@@ -164,18 +164,11 @@ function Accounts() {
   const client = useQueryClient();
   const accounts = useQuery({ queryKey: [...ROOT, "accounts"], queryFn: launcherApi.accounts, refetchInterval: 60_000 });
   const caps = useQuery({ queryKey: [...ROOT, "capabilities"], queryFn: launcherApi.capabilities });
-  const [clientId, setClientId] = useState("");
-  const begin = useMutation({ mutationFn: () => launcherApi.begin(clientId.trim() || undefined) });
+  const begin = useMutation({ mutationFn: () => launcherApi.begin() });
   const logout = useMutation({ mutationFn: launcherApi.logout, onSuccess: () => client.invalidateQueries({ queryKey: [...ROOT, "accounts"] }) });
   return <Panel title={t("launcher.accounts")} bodyClassName="launcher-panel-body"><p className="launcher-muted">{t("launcher.accountsNote")}</p>
-    {!caps.data?.microsoft_configured ? <p className="launcher-notice">{t("launcher.accountSetupNeeded")}</p> : null}
     {begin.data ? <DeviceFlow login={begin.data} onClose={() => begin.reset()} /> : <form className="launcher-signin" onSubmit={e => { e.preventDefault(); begin.mutate(); }}>
-      <details className="launcher-developer"><summary>{t("launcher.developerSetup")}</summary>
-        <label className="launcher-field"><span className="label">{t("launcher.clientId")}</span><input className="field" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" value={clientId} onChange={e => setClientId(e.target.value)} pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}" /></label>
-        <p className="launcher-muted">{t("launcher.clientIdHelp")}</p>
-        <div className="launcher-actions"><Button icon="external" onClick={() => void openExternal("https://entra.microsoft.com/")}>{t("launcher.microsoftPortal")}</Button><Button icon="external" onClick={() => void openExternal("https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app")}>{t("launcher.registrationGuide")}</Button></div>
-      </details>
-      <Button type="submit" variant="primary" disabled={begin.isPending || (!caps.data?.microsoft_configured && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId.trim()))}>{t("launcher.signIn")}</Button>
+      <Button type="submit" variant="primary" disabled={begin.isPending}>{t("launcher.signIn")}</Button>
     </form>}
     <Failure error={begin.error || logout.error || accounts.error || caps.error} />
     {accounts.data?.map(account => <div className="launcher-account" key={account.id}><div><strong>{account.name}</strong><p className="launcher-muted">{t("launcher.verified")}</p></div><Button onClick={() => logout.mutate(account.id)} disabled={logout.isPending}>{t("launcher.signOut")}</Button></div>)}

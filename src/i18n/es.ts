@@ -9,8 +9,6 @@ import type { Copy } from "./en";
 
 export const es: Copy = {
   launcher: {
-    microsoftPortal: "Abrir Microsoft Entra",
-    registrationGuide: "Guía de registro",
     yourInstances: "Tus instancias",
     libraryIntro: "Un espacio independiente para cada forma de jugar.",
     newInstance: "Nueva instancia",
@@ -47,8 +45,6 @@ export const es: Copy = {
     confirmRemoveInstance: "¿Eliminar «{name}» de tu biblioteca?",
     keepGameFiles: "Los mundos y archivos del juego se conservarán en este dispositivo. Solo se elimina la configuración de la biblioteca.",
     libraryFootnote: "Minecraft 1.20.5+ · Vanilla, Fabric, Forge y NeoForge · Cada instancia conserva sus mundos.",
-    accountSetupNeeded: "El inicio de sesión Microsoft todavía no está configurado para esta versión de desarrollo de Nebula. Puedes probar la demo oficial desde Biblioteca sin una cuenta.",
-    developerSetup: "Configuración de la aplicación · Para desarrolladores",
     comingSoon: "Próximamente",
     playAs: "Jugar como",
     officialDemo: "Demo oficial de Minecraft",
@@ -125,8 +121,6 @@ export const es: Copy = {
     "previous": "Anterior",
     "next": "Siguiente",
     "accountsNote": "Inicia sesión con Microsoft para verificar tu perfil de Minecraft Java. Las sesiones se quedan en este dispositivo y terminan al cerrar Nebula o caducar el token.",
-    "clientId": "Identificador de aplicación Microsoft",
-    "clientIdHelp": "Usa un registro propio de aplicación pública Microsoft con autorización por código de dispositivo y permiso de acceso a los servicios de Minecraft. También puedes configurar NEBULA_MICROSOFT_CLIENT_ID antes de abrir Nebula.",
     "signIn": "Entrar con Microsoft",
     "verified": "Perfil de Minecraft Java verificado · Sesión actual",
     "signOut": "Cerrar sesión",
@@ -251,6 +245,52 @@ export const es: Copy = {
     hostWarning: "Alojar en un teléfono sirve para partidas pequeñas: gasta batería y memoria, calienta el teléfono y los jugadores necesitan el mismo Wi-Fi. Para algo más grande, un PC es mejor anfitrión.",
     emptyTitle: "Aún no hay nada aquí",
     emptyHint: "Conecta con el equipo que aloja tus servidores, o aloja uno en este teléfono.",
+  },
+
+  tour: {
+    progress: "Paso {n} de {total}",
+    skip: "Omitir",
+    back: "Atrás",
+    next: "Siguiente",
+    done: "Empezar",
+    showAgain: "Ver el recorrido",
+    showAgainHelp: "Un repaso corto de para qué sirve cada parte de Nebula Host.",
+    welcome: {
+      title: "Bienvenido a Nebula Host",
+      lead: "Nebula Host ejecuta servidores de juegos en tu propio equipo, para que tus amigos entren sin alquilar un host. Son unos minutos y te explica dónde está cada cosa.",
+    },
+    servers: {
+      title: "Tus servidores",
+      lead: "La pantalla Servidores lista todo lo que alojas. Haz clic en un servidor para abrirlo.",
+      create: { title: "Crear o importar", text: "Elige un juego y una versión y Nebula lo descarga y lo prepara. También puedes traer un mundo o una carpeta de servidor que ya tengas." },
+      control: { title: "Iniciar y detener", text: "Cada tarjeta indica si el servidor está en marcha, quién está conectado y cuánta memoria usa. Iniciar, detener y reiniciar están a un clic." },
+      menu: { title: "Clic derecho para más", text: "Haz clic derecho en un servidor (o mantén pulsado en el teléfono) para acciones rápidas, como abrir su carpeta o copiar su dirección." },
+    },
+    server: {
+      title: "Dentro de un servidor",
+      lead: "Al abrir un servidor, sus paneles aparecen en la barra lateral.",
+      console: { title: "Consola", text: "Mira el registro en directo y escribe comandos, como en una terminal." },
+      files: { title: "Archivos", text: "Explora y edita los archivos del servidor, incluidos sus ajustes y el mundo." },
+      players: { title: "Jugadores", text: "Mira quién está conectado y gestiona la lista blanca, los operadores y los bloqueos." },
+      addons: { title: "Complementos", text: "Instala mods y plugins desde Modrinth sin salir de la app." },
+      backups: { title: "Copias de seguridad", text: "Haz una copia del mundo cuando quieras o de forma programada, y restáurala si algo falla." },
+    },
+    launcher: {
+      title: "Launcher",
+      lead: "En el Launcher juegas tú a Minecraft. Mantén una instancia aparte para cada forma de jugar, añade mods desde Modrinth e inicia sesión con tu cuenta de Microsoft para jugar con tu perfil. No se comparte nada con tus servidores salvo que tú lo decidas.",
+    },
+    machines: {
+      title: "Más de una máquina",
+      lead: "Nebula también puede gestionar servidores de otros equipos desde un solo lugar.",
+      pair: { title: "Cambiar de máquina", text: "El nombre de la máquina en la barra lateral te deja pasar a un teléfono, una Raspberry Pi u otro PC que hayas emparejado con un código." },
+      fleet: { title: "Verlo todo a la vez", text: "La vista Máquinas muestra todos los servidores de todas las máquinas, con CPU y memoria lado a lado." },
+    },
+    settings: {
+      title: "Ajustes y ayuda",
+      lead: "Todo lo demás está en Ajustes.",
+      options: { title: "Hazlo tuyo", text: "Idioma, tema, versiones de Java, acceso remoto, copias automáticas y más. Nebula mantiene los servidores en marcha en la bandeja al cerrar la ventana." },
+      help: { title: "¿Necesitas ayuda?", text: "En Ajustes > Acerca de están los registros para adjuntar a un reporte, la comunidad de Discord y este recorrido cuando quieras verlo otra vez." },
+    },
   },
 
   upnp: {

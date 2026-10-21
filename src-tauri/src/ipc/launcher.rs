@@ -132,9 +132,8 @@ pub async fn launcher_search(
 #[tauri::command]
 pub async fn launcher_login_begin(
     state: tauri::State<'_, AuthState>,
-    client_id: Option<String>,
 ) -> AppResult<DeviceLogin> {
-    state.begin(client_id).await
+    state.begin().await
 }
 #[tauri::command]
 pub async fn launcher_login_poll(

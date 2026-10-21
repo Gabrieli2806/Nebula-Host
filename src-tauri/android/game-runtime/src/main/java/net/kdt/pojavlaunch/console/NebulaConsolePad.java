@@ -5,8 +5,9 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -39,7 +40,9 @@ public final class NebulaConsolePad extends LinearLayout {
         int height();
         void keyboard();
     }
-    private static final int INK = 0xffe3eaf1, MUTED = 0xff99a9b8, ACCENT = 0xff72d6bd;
+    // Same look as the stock on-screen controls (default.json): translucent black
+    // fill, white text, fully rounded corners, a white wash while held.
+    private static final int INK = 0xffffffff, MUTED = 0x99ffffff, FILL = 0x4d000000, PRESS = 0x3cffffff, PANEL = 0xff000000;
     private final ConsoleInput input;
     private final Game game;
     private final Stick stick;
@@ -55,7 +58,7 @@ public final class NebulaConsolePad extends LinearLayout {
         this.game = game;
         this.input = new ConsoleInput(game);
         setOrientation(VERTICAL);
-        setBackgroundColor(0xff101820);
+        setBackgroundColor(PANEL);
         setPadding(dp(12), dp(4), dp(12), dp(8));
         setMotionEventSplittingEnabled(true);
         setFocusable(false);
@@ -63,9 +66,8 @@ public final class NebulaConsolePad extends LinearLayout {
         LinearLayout toolbar = row();
         TextView title = new TextView(context);
         title.setText(R.string.nebula_console_mode);
-        title.setTextColor(ACCENT);
-        title.setTextSize(13);
-        title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        title.setTextColor(MUTED);
+        title.setTextSize(14);
         title.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.addView(title, new LayoutParams(0, -1, 1));
         toolbar.addView(action("Esc", () -> { input.key(LwjglGlfwKeycode.GLFW_KEY_ESCAPE, true); input.key(LwjglGlfwKeycode.GLFW_KEY_ESCAPE, false); }), new LayoutParams(dp(64), -1));
@@ -228,7 +230,7 @@ public final class NebulaConsolePad extends LinearLayout {
     private void style(AppCompatButton button, String label) {
         button.setText(label);
         button.setAllCaps(false);
-        button.setTextSize(12);
+        button.setTextSize(14);
         button.setTextColor(INK);
         button.setMinWidth(0);
         button.setMinimumWidth(0);
@@ -238,16 +240,21 @@ public final class NebulaConsolePad extends LinearLayout {
         button.setSingleLine(true);
         button.setFocusable(false); // Do not steal physical keyboard input from Minecraft.
         StateListDrawable background = new StateListDrawable();
-        background.addState(new int[]{android.R.attr.state_pressed}, shape(0xff31584f));
-        background.addState(new int[]{}, shape(0xff1e2b37));
+        background.addState(new int[]{android.R.attr.state_pressed}, new LayerDrawable(new Drawable[]{shape(FILL), shape(PRESS)}));
+        background.addState(new int[]{}, shape(FILL));
         button.setBackground(background);
     }
 
     private GradientDrawable shape(int color) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setColor(color);
-        drawable.setCornerRadius(dp(10));
-        drawable.setStroke(dp(1), 0xff344454);
+        drawable.setCornerRadius(dp(200));
+        return drawable;
+    }
+
+    private GradientDrawable roundedPanel() {
+        GradientDrawable drawable = shape(FILL);
+        drawable.setCornerRadius(dp(16));
         return drawable;
     }
 
@@ -328,15 +335,13 @@ public final class NebulaConsolePad extends LinearLayout {
         }
         @Override protected void onDraw(Canvas canvas) {
             float cx = getWidth() / 2f, cy = getHeight() / 2f, radius = Math.min(cx, cy) - dp(5);
-            paint.setColor(0xff1e2b37); canvas.drawCircle(cx, cy, radius, paint);
-            paint.setColor(0xff344454); paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(dp(1));
-            canvas.drawCircle(cx, cy, radius, paint); paint.setStyle(Paint.Style.FILL);
+            paint.setColor(FILL); canvas.drawCircle(cx, cy, radius, paint);
             paint.setColor(MUTED); paint.setTextSize(dp(13)); paint.setTextAlign(Paint.Align.CENTER);
             canvas.drawText("W", cx, cy - radius * 0.67f, paint);
             canvas.drawText("S", cx, cy + radius * 0.84f, paint);
             canvas.drawText("A", cx - radius * 0.76f, cy + dp(4), paint);
             canvas.drawText("D", cx + radius * 0.76f, cy + dp(4), paint);
-            paint.setColor(ACCENT); canvas.drawCircle(cx + x * radius * 0.5f, cy + y * radius * 0.5f, radius * 0.32f, paint);
+            paint.setColor(0x80ffffff); canvas.drawCircle(cx + x * radius * 0.5f, cy + y * radius * 0.5f, radius * 0.32f, paint);
         }
     }
 
@@ -345,7 +350,7 @@ public final class NebulaConsolePad extends LinearLayout {
         private int pointer = -1;
         private float lastX, lastY, distance;
         private boolean menuTouch;
-        LookPad(Context context) { super(context); setBackground(shape(0xff17222c)); updateDescription(); }
+        LookPad(Context context) { super(context); setBackground(roundedPanel()); updateDescription(); }
         void updateDescription() {
             setContentDescription(getContext().getString(game.grabbing() ? R.string.nebula_console_look : R.string.nebula_console_cursor));
             invalidate();
@@ -386,7 +391,7 @@ public final class NebulaConsolePad extends LinearLayout {
             canvas.drawText(label, getWidth() / 2f, getHeight() / 2f - dp(4), paint);
             if (!grabbing) canvas.drawText(getContext().getString(R.string.nebula_console_tap), getWidth() / 2f, getHeight() / 2f + dp(16), paint);
             if (!game.grabbing()) {
-                paint.setColor(ACCENT);
+                paint.setColor(INK);
                 float x = getWidth() * game.cursorX() / Math.max(1, game.width());
                 float y = getHeight() * game.cursorY() / Math.max(1, game.height());
                 canvas.drawCircle(Math.max(dp(5), Math.min(getWidth() - dp(5), x)), Math.max(dp(5), Math.min(getHeight() - dp(5), y)), dp(4), paint);
