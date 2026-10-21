@@ -50,8 +50,10 @@ function ProfileControls({ profile }: { profile: LauncherProfile }) {
   const state = states.data?.[profile.id];
   const installing = state?.phase === "installing";
   const running = state?.phase === "running" || state?.phase === "stopping";
+  const caps = useQuery({ queryKey: [...ROOT, "capabilities"], queryFn: launcherApi.capabilities });
   const anyInstalling = Object.values(states.data ?? {}).some(s => s.phase === "installing");
   const start = useMutation({ mutationFn: (mode: "install" | "demo" | "account") => launcherApi.start(profile.id, mode, account === "demo" ? undefined : account), onSuccess: () => client.invalidateQueries({ queryKey: [...ROOT, "status"] }) });
+  const resume = useMutation({ mutationFn: () => launcherApi.resume(profile.id) });
   const stop = useMutation({ mutationFn: () => launcherApi.stop(profile.id), onSuccess: () => client.invalidateQueries({ queryKey: [...ROOT, "status"] }) });
   return <div className="launcher-client">
     <label className="launcher-field"><span className="label">{t("launcher.playAs")}</span><Select value={account} disabled={running || installing} onChange={e => setAccount(e.target.value)}><option value="demo">{t("launcher.officialDemo")}</option>{accounts.data?.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></label>
@@ -59,13 +61,14 @@ function ProfileControls({ profile }: { profile: LauncherProfile }) {
     {running ? <p role="status" className="launcher-state"><StatusDot status="online" />{t("launcher.running")}</p> : null}
     {state?.phase === "ready" ? <p className="launcher-state"><Icon name="check" size={13} />{t("launcher.ready")}</p> : null}
     <div className="launcher-actions">
+      {running && state?.phase === "running" && caps.data?.platform === "android" ? <Button variant="primary" icon="play" disabled={resume.isPending} onClick={() => resume.mutate()}>{t("launcher.returnToGame")}</Button> : null}
       {running || installing ? <Button icon="stop" disabled={stop.isPending} onClick={() => stop.mutate()}>{t(installing ? "launcher.cancel" : "launcher.stopGame")}</Button> : <>
         <Button variant="primary" icon="play" disabled={start.isPending || anyInstalling} onClick={() => start.mutate(account === "demo" ? "demo" : "account")}>{t(account === "demo" ? "launcher.playDemo" : "launcher.play")}</Button>
         <Button icon="download" disabled={start.isPending || anyInstalling} onClick={() => start.mutate("install")}>{t("launcher.installRepair")}</Button>
       </>}
       <Button variant="quiet" icon="terminal" aria-expanded={showLogs} onClick={() => setShowLogs(!showLogs)}>{t("launcher.gameLogs")}</Button>
     </div>
-    <Failure error={start.error || stop.error || state?.error || states.error || accounts.error} />
+    <Failure error={start.error || stop.error || resume.error || state?.error || states.error || accounts.error} />
     {showLogs ? <><Failure error={logs.error} /><pre className="launcher-game-log selectable mono" aria-label={t("launcher.gameLogs")}>{logs.data?.join("\n") || t("launcher.noLogs")}</pre></> : null}
   </div>;
 }

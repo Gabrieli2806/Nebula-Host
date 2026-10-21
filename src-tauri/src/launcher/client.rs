@@ -200,6 +200,17 @@ impl ClientEngine {
         });
         Ok(())
     }
+    /// Bring a running game's window back to the front (Android: the game is
+    /// its own window and the person may have left it for the launcher).
+    pub async fn resume(&self, id: Uuid) -> AppResult<()> {
+        #[cfg(all(target_os = "android", feature = "desktop"))]
+        if self.status.read().await.get(&id).is_some_and(|s| s.phase == "running") {
+            return super::android::resume();
+        }
+        let _ = id;
+        Ok(())
+    }
+
     pub async fn stop(&self, id: Uuid) -> AppResult<()> {
         #[cfg(all(target_os = "android", feature = "desktop"))]
         if self.status.read().await.get(&id).is_some_and(|s| s.phase == "running") {

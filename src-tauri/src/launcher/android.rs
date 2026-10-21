@@ -22,4 +22,5 @@ fn call(command: &str, args: Value) -> AppResult<Value> {
 
 pub fn start(payload: Value) -> AppResult<()> { call("start", payload).map(|_| ()) }
 pub fn stop() -> AppResult<()> { call("stop", serde_json::json!({})).map(|_| ()) }
+pub fn resume() -> AppResult<()> { call("resume", serde_json::json!({})).map(|_| ()) }
 pub fn running() -> AppResult<bool> { Ok(call("status", serde_json::json!({}))?["running"].as_bool().unwrap_or(false)) }

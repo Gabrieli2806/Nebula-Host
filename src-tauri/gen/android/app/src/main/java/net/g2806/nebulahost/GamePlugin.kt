@@ -50,6 +50,19 @@ class GamePlugin(private val currentActivity: Activity) : Plugin(currentActivity
         invoke.resolve(response)
     }
 
+    /** Bring the running game's window back to the front. */
+    @Command
+    fun resume(invoke: Invoke) {
+        val manager = currentActivity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val task = manager.appTasks.firstOrNull { it.taskInfo.baseActivity?.className?.startsWith("net.kdt.pojavlaunch.") == true }
+        if (task == null) {
+            invoke.reject("No Minecraft game is running")
+            return
+        }
+        task.moveToFront()
+        invoke.resolve(JSObject())
+    }
+
     @Command
     fun stop(invoke: Invoke) {
         pendingUntil = 0

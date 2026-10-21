@@ -30,6 +30,13 @@ pub async fn launcher_client_stop(
     state.stop(id).await
 }
 #[tauri::command]
+pub async fn launcher_client_resume(
+    state: tauri::State<'_, Arc<ClientEngine>>,
+    id: uuid::Uuid,
+) -> AppResult<()> {
+    state.resume(id).await
+}
+#[tauri::command]
 pub async fn launcher_client_start(
     state: tauri::State<'_, Arc<ClientEngine>>,
     auth: tauri::State<'_, AuthState>,

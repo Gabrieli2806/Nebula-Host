@@ -53,6 +53,7 @@ macro_rules! ipc_handlers {
             $crate::ipc::launcher::launcher_client_start,
             $crate::ipc::launcher::launcher_loader_versions,
             $crate::ipc::launcher::launcher_client_stop,
+            $crate::ipc::launcher::launcher_client_resume,
             $crate::ipc::launcher::launcher_client_logs,
             $crate::ipc::launcher::launcher_profiles,
             $crate::ipc::launcher::launcher_create,

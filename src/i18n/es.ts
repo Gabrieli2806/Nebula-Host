@@ -118,6 +118,7 @@ export const es: Copy = {
     "openInstance": "Abrir instancia",
     "addJar": "Añadir un .jar",
     "addZip": "Añadir un .zip",
+    "returnToGame": "Volver al juego",
     "viewProject": "Ver en Modrinth",
     "previous": "Anterior",
     "next": "Siguiente",

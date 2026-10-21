@@ -118,6 +118,7 @@ export const en = {
     "openInstance": "Open instance",
     "addJar": "Add a .jar",
     "addZip": "Add a .zip",
+    "returnToGame": "Return to game",
     "viewProject": "View on Modrinth",
     "previous": "Previous",
     "next": "Next",
