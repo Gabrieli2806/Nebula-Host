@@ -165,3 +165,26 @@ pub async fn launcher_content_set_enabled(id: uuid::Uuid, kind: ContentKind, fil
 pub async fn launcher_modpack_install(project_id: String) -> AppResult<Profile> {
     launcher::content::install_modpack(&project_id).await
 }
+
+/// The picture an installed mod, resource pack or shader carries (a data URL).
+#[tauri::command]
+pub async fn launcher_content_icon(id: uuid::Uuid, kind: ContentKind, file: String) -> AppResult<Option<String>> {
+    let profile = profile_by_id(id).await?;
+    tokio::task::spawn_blocking(move || launcher::content::icon(&profile, kind, &file))
+        .await
+        .map_err(crate::error::AppError::unexpected)?
+}
+
+/// Add a file from outside (a `.jar` mod, a `.zip` pack) to an instance. The
+/// bytes arrive base64-encoded from the file the person picked.
+#[tauri::command]
+pub async fn launcher_content_import(id: uuid::Uuid, kind: ContentKind, name: String, data: String) -> AppResult<String> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(data.trim())
+        .map_err(|_| crate::error::AppError::new(crate::error::ErrorCode::InvalidInput).with("reason", "file data"))?;
+    let profile = profile_by_id(id).await?;
+    tokio::task::spawn_blocking(move || launcher::content::import_file(&profile, kind, &name, &bytes))
+        .await
+        .map_err(crate::error::AppError::unexpected)?
+}

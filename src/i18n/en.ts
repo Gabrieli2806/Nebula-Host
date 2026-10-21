@@ -116,6 +116,8 @@ export const en = {
     "installedFiles": "{count} file(s) added to “{name}”, with the mods it needs.",
     "alreadyInstalled": "Already installed in “{name}”.",
     "openInstance": "Open instance",
+    "addJar": "Add a .jar",
+    "addZip": "Add a .zip",
     "viewProject": "View on Modrinth",
     "previous": "Previous",
     "next": "Next",

@@ -60,6 +60,8 @@ macro_rules! ipc_handlers {
             $crate::ipc::launcher::launcher_versions,
             $crate::ipc::launcher::launcher_search,
             $crate::ipc::launcher::launcher_content_list,
+            $crate::ipc::launcher::launcher_content_icon,
+            $crate::ipc::launcher::launcher_content_import,
             $crate::ipc::launcher::launcher_content_install,
             $crate::ipc::launcher::launcher_content_remove,
             $crate::ipc::launcher::launcher_content_set_enabled,

@@ -272,6 +272,34 @@
     margin: 0;
   }
 
+  .launcher-content-add {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+
+  .launcher-content-icon {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background: var(--well-fill);
+    box-shadow: inset 0 0 0 1px var(--line);
+    color: var(--text-faint);
+  }
+
+  .launcher-content-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    image-rendering: auto;
+  }
+
   .launcher-content-list {
     display: flex;
     max-height: 280px;

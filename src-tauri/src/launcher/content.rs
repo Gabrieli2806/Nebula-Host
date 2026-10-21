@@ -144,6 +144,102 @@ pub fn set_enabled(profile: &Profile, kind: ContentKind, file: &str, enabled: bo
     Ok(std::fs::rename(path, target)?)
 }
 
+// -- icons ---------------------------------------------------------------------
+
+/// The picture a mod, resource pack or shader carries, as a `data:` URL, or
+/// `None` when it has none. Mods name theirs in their metadata (Fabric and
+/// Quilt: `icon`; Forge and NeoForge: `logoFile`); resource packs use
+/// `pack.png`. Only small PNGs are read, and nothing is run.
+pub fn icon(profile: &Profile, kind: ContentKind, file: &str) -> AppResult<Option<String>> {
+    let path = existing(profile, kind, file)?;
+    let Ok(handle) = std::fs::File::open(path) else { return Ok(None) };
+    let Ok(mut zip) = zip::ZipArchive::new(handle) else { return Ok(None) };
+    let name = match kind {
+        ContentKind::Resourcepack => Some("pack.png".to_string()),
+        ContentKind::Mod => mod_icon_name(&mut zip),
+        _ => None,
+    };
+    let Some(name) = name else { return Ok(None) };
+    let name = name.trim_start_matches('/').replace('\\', "/");
+    if name.split('/').any(|part| part == ".." || part.is_empty()) {
+        return Ok(None);
+    }
+    let Ok(entry) = zip.by_name(&name) else { return Ok(None) };
+    if entry.size() > 512 * 1024 {
+        return Ok(None);
+    }
+    let mut bytes = Vec::new();
+    if entry.take(512 * 1024).read_to_end(&mut bytes).is_err() || !bytes.starts_with(b"\x89PNG") {
+        return Ok(None);
+    }
+    use base64::Engine;
+    Ok(Some(format!("data:image/png;base64,{}", base64::engine::general_purpose::STANDARD.encode(bytes))))
+}
+
+fn read_text(zip: &mut zip::ZipArchive<std::fs::File>, name: &str) -> Option<String> {
+    let mut text = String::new();
+    zip.by_name(name).ok()?.take(1024 * 1024).read_to_string(&mut text).ok()?;
+    Some(text)
+}
+
+fn mod_icon_name(zip: &mut zip::ZipArchive<std::fs::File>) -> Option<String> {
+    for metadata in ["fabric.mod.json", "quilt.mod.json"] {
+        if let Some(text) = read_text(zip, metadata) {
+            let json: Value = serde_json::from_str(&text).ok()?;
+            let icon = if metadata == "quilt.mod.json" { &json["quilt_loader"]["metadata"]["icon"] } else { &json["icon"] };
+            return match icon {
+                Value::String(path) => Some(path.clone()),
+                // A size → path map: the largest picture.
+                Value::Object(sizes) => sizes
+                    .iter()
+                    .filter_map(|(size, path)| Some((size.parse::<u32>().ok()?, path.as_str()?.to_string())))
+                    .max_by_key(|(size, _)| *size)
+                    .map(|(_, path)| path),
+                _ => None,
+            };
+        }
+    }
+    for metadata in ["META-INF/mods.toml", "META-INF/neoforge.mods.toml"] {
+        if let Some(text) = read_text(zip, metadata) {
+            return text.lines().find_map(|line| {
+                let line = line.trim();
+                let value = line.strip_prefix("logoFile")?.trim_start().strip_prefix('=')?.trim();
+                Some(value.trim_matches(|c| c == '"' || c == '\'').to_string())
+            });
+        }
+    }
+    None
+}
+
+// -- a file from outside --------------------------------------------------------
+
+/// Add a file the person picked (a mod `.jar`, a resource pack or shader
+/// `.zip`) to an instance. It must be a real archive of the right kind and
+/// name; an existing file of the same name is replaced.
+pub fn import_file(profile: &Profile, kind: ContentKind, name: &str, data: &[u8]) -> AppResult<String> {
+    let name = file_name(name)?;
+    let lower = name.to_lowercase();
+    let allowed: &[&str] = match kind {
+        ContentKind::Mod => &[".jar"],
+        ContentKind::Resourcepack | ContentKind::Shader => &[".zip"],
+        ContentKind::Modpack => return Err(invalid("modpack")),
+    };
+    if !allowed.iter().any(|ext| lower.ends_with(ext)) {
+        return Err(invalid("file type"));
+    }
+    if data.len() as u64 > MAX_FILE || !data.starts_with(b"PK\x03\x04") {
+        return Err(invalid("not a valid archive"));
+    }
+    let target = profile_dir(profile)?.join(folder(kind)?).join(name);
+    if let Some(parent) = target.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let temp = target.with_extension("nebula-part");
+    std::fs::write(&temp, data)?;
+    std::fs::rename(&temp, &target)?;
+    Ok(name.to_string())
+}
+
 // -- Modrinth ------------------------------------------------------------------
 
 async fn get_json(url: &str, query: &[(&str, String)]) -> AppResult<Value> {
@@ -415,6 +511,55 @@ mod tests {
         assert!(remote_file("http://cdn.modrinth.com/a.jar", "a.jar", &sha).is_err());
         assert!(remote_file("https://evil.example/a.jar", "a.jar", &sha).is_err());
         assert!(remote_file("https://cdn.modrinth.com/a.jar", "a.jar", "short").is_err());
+    }
+
+    fn zip_with(entries: &[(&str, &[u8])]) -> Vec<u8> {
+        use std::io::Write;
+        let mut out = std::io::Cursor::new(Vec::new());
+        let mut writer = zip::ZipWriter::new(&mut out);
+        for (name, bytes) in entries {
+            writer.start_file(*name, zip::write::SimpleFileOptions::default()).unwrap();
+            writer.write_all(bytes).unwrap();
+        }
+        writer.finish().unwrap();
+        out.into_inner()
+    }
+
+    fn profile_in(dir: &Path) -> Profile {
+        let _ = dir;
+        Profile { id: uuid::Uuid::new_v4(), name: "t".into(), game_version: "1.21.4".into(), loader: Loader::Fabric, memory_mb: 2048, loader_version: None }
+    }
+
+    #[test]
+    fn a_picked_file_must_be_the_right_kind_of_archive() {
+        let profile = profile_in(Path::new("."));
+        let jar = zip_with(&[("fabric.mod.json", b"{}")]);
+        assert!(import_file(&profile, ContentKind::Mod, "a.exe", &jar).is_err());
+        assert!(import_file(&profile, ContentKind::Mod, "../a.jar", &jar).is_err());
+        assert!(import_file(&profile, ContentKind::Mod, "a.jar", b"not a zip").is_err());
+        assert!(import_file(&profile, ContentKind::Resourcepack, "a.jar", &jar).is_err());
+        assert!(import_file(&profile, ContentKind::Modpack, "a.zip", &jar).is_err());
+    }
+
+    #[test]
+    fn mod_icons_are_found_from_each_loader_s_metadata() {
+        let dir = std::env::temp_dir().join(format!("nebula-icons-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let png: &[u8] = b"\x89PNG\r\n\x1a\nrest";
+        let write = |name: &str, entries: &[(&str, &[u8])]| {
+            let path = dir.join(name);
+            std::fs::write(&path, zip_with(entries)).unwrap();
+            zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap()
+        };
+        let mut fabric = write("f.jar", &[("fabric.mod.json", br#"{"icon":"assets/x/icon.png"}"#), ("assets/x/icon.png", png)]);
+        assert_eq!(mod_icon_name(&mut fabric).as_deref(), Some("assets/x/icon.png"));
+        let mut sized = write("s.jar", &[("fabric.mod.json", br#"{"icon":{"16":"a16.png","128":"a128.png"}}"#)]);
+        assert_eq!(mod_icon_name(&mut sized).as_deref(), Some("a128.png"));
+        let mut forge = write("g.jar", &[("META-INF/mods.toml", b"[[mods]]\nlogoFile=\"logo.png\"\n")]);
+        assert_eq!(mod_icon_name(&mut forge).as_deref(), Some("logo.png"));
+        let mut none = write("n.jar", &[("readme.txt", b"hi")]);
+        assert_eq!(mod_icon_name(&mut none), None);
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

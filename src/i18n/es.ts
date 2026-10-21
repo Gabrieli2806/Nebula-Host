@@ -116,6 +116,8 @@ export const es: Copy = {
     "installedFiles": "{count} archivo(s) añadidos a «{name}», con los mods que necesita.",
     "alreadyInstalled": "Ya está instalado en «{name}».",
     "openInstance": "Abrir instancia",
+    "addJar": "Añadir un .jar",
+    "addZip": "Añadir un .zip",
     "viewProject": "Ver en Modrinth",
     "previous": "Anterior",
     "next": "Siguiente",
