@@ -50,6 +50,14 @@ const EVENT_NAME: &str = "nebula:event";
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let context = tauri::generate_context!();
+    // A debug-only preview must never adopt servers, bind the current host's
+    // ports, or replace an already-running production window.
+    let launcher_preview = cfg!(debug_assertions) && std::env::args().any(|arg| arg == "--launcher-preview");
+    if launcher_preview {
+        if let Some(data) = dirs::data_dir() {
+            store::paths::set_base(data.join("nebula-launcher-preview"));
+        }
+    }
     // Android has no config or data folders of its own: everything lives in
     // the app's private files folder.
     #[cfg(target_os = "android")]
@@ -61,14 +69,20 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init());
     #[cfg(desktop)]
-    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+    let builder = if launcher_preview { builder } else { builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
         // A second launch focuses the window that is already hosting.
         tray::show_main(app);
-    }));
+    })) };
 
     builder
         .manage(launcher::auth::AuthState::default())
-        .setup(|app| {
+        .manage(Arc::new(launcher::client::ClientEngine::default()))
+        .setup(move |app| {
+            if launcher_preview {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_title("Nebula Host · Launcher Preview");
+                }
+            }
             let handle = app.handle().clone();
 
             tauri::async_runtime::block_on(async move {
@@ -128,6 +142,11 @@ pub fn run() {
             }
 
             Ok(())
+        })
+        .on_page_load(move |webview, payload| {
+            if payload.event() == tauri::webview::PageLoadEvent::Finished && (launcher_preview || std::env::args().any(|arg| arg == "--launcher")) {
+                let _ = webview.eval("window.location.hash = '#/launcher'");
+            }
         })
         .on_window_event(|_window, _event| {
             #[cfg(desktop)]

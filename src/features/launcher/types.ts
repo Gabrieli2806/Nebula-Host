@@ -5,7 +5,8 @@ export interface LauncherProfile {
 }
 export type CreateProfile = Omit<LauncherProfile, "id">;
 export interface LauncherCapabilities { platform: string; can_launch: boolean; microsoft_configured: boolean }
-export interface GameVersion { id: string; type: string }
+export interface ClientStatus { phase: string; stage: string; completed: number; total: number; error: import("@/lib/ipc").AppError | null; exit_code: number | null }
+export interface GameVersion { id: string; type: string; client_supported: boolean }
 export interface LauncherAccount { id: string; name: string }
 export interface DeviceLogin { id: string; user_code: string; verification_uri: string; expires_in: number; interval: number }
 export type LoginResult = { status: "pending"; interval: number } | { status: "complete"; account: LauncherAccount };

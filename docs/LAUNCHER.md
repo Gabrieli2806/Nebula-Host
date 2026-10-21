@@ -21,13 +21,24 @@ Branch: `feat/launcher-cross-platform`, based on the existing `android` branch.
 - Launcher IPC bypasses remote-node routing. No launcher operations are registered
   in the HTTP or MCP dispatchers. The browser panel does not expose this feature.
 - English and Spanish copy, loading/error/empty states, retry and delete confirmation.
+- Windows x64 Vanilla 1.20.5+: official metadata and SHA-1/size-verified client,
+  libraries and asset objects; bounded native extraction; Java major selection
+  with a verified Temurin download when necessary. Game arguments are expanded
+  as individual arguments with OS/architecture/features rules.
+- Explicit official demo mode (`--demo`) and separate verified-account mode.
+  There is no unlicensed full-game/offline-account mode.
+- Per-profile game directories, download progress/cancellation, install/repair,
+  process supervision, intentional-stop handling and bounded redacted console output.
+- Debug-only `--launcher-preview` uses separate app data and skips the production
+  single-instance handoff, so it cannot adopt an existing host's servers/settings.
 
 ## Still required before calling this a stable playable launcher
 
-1. Desktop vanilla installer: verified client jar, libraries, native archives,
-   asset index/objects, Java selection, Mojang OS/architecture rules and launch
-   arguments. Add progress, cancellation, repair, process supervision and logs with
-   credential redaction. Do not reuse the server jar or server launch arguments.
+1. Broaden client validation beyond Windows x64 Vanilla, add offline cache-only
+   preparation, more detailed Java download progress and graceful game-stop UX.
+   Stopping currently terminates the process; save and quit within Minecraft first
+   when keeping world changes matters. Historical releases and snapshots are not
+   offered as playable clients.
 2. Loader-specific installers and pinned loader versions; compatible client
    dependency resolution, update checks and file ownership tracking.
 3. `.mrpack` support: bounded extraction, traversal/symlink protection, hashes,
@@ -46,9 +57,13 @@ Branch: `feat/launcher-cross-platform`, based on the existing `android` branch.
    after backgrounding and repeated launch/exit cycles. Do not advertise all mods
    or shaders as Android-compatible.
 
-`launcher_capabilities.can_launch` remains false on every platform until a real
-client engine has been integrated and verified. The UI states these limitations;
-there is no placeholder Play action reporting success.
+`launcher_capabilities.can_launch` is true only on Windows x64. Android continues
+to expose profiles, catalog and accounts, with its native-runtime limitation stated
+in the UI. The library displays instance cards with search, loader filters and
+a selected-instance detail panel. Creating an instance opens a dialog to choose
+the Minecraft version and loader, name it and optionally adjust memory. Non-Vanilla
+loaders can be saved as configuration-only instances; their game controls remain
+unavailable until their engines are implemented.
 
 ## Reference review
 
@@ -81,5 +96,11 @@ reuse must include the applicable source, notices and license obligations.
 - Live read-only requests to Modrinth search with the client facets and to
   Mojang's version manifest succeeded.
 
+Additional PC validation: the same client engine downloaded Minecraft 1.21.4,
+launched the official demo with Java 21 and `DemoPlayer`, loaded `Demo World`, and
+remained running after 45 seconds. Its actual game window was inspected.
+The eight launcher unit tests cover authentication state, input validation,
+argument/rule expansion, cache corruption and log redaction.
+
 Not verified: real-account OAuth completion (no application ID configured),
-interactive UI/device behavior, packaged APK/MSI and any game execution.
+Android device behavior, packaged APK/MSI, loaders or modpack installation.

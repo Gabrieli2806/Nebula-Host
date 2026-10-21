@@ -70,6 +70,24 @@ fn field<'a>(value: &'a Value, key: &str, stage: &str) -> AppResult<&'a str> {
 }
 
 impl AuthState {
+    pub async fn credentials(&self, id: &str) -> AppResult<super::client::Credentials> {
+        let inner = self.inner.lock().await;
+        let session = inner
+            .accounts
+            .get(id)
+            .filter(|session| session.expires > Instant::now() + Duration::from_secs(300))
+            .ok_or_else(|| {
+                AppError::new(ErrorCode::UpstreamRejected)
+                    .detail("Sign in to Minecraft again before playing.")
+            })?;
+        Ok(super::client::Credentials {
+            name: session.account.name.clone(),
+            uuid: session.account.id.clone(),
+            token: session._token.clone(),
+            demo: false,
+            expires: Some(session.expires),
+        })
+    }
     pub async fn begin(&self, client_id: Option<String>) -> AppResult<DeviceLogin> {
         let client_id = client_id
             .filter(|id| !id.trim().is_empty())

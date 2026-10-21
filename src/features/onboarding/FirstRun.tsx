@@ -125,6 +125,7 @@ export function FirstRun() {
             {finish.error ? <ErrorNotice error={finish.error} /> : null}
 
             <footer className="first-run-footer">
+              <Button icon="play" onClick={() => navigate("/launcher")}>Launcher</Button>
               <Button
                 variant="quiet"
                 onClick={() => {

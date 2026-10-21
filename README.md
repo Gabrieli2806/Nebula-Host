@@ -14,16 +14,26 @@ Modrinth catalog (mods, modpacks, resource packs and shaders), and session-only
 Microsoft/Xbox/Minecraft Java account verification. UI copy is available in English
 and Spanish. Launcher commands stay local even when managing a remote server.
 
-**This is a foundation, not a playable launcher yet.** It does not install or launch
-the Minecraft client, install loaders or import modpacks. Android still needs a
-native graphical runtime and touch controls. Account tokens are kept only in Rust
-memory; persistent accounts and refresh require platform secure storage.
+**Windows x64 can install and play Vanilla releases from 1.20.5 onward.** Choose
+the official demo without an account, or a verified Java account after Microsoft
+application setup. The engine verifies downloads, prepares Java, isolates profile
+files and supervises the game process, with progress, cancellation, repair and logs.
+Mod-loader installation and modpack import remain pending. Android still needs a
+native graphical runtime and touch controls. Account tokens stay in Rust memory;
+persistent accounts and refresh require platform secure storage.
 
 Microsoft login requires your own public-client application registration with
 device authorization enabled and permission to use Minecraft services. Supply its
 application ID in the Accounts tab, or set `NEBULA_MICROSOFT_CLIENT_ID` before
 starting Nebula. Never use another launcher's application ID or a client secret.
 See [docs/LAUNCHER.md](docs/LAUNCHER.md) for architecture, references and remaining work.
+
+For local testing, `tauri dev -- -- --launcher-preview` opens a debug-only window
+with separate app data under `nebula-launcher-preview`, leaving an existing host
+installation alone. `--launcher` opens the Launcher in the regular application.
+`cargo run -p nebula-host --bin nebula-launcher --no-default-features -- demo 1.21.4 --smoke`
+exercises the same engine against the official demo without passing account tokens
+through a command line.
 
 ## Layout
 

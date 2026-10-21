@@ -21,6 +21,10 @@ async function launcherCall<T>(command: string, args?: Record<string, unknown>):
   return invoke<T>(command, args);
 }
 export const launcherApi = {
+  status: () => launcherCall<Record<string, import("@/features/launcher/types").ClientStatus>>("launcher_status"),
+  start: (id: string, mode: "install" | "demo" | "account", accountId?: string) => launcherCall<void>("launcher_client_start", { id, mode, accountId }),
+  stop: (id: string) => launcherCall<void>("launcher_client_stop", { id }),
+  logs: (id: string) => launcherCall<string[]>("launcher_client_logs", { id }),
   capabilities: () => launcherCall<LauncherCapabilities>("launcher_capabilities"),
   profiles: () => launcherCall<LauncherProfile[]>("launcher_profiles"),
   create: (input: CreateProfile) => launcherCall<LauncherProfile>("launcher_create", { input }),

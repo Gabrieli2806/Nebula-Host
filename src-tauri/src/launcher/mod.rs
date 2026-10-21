@@ -1,6 +1,7 @@
 //! Local client launcher workspace. Deliberately separate from server instances
 //! and never exposed through the remote-node dispatch surface.
 pub mod auth;
+pub mod client;
 
 use crate::{
     error::{AppError, AppResult, ErrorCode},
@@ -49,7 +50,7 @@ pub fn capabilities() -> Capabilities {
     Capabilities {
         platform: std::env::consts::OS,
         // The server JVM cannot run a graphical Minecraft client on Android.
-        can_launch: false,
+        can_launch: client::supported(),
         microsoft_configured: auth::configured_client_id().is_some(),
     }
 }
@@ -137,6 +138,8 @@ pub struct GameVersion {
     pub id: String,
     #[serde(rename = "type")]
     pub kind: String,
+    #[serde(default)]
+    pub client_supported: bool,
 }
 
 pub async fn versions() -> AppResult<Vec<GameVersion>> {
@@ -151,7 +154,10 @@ pub async fn versions() -> AppResult<Vec<GameVersion>> {
         .error_for_status()?
         .json()
         .await?;
-    Ok(result.versions)
+    Ok(result.versions.into_iter().map(|mut version| {
+        version.client_supported = version.kind == "release" && client::modern_version(&version.id);
+        version
+    }).collect())
 }
 
 #[derive(Clone, Copy, Deserialize)]

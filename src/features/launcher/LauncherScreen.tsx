@@ -5,7 +5,8 @@ import { launcherApi, toAppError } from "@/lib/ipc";
 import { openExternal } from "@/lib/external";
 import { IS_WEB } from "@/lib/web";
 import { Button, ErrorNotice } from "@/ui";
-import type { ContentKind, DeviceLogin, Loader } from "./types";
+import type { ContentKind, DeviceLogin, LauncherProfile } from "./types";
+import { Library } from "./Library";
 import "./launcher.css";
 
 const ROOT = ["launcher"];
@@ -19,7 +20,7 @@ export function LauncherScreen() {
     <nav className="launcher-tabs" aria-label="Launcher">
       {(["library", "discover", "accounts"] as const).map(id => <Button key={id} aria-pressed={tab === id} variant={tab === id ? "primary" : "default"} onClick={() => setTab(id)}>{t(`launcher.${id}`)}</Button>)}
     </nav>
-    {tab === "library" ? <Library /> : tab === "discover" ? <Discover /> : <Accounts />}
+    {tab === "library" ? <Library renderControls={profile => <ProfileControls profile={profile} />} /> : tab === "discover" ? <Discover /> : <Accounts />}
   </div>;
 }
 
@@ -27,53 +28,35 @@ function Failure({ error }: { error: unknown }) {
   return error ? <ErrorNotice error={toAppError(error)} /> : null;
 }
 
-function Library() {
+function ProfileControls({ profile }: { profile: LauncherProfile }) {
   const { t } = useI18n();
   const client = useQueryClient();
-  const profiles = useQuery({ queryKey: [...ROOT, "profiles"], queryFn: launcherApi.profiles });
-  const capabilities = useQuery({ queryKey: [...ROOT, "capabilities"], queryFn: launcherApi.capabilities });
-  const versions = useQuery({ queryKey: [...ROOT, "versions"], queryFn: launcherApi.versions, staleTime: 300_000 });
-  const [name, setName] = useState("");
-  const [version, setVersion] = useState("");
-  const [loader, setLoader] = useState<Loader>("vanilla");
-  const [memory, setMemory] = useState(4096);
-  const [snapshots, setSnapshots] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const available = versions.data?.filter(v => snapshots || v.type === "release") ?? [];
-  const selected = available.some(v => v.id === version) ? version : available[0]?.id ?? "";
-  const create = useMutation({ mutationFn: launcherApi.create, onSuccess: async () => {
-    setName(""); await client.invalidateQueries({ queryKey: [...ROOT, "profiles"] });
-  }});
-  const remove = useMutation({ mutationFn: launcherApi.remove, onSuccess: async () => {
-    setDeleting(null); await client.invalidateQueries({ queryKey: [...ROOT, "profiles"] });
-  }});
-  return <>
-    <aside className="launcher-notice" role="note">{t(capabilities.data?.platform === "android" ? "launcher.androidRuntime" : "launcher.desktopRuntime")}</aside>
-    <section className="launcher-panel"><h2>{t("launcher.newProfile")}</h2>
-      <form className="launcher-form" onSubmit={e => { e.preventDefault(); create.mutate({ name, game_version: selected, loader, memory_mb: memory }); }}>
-        <label>{t("launcher.name")}<input required maxLength={64} value={name} onChange={e => setName(e.target.value)} placeholder={t("launcher.namePlaceholder")} /></label>
-        <label>{t("launcher.version")}<select value={selected} onChange={e => setVersion(e.target.value)} disabled={!available.length}>{available.map(v => <option key={v.id}>{v.id}</option>)}</select></label>
-        <label>{t("launcher.loader")}<select value={loader} onChange={e => setLoader(e.target.value as Loader)}>{["vanilla", "fabric", "forge", "neoforge", "quilt"].map(id => <option key={id} value={id}>{id}</option>)}</select></label>
-        <label>{t("launcher.memory")}<input type="number" required min={512} max={32768} step={256} value={memory} onChange={e => setMemory(e.target.valueAsNumber)} /></label>
-        <label className="launcher-check"><input type="checkbox" checked={snapshots} onChange={e => setSnapshots(e.target.checked)} />{t("launcher.snapshots")}</label>
-        <Button type="submit" variant="primary" icon="plus" disabled={create.isPending || !selected || !name.trim()}>{t(create.isPending ? "launcher.saving" : "launcher.create")}</Button>
-      </form>
-      {versions.isPending ? <p role="status">{t("launcher.loading")}</p> : null}
-      <Failure error={versions.error || create.error} />
-      {versions.isError ? <Button onClick={() => void versions.refetch()}>{t("launcher.retry")}</Button> : null}
-      <p className="launcher-muted">{t("launcher.profileNote")}</p>
-    </section>
-    <Failure error={profiles.error || remove.error || capabilities.error} />
-    <section className="launcher-grid" aria-label={t("launcher.library")}>
-      {profiles.isPending ? <p role="status">{t("launcher.loading")}</p> : null}
-      {profiles.data?.length === 0 ? <p>{t("launcher.empty")}</p> : null}
-      {profiles.data?.map(profile => <article className="launcher-panel" key={profile.id}>
-        <p className="label">{profile.loader.toUpperCase()}</p><h2>{profile.name}</h2><p>Minecraft {profile.game_version} · {profile.memory_mb} MiB</p>
-        <p className="launcher-muted">{t("launcher.profilePending")}</p>
-        {deleting === profile.id ? <div className="launcher-actions"><span>{t("launcher.confirmRemove")}</span><Button variant="danger" disabled={remove.isPending} onClick={() => remove.mutate(profile.id)}>{t("launcher.remove")}</Button><Button onClick={() => setDeleting(null)}>{t("launcher.cancel")}</Button></div> : <Button icon="trash" variant="quiet" onClick={() => setDeleting(profile.id)}>{t("launcher.remove")}</Button>}
-      </article>)}
-    </section>
-  </>;
+  const states = useQuery({ queryKey: [...ROOT, "status"], queryFn: launcherApi.status, refetchInterval: 1000 });
+  const accounts = useQuery({ queryKey: [...ROOT, "accounts"], queryFn: launcherApi.accounts, refetchInterval: 60_000 });
+  const [account, setAccount] = useState("demo");
+  const [showLogs, setShowLogs] = useState(false);
+  const logs = useQuery({ queryKey: [...ROOT, "logs", profile.id], queryFn: () => launcherApi.logs(profile.id), enabled: showLogs, refetchInterval: showLogs ? 1500 : false });
+  const state = states.data?.[profile.id];
+  const installing = state?.phase === "installing";
+  const running = state?.phase === "running" || state?.phase === "stopping";
+  const anyInstalling = Object.values(states.data ?? {}).some(s => s.phase === "installing");
+  const start = useMutation({ mutationFn: (mode: "install" | "demo" | "account") => launcherApi.start(profile.id, mode, account === "demo" ? undefined : account), onSuccess: () => client.invalidateQueries({ queryKey: [...ROOT, "status"] }) });
+  const stop = useMutation({ mutationFn: () => launcherApi.stop(profile.id), onSuccess: () => client.invalidateQueries({ queryKey: [...ROOT, "status"] }) });
+  return <div className="launcher-client">
+    <label>{t("launcher.playAs")}<select value={account} disabled={running || installing} onChange={e => setAccount(e.target.value)}><option value="demo">{t("launcher.officialDemo")}</option>{accounts.data?.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
+    {installing ? <div role="status"><p>{t(`launcher.stage_${state.stage}`)} {state.total > 0 ? `${state.completed} / ${state.total}` : ""}</p><progress max={state.total || undefined} value={state.total ? state.completed : undefined} /></div> : null}
+    {running ? <p role="status">{t("launcher.running")}</p> : null}
+    {state?.phase === "ready" ? <p>{t("launcher.ready")}</p> : null}
+    <div className="launcher-actions">
+      {running || installing ? <Button icon="stop" disabled={stop.isPending} onClick={() => stop.mutate()}>{t(installing ? "launcher.cancel" : "launcher.stopGame")}</Button> : <>
+        <Button variant="primary" icon="play" disabled={start.isPending || anyInstalling} onClick={() => start.mutate(account === "demo" ? "demo" : "account")}>{t(account === "demo" ? "launcher.playDemo" : "launcher.play")}</Button>
+        <Button icon="download" disabled={start.isPending || anyInstalling} onClick={() => start.mutate("install")}>{t("launcher.installRepair")}</Button>
+      </>}
+      <Button aria-expanded={showLogs} onClick={() => setShowLogs(!showLogs)}>{t("launcher.gameLogs")}</Button>
+    </div>
+    <Failure error={start.error || stop.error || state?.error || states.error || accounts.error} />
+    {showLogs ? <><Failure error={logs.error} /><pre className="launcher-game-log" aria-label={t("launcher.gameLogs")}>{logs.data?.join("\n") || t("launcher.noLogs")}</pre></> : null}
+  </div>;
 }
 
 function Discover() {
@@ -115,11 +98,15 @@ function Accounts() {
   const begin = useMutation({ mutationFn: () => launcherApi.begin(clientId.trim() || undefined) });
   const logout = useMutation({ mutationFn: launcherApi.logout, onSuccess: () => client.invalidateQueries({ queryKey: [...ROOT, "accounts"] }) });
   return <section className="launcher-panel"><h2>{t("launcher.accounts")}</h2><p>{t("launcher.accountsNote")}</p>
+    {!caps.data?.microsoft_configured ? <p className="launcher-notice">{t("launcher.accountSetupNeeded")}</p> : null}
     {begin.data ? <DeviceFlow login={begin.data} onClose={() => begin.reset()} /> : <form className="launcher-search" onSubmit={e => { e.preventDefault(); begin.mutate(); }}>
-      <label>{t("launcher.clientId")}<input placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" value={clientId} onChange={e => setClientId(e.target.value)} required={!caps.data?.microsoft_configured} pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}" /></label>
-      <Button type="submit" variant="primary" disabled={begin.isPending}>{t("launcher.signIn")}</Button>
+      <details className="launcher-developer"><summary>{t("launcher.developerSetup")}</summary>
+        <label>{t("launcher.clientId")}<input placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" value={clientId} onChange={e => setClientId(e.target.value)} pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}" /></label>
+        <p className="launcher-muted">{t("launcher.clientIdHelp")}</p>
+        <div className="launcher-actions"><Button icon="external" onClick={() => void openExternal("https://entra.microsoft.com/")}>{t("launcher.microsoftPortal")}</Button><Button icon="external" onClick={() => void openExternal("https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app")}>{t("launcher.registrationGuide")}</Button></div>
+      </details>
+      <Button type="submit" variant="primary" disabled={begin.isPending || (!caps.data?.microsoft_configured && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId.trim()))}>{t("launcher.signIn")}</Button>
     </form>}
-    <p className="launcher-muted">{t("launcher.clientIdHelp")}</p>
     <Failure error={begin.error || logout.error || accounts.error || caps.error} />
     {accounts.data?.map(account => <div className="launcher-account" key={account.id}><div><strong>{account.name}</strong><p className="launcher-muted">{t("launcher.verified")}</p></div><Button onClick={() => logout.mutate(account.id)} disabled={logout.isPending}>{t("launcher.signOut")}</Button></div>)}
   </section>;

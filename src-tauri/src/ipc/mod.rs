@@ -49,6 +49,10 @@ macro_rules! ipc_handlers {
     () => {
         tauri::generate_handler![
             $crate::ipc::launcher::launcher_capabilities,
+            $crate::ipc::launcher::launcher_status,
+            $crate::ipc::launcher::launcher_client_start,
+            $crate::ipc::launcher::launcher_client_stop,
+            $crate::ipc::launcher::launcher_client_logs,
             $crate::ipc::launcher::launcher_profiles,
             $crate::ipc::launcher::launcher_create,
             $crate::ipc::launcher::launcher_remove,
