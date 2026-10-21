@@ -19,6 +19,7 @@ pub mod game;
 #[cfg(feature = "desktop")]
 pub mod ipc;
 pub mod logging;
+pub mod launcher;
 pub mod mcp;
 pub mod model;
 pub mod net;
@@ -66,6 +67,7 @@ pub fn run() {
     }));
 
     builder
+        .manage(launcher::auth::AuthState::default())
         .setup(|app| {
             let handle = app.handle().clone();
 

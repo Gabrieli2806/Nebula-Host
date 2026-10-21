@@ -12,6 +12,27 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { activeRemote, remoteCall, remoteEvents, uploadFromBrowser, type RemoteNode } from "@/lib/connection";
 import { IS_WEB, setWebPrefs, webPrefs } from "@/lib/web";
+import type { ContentKind, CreateProfile, DeviceLogin, GameVersion, LauncherAccount, LauncherCapabilities, LauncherProfile, LauncherSearch, LoginResult } from "@/features/launcher/types";
+
+// Client accounts and profiles always belong to this device, even while the
+// host UI is connected to another node. Never send credentials to remoteCall.
+async function launcherCall<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  if (IS_WEB) throw { code: "local_only", params: {} };
+  return invoke<T>(command, args);
+}
+export const launcherApi = {
+  capabilities: () => launcherCall<LauncherCapabilities>("launcher_capabilities"),
+  profiles: () => launcherCall<LauncherProfile[]>("launcher_profiles"),
+  create: (input: CreateProfile) => launcherCall<LauncherProfile>("launcher_create", { input }),
+  remove: (id: string) => launcherCall<void>("launcher_remove", { id }),
+  versions: () => launcherCall<GameVersion[]>("launcher_versions"),
+  search: (query: string, kind: ContentKind, offset: number) => launcherCall<LauncherSearch>("launcher_search", { query, kind, offset }),
+  accounts: () => launcherCall<LauncherAccount[]>("launcher_accounts"),
+  begin: (clientId?: string) => launcherCall<DeviceLogin>("launcher_login_begin", { clientId }),
+  poll: (id: string) => launcherCall<LoginResult>("launcher_login_poll", { id }),
+  cancel: (id: string) => launcherCall<void>("launcher_login_cancel", { id }),
+  logout: (id: string) => launcherCall<void>("launcher_logout", { id }),
+};
 
 import type {
   AddonBrowseRequest,

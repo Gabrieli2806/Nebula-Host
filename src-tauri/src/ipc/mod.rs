@@ -9,6 +9,7 @@ pub mod backups;
 pub mod files;
 pub mod games;
 pub mod instances;
+pub mod launcher;
 pub mod mcp;
 pub mod node;
 pub mod players;
@@ -47,6 +48,17 @@ pub fn open_folder(app: &tauri::AppHandle, folder: &std::path::Path) -> crate::e
 macro_rules! ipc_handlers {
     () => {
         tauri::generate_handler![
+            $crate::ipc::launcher::launcher_capabilities,
+            $crate::ipc::launcher::launcher_profiles,
+            $crate::ipc::launcher::launcher_create,
+            $crate::ipc::launcher::launcher_remove,
+            $crate::ipc::launcher::launcher_versions,
+            $crate::ipc::launcher::launcher_search,
+            $crate::ipc::launcher::launcher_login_begin,
+            $crate::ipc::launcher::launcher_login_poll,
+            $crate::ipc::launcher::launcher_login_cancel,
+            $crate::ipc::launcher::launcher_accounts,
+            $crate::ipc::launcher::launcher_logout,
             // node
             $crate::ipc::node::node_get,
             $crate::ipc::node::node_rename,

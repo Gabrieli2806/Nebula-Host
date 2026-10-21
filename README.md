@@ -3,7 +3,27 @@
 Self-hosted game-server manager for Windows. Runs game servers on your own machine and
 manages them from a native desktop app (Tauri v2 + React).
 
-No account, no login, no cloud. The machine is the product.
+Server management needs no account or cloud. The optional Launcher section
+supports Microsoft sign-in for Minecraft Java profiles on this device.
+
+## Launcher (development)
+
+The `Launcher` section is available in the desktop and Android navigation:
+local profile configurations, the official Minecraft version list, a client-side
+Modrinth catalog (mods, modpacks, resource packs and shaders), and session-only
+Microsoft/Xbox/Minecraft Java account verification. UI copy is available in English
+and Spanish. Launcher commands stay local even when managing a remote server.
+
+**This is a foundation, not a playable launcher yet.** It does not install or launch
+the Minecraft client, install loaders or import modpacks. Android still needs a
+native graphical runtime and touch controls. Account tokens are kept only in Rust
+memory; persistent accounts and refresh require platform secure storage.
+
+Microsoft login requires your own public-client application registration with
+device authorization enabled and permission to use Minecraft services. Supply its
+application ID in the Accounts tab, or set `NEBULA_MICROSOFT_CLIENT_ID` before
+starting Nebula. Never use another launcher's application ID or a client secret.
+See [docs/LAUNCHER.md](docs/LAUNCHER.md) for architecture, references and remaining work.
 
 ## Layout
 

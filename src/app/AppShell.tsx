@@ -38,6 +38,7 @@ import { useI18n } from "@/i18n";
 import { switchTo } from "@/lib/connection";
 import { formatMegabytes } from "@/lib/format";
 import { toAppError } from "@/lib/ipc";
+import { IS_WEB } from "@/lib/web";
 import type { InstanceView } from "@/types/api";
 import { Button, ErrorNotice, Icon, Ring, StatusDot, type IconName } from "@/ui";
 import { useTransferTracking } from "@/features/server/transfer/active";
@@ -154,11 +155,11 @@ export function AppShell() {
 
   useEffect(() => {
     // A node that has never been named and has no servers is a first run.
-    if (isSuccess && node && instances?.length === 0 && !node.paired_devices.length) {
+    if (pathname !== "/launcher" && isSuccess && node && instances?.length === 0 && !node.paired_devices.length) {
       const seen = localStorage.getItem("nebula.firstRunDone");
       if (!seen) navigate("/welcome", { replace: true });
     }
-  }, [isSuccess, node, instances, navigate]);
+  }, [isSuccess, node, instances, navigate, pathname]);
 
   return (
     <div className="flex h-full flex-col">
@@ -284,6 +285,7 @@ function AppNav() {
   return (
     <div className="flex flex-col gap-0.5">
       <NavItem to="/servers" icon="servers" label={t("nav.servers")} />
+      {!IS_WEB ? <NavItem to="/launcher" icon="play" label="Launcher" /> : null}
       <NavItem to="/settings" icon="sliders" label={t("nav.settings")} />
     </div>
   );

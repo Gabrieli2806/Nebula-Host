@@ -13,6 +13,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 
 import { useI18n } from "@/i18n";
 import { remoteNodes } from "@/lib/connection";
+import { IS_WEB } from "@/lib/web";
 import { Icon, type IconName } from "@/ui";
 
 import { SERVER_PANELS } from "./AppShell";
@@ -30,6 +31,7 @@ export function MobileTabs({ instanceId }: { instanceId: string | null }) {
     return (
       <nav className="mobile-tabs" aria-label={t("nav.sidebar")}>
         <Tab to="/servers" icon="servers" label={t("nav.servers")} />
+        {!IS_WEB ? <Tab to="/launcher" icon="play" label="Launcher" /> : null}
         {remoteNodes().length ? <Tab to="/machines" icon="activity" label={t("fleet.tabMachines")} /> : null}
         <Tab to="/settings" icon="sliders" label={t("nav.settings")} />
       </nav>

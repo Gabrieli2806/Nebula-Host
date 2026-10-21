@@ -1,0 +1,13 @@
+export type Loader = "vanilla" | "fabric" | "forge" | "neoforge" | "quilt";
+export type ContentKind = "mod" | "modpack" | "resourcepack" | "shader";
+export interface LauncherProfile {
+  id: string; name: string; game_version: string; loader: Loader; memory_mb: number;
+}
+export type CreateProfile = Omit<LauncherProfile, "id">;
+export interface LauncherCapabilities { platform: string; can_launch: boolean; microsoft_configured: boolean }
+export interface GameVersion { id: string; type: string }
+export interface LauncherAccount { id: string; name: string }
+export interface DeviceLogin { id: string; user_code: string; verification_uri: string; expires_in: number; interval: number }
+export type LoginResult = { status: "pending"; interval: number } | { status: "complete"; account: LauncherAccount };
+export interface LauncherProject { project_id: string; slug: string; title: string; description: string; author: string; downloads: number; project_type: string; icon_url: string | null }
+export interface LauncherSearch { hits: LauncherProject[]; total_hits: number }

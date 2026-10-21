@@ -10,6 +10,7 @@ import { ServerScreen } from "@/features/server/ServerScreen";
 import { ServersScreen } from "@/features/servers/ServersScreen";
 import { SettingsScreen } from "@/features/settings/SettingsScreen";
 import { MachinesScreen } from "@/features/machines/MachinesScreen";
+import { LauncherScreen } from "@/features/launcher/LauncherScreen";
 import { useSuppressNativeContextMenu } from "@/ui/ContextMenu";
 import { errorActions } from "@/ui";
 import { JavaInstallButton } from "@/features/java/JavaInstall";
@@ -56,6 +57,7 @@ function Shell() {
             <Route path="/welcome" element={<FirstRun />} />
             <Route element={<AppShell />}>
               <Route path="/servers" element={<ServersScreen />} />
+              <Route path="/launcher" element={<LauncherScreen />} />
               {/* The open panel lives in the URL, so the sidebar can be plain
                   links and the back button walks through panels. */}
               <Route
