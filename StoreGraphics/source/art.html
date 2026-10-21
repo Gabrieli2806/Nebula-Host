@@ -1,0 +1,87 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Nebula Host store art</title>
+<style>
+  @font-face { font-family: "Quicksand"; src: url("quicksand.woff2") format("woff2"); font-weight: 300 700; }
+  :root { --accent: #22d3ee; --bg: #060b16; --font: "Quicksand", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); overflow: hidden; }
+  #art { position: relative; overflow: hidden; background: var(--bg); font-family: var(--font); color: #fff; }
+  .blob { position: absolute; border-radius: 50%; }
+  .fill { position: absolute; inset: 0; display: flex; }
+  .tile {
+    flex: none; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(150deg, rgba(34,211,238,.18), rgba(34,211,238,.04));
+    border: 1px solid rgba(34,211,238,.32);
+  }
+  .tile img { display: block; }
+  .chip {
+    font-weight: 600; color: var(--accent); white-space: nowrap; border-radius: 999px;
+    border: 1.5px solid rgba(34,211,238,.45); background: rgba(34,211,238,.08);
+  }
+  .shot { max-width: 100%; max-height: 100%; object-fit: contain; border: 1px solid rgba(255,255,255,.1); }
+</style>
+<div id="art"></div>
+<script>
+const COPY = { name: "Nebula Host", tagline: "Host game servers on your own PC.", chips: ["Easy setup", "Mods & backups", "Manage remotely"] };
+const q = new URLSearchParams(location.search);
+const type = q.get("t") || "wide";
+const W = +q.get("w") || 2400, H = +q.get("h") || 1200;
+const art = document.getElementById("art");
+art.style.width = W + "px"; art.style.height = H + "px";
+const px = (n) => Math.round(n * 100) / 100 + "px";
+
+function backdrop() {
+  const u = Math.max(W, H);
+  return `<div class="blob" style="width:${px(u*.95)};height:${px(u*.95)};left:${px(W*.18)};top:${px(-u*.36)};background:radial-gradient(circle,rgba(34,211,238,.11) 0%,rgba(34,211,238,.03) 45%,transparent 70%)"></div>
+          <div class="blob" style="width:${px(u*.75)};height:${px(u*.75)};left:${px(-u*.26)};bottom:${px(-u*.38)};background:radial-gradient(circle,rgba(30,64,175,.20) 0%,transparent 70%)"></div>`;
+}
+function tile(size) {
+  return `<div class="tile" style="width:${px(size)};height:${px(size)};border-radius:${px(size*.24)};border-width:${px(Math.max(1,size*.007))};box-shadow:0 ${px(size*.14)} ${px(size*.38)} rgba(0,0,0,.6),0 0 ${px(size*.42)} rgba(34,211,238,.14)">
+    <img src="icon.png" style="width:${px(size*.86)};height:${px(size*.86)}"></div>`;
+}
+function chips(scale) {
+  return COPY.chips.map(c => `<div class="chip" style="font-size:${px(28*scale)};padding:${px(12*scale)} ${px(28*scale)};border-width:${px(1.5*scale)}">${c}</div>`).join("");
+}
+function wide(showChips) {
+  const s = H / 500;
+  return backdrop() + `<div class="fill" style="align-items:center;justify-content:center;gap:${px(H*.09)};padding:${px(H*.1)}">
+    ${tile(H*.52)}
+    <div style="display:flex;flex-direction:column;gap:${px(H*.035)}">
+      <div style="font-size:${px(H*.19)};font-weight:700;letter-spacing:${px(-H*.006)};line-height:1">${COPY.name}</div>
+      <div style="font-size:${px(H*.062)};color:rgba(255,255,255,.75);line-height:1.25;max-width:${px(W*.52)}">${COPY.tagline}</div>
+      ${showChips ? `<div style="display:flex;gap:${px(H*.022)};flex-wrap:wrap;margin-top:${px(H*.02)}">${chips(s*.6)}</div>` : ""}
+    </div></div>`;
+}
+function stacked(showChips) {
+  const u = Math.min(W, H);
+  return backdrop() + `<div class="fill" style="flex-direction:column;align-items:center;justify-content:center;gap:${px(u*.055)};padding:${px(u*.1)};text-align:center">
+    ${tile(u*.42)}
+    <div style="font-size:${px(u*.115)};font-weight:700;letter-spacing:${px(-u*.004)};line-height:1">${COPY.name}</div>
+    <div style="font-size:${px(u*.042)};color:rgba(255,255,255,.72);line-height:1.35;max-width:${px(W*.82)}">${COPY.tagline}</div>
+    ${showChips ? `<div style="display:flex;gap:${px(u*.02)};flex-wrap:wrap;justify-content:center">${chips(u/1080)}</div>` : ""}
+  </div>`;
+}
+function markOnly() {
+  const u = Math.min(W, H);
+  return backdrop() + `<div class="fill" style="align-items:center;justify-content:center">${tile(u*.66)}</div>`;
+}
+function panel() {
+  const u = Math.min(W, H), portrait = H > W;
+  const src = q.get("src"), head = q.get("head"), sub = q.get("sub");
+  return backdrop() + `<div class="fill" style="flex-direction:column;align-items:center;justify-content:flex-start;padding:${px(portrait ? u*.07 : u*.04)};gap:${px(portrait ? u*.035 : u*.025)}">
+    <div style="display:flex;align-items:center;gap:${px(u*.022)}">
+      <img src="icon.png" style="width:${px(u*(portrait?.07:.055))};height:${px(u*(portrait?.07:.055))}">
+      <div style="font-size:${px(u*(portrait?.05:.04))};font-weight:700;letter-spacing:-.5px">${COPY.name}</div>
+    </div>
+    <div style="text-align:center;display:flex;flex-direction:column;gap:${px(u*.012)}">
+      <div style="font-size:${px(u*(portrait?.058:.05))};font-weight:700;line-height:1.15">${head}</div>
+      <div style="font-size:${px(u*(portrait?.032:.026))};color:rgba(255,255,255,.65);line-height:1.35;max-width:${px(W*.85)}">${sub}</div>
+    </div>
+    <div style="flex:1;width:100%;display:flex;align-items:center;justify-content:center;min-height:0">
+      <img class="shot" src="${src}" style="border-radius:${px(u*.018)};box-shadow:0 ${px(u*.03)} ${px(u*.08)} rgba(0,0,0,.55)">
+    </div></div>`;
+}
+art.innerHTML = { wide: () => wide(true), widenochips: () => wide(false), stacked: () => stacked(false), stackedchips: () => stacked(true), mark: markOnly, panel }[type]();
+document.fonts.ready.then(() => document.title = "ready");
+</script>
