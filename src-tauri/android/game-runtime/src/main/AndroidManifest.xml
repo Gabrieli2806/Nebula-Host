@@ -3,11 +3,11 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <application android:allowNativeHeapPointerTagging="false">
         <activity android:name="net.kdt.pojavlaunch.NebulaBootstrapActivity" android:exported="false" android:taskAffinity="net.g2806.nebulahost.game"
-            android:process=":game" android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|keyboard|navigation|uiMode"
+            android:process=":game" android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|keyboard|navigation|uiMode|density"
             android:theme="@style/AppTheme" />
         <activity android:name="net.kdt.pojavlaunch.NebulaGameActivity" android:exported="false" android:taskAffinity="net.g2806.nebulahost.game"
             android:process=":game" android:screenOrientation="sensorLandscape"
-            android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|keyboard|navigation|uiMode"
+            android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|keyboard|navigation|uiMode|density"
             android:theme="@style/AppTheme" />
         <activity android:name="net.kdt.pojavlaunch.CustomControlsActivity" android:exported="false" android:process=":game" android:screenOrientation="sensorLandscape" android:theme="@style/AppTheme" />
         <activity android:name="net.kdt.pojavlaunch.FatalErrorActivity" android:exported="false" android:process=":game" android:theme="@style/AppTheme" />

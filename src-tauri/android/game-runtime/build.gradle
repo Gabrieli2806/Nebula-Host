@@ -62,6 +62,15 @@ def prepareEngine = tasks.register('prepareEngine', Sync) {
         main.text = text.substring(0, opening + 1) + '\nNebulaGameBridge.run(this);\n}' + text.substring(end)
         main.text = main.text.replace('new File(Tools.DIR_GAME_HOME, "latestlog.txt")', 'new File(minecraftProfile.gameDir, "latest-client.log")')
         def jre = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/utils/JREUtils.java')
+        // Keep the upstream editor/menu intact; append Nebula's in-game option.
+        main.text = main.text.replace('getResources().getStringArray(R.array.menu_ingame));', 'new java.util.ArrayList<>(java.util.Arrays.asList(getResources().getStringArray(R.array.menu_ingame))));\n            gameActionArrayAdapter.add(getString(R.string.nebula_console_mode));')
+        main.text = main.text.replace('case 4: openCustomControls(); break;', 'case 4: if (this instanceof NebulaGameActivity) ((NebulaGameActivity)this).onConsoleEditorStarting(); openCustomControls(); break;\n                    case 5: if (this instanceof NebulaGameActivity) ((NebulaGameActivity)this).showConsoleOptions(); break;')
+        main.text = main.text.replace('mControlLayout.toggleControlVisible();', 'mControlLayout.toggleControlVisible();\n        if (this instanceof NebulaGameActivity) ((NebulaGameActivity)this).onConsoleControlsLoaded();')
+        // SDL needs the game viewport, not the full unfolded display, when split.
+        def surface = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/MinecraftGLSurface.java')
+        surface.text = surface.text.replace('Tools.currentDisplayMetrics.widthPixels, Tools.currentDisplayMetrics.heightPixels', 'getWidth(), getHeight()')
+        def cursor = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/customcontrols/mouse/Touchpad.java')
+        cursor.text = cursor.text.replace('currentDisplayMetrics.widthPixels', 'getWidth()').replace('currentDisplayMetrics.heightPixels', 'getHeight()')
         // Launch arrays contain the Minecraft access token. Keep them in memory.
         jre.text = jre.text.replace('System.out.println(JVMArgs);', '')
         jre.text = jre.text.replace('Logger.appendToLog("Java Exit code: " + exitCode);', 'net.kdt.pojavlaunch.NebulaGameActivity.reportExit(exitCode); Logger.appendToLog("Java Exit code: " + exitCode);')
@@ -97,13 +106,14 @@ android {
     sourceSets {
         main {
             java.srcDirs = [generatedJava, 'src/main/java']
-            res.srcDirs = [new File(upstream, 'src/main/res')]
+            res.srcDirs = [new File(upstream, 'src/main/res'), 'src/main/res']
             assets.srcDirs = [new File(upstream, 'src/main/assets'), 'src/main/assets', layout.buildDirectory.dir('generated/engine-assets')]
             jniLibs.srcDirs = [new File(upstream, 'src/main/jniLibs')]
         }
     }
     externalNativeBuild { ndkBuild { path new File(upstream, 'src/main/jni/Android.mk') } }
     buildFeatures { prefab true; buildConfig true }
+    testOptions { unitTests.includeAndroidResources = true }
     compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
     packagingOptions {
         jniLibs { useLegacyPackaging true; pickFirsts += ['**/libbytehook.so', '**/libc++_shared.so'] }
@@ -113,6 +123,9 @@ android {
 tasks.named('preBuild').configure { dependsOn(prepareEngine, prepareNotices, graphicsAgent) }
 
 dependencies {
+    implementation 'androidx.window:window-java:1.5.1'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.16.1'
     implementation 'javax.annotation:javax.annotation-api:1.3.2'
     implementation 'commons-codec:commons-codec:1.15'
     implementation 'androidx.appcompat:appcompat:1.7.1'

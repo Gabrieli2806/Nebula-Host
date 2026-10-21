@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
  * short-lived Minecraft token. The launcher/account screens remain in Nebula. */
 public final class NebulaGameActivity extends MainActivity {
     private static File exitFile;
+    private net.kdt.pojavlaunch.console.NebulaTabletopConsole console;
     JSONObject request;
 
     @Override public void onCreate(Bundle state) {
@@ -52,6 +53,7 @@ public final class NebulaGameActivity extends MainActivity {
             Tools.LOCAL_RENDERER = "opengles_mobileglues";
             getIntent().putExtra(INTENT_MINECRAFT_VERSION, id);
             super.onCreate(null);
+            console = new net.kdt.pojavlaunch.console.NebulaTabletopConsole(this);
         } catch (Throwable error) {
             reportExit(-1);
             android.util.Log.e("NebulaGame", "Cannot initialize game engine", error);
@@ -64,6 +66,40 @@ public final class NebulaGameActivity extends MainActivity {
     public static void reportExit(int code) {
         try { if (exitFile != null) write(exitFile, Integer.toString(code)); }
         catch (Exception ignored) { /* The Rust monitor treats a missing marker as failure. */ }
+    }
+
+    public void showConsoleOptions() { if (console != null) console.showOptions(); }
+    public void onConsoleControlsLoaded() { if (console != null) console.controlsLoaded(); }
+    public void onConsoleEditorStarting() { if (console != null) console.enterEditor(); }
+
+    @Override public void exitEditor() {
+        super.exitEditor();
+        if (console != null) console.exitEditor();
+    }
+
+    @Override protected void onStart() {
+        super.onStart();
+        if (console != null) console.start();
+    }
+
+    @Override protected void onStop() {
+        if (console != null) console.stop();
+        super.onStop();
+    }
+
+    @Override protected void onPause() {
+        if (console != null) console.cancelInput();
+        super.onPause();
+    }
+
+    @Override public void onWindowFocusChanged(boolean focused) {
+        super.onWindowFocusChanged(focused);
+        if (!focused && console != null) console.cancelInput();
+    }
+
+    @Override protected void onDestroy() {
+        if (console != null) console.close();
+        super.onDestroy();
     }
 
     private static void write(File file, String text) throws Exception {
