@@ -27,12 +27,25 @@ public final class NebulaBootstrapActivity extends Activity {
         label.setPadding(24, 32, 24, 24);
         layout.addView(label);
         setContentView(layout);
+        // The engine's classes must be first used on the main thread: loading its
+        // native library runs code that needs a Looper (Choreographer), and on a
+        // worker thread that aborts the whole process with no message, so the
+        // screen just closes. Only the file copying below is slow enough to need
+        // a worker thread.
+        try {
+            ContextExecutor.setApplication(getApplication());
+            LocaleUtils.setLocale(this);
+            LauncherPreferences.loadPreferences(this);
+            Tools.DEVICE_ARCHITECTURE = Architecture.getDeviceArchitecture();
+        } catch (Throwable error) {
+            android.util.Log.e("NebulaGame", "Game engine initialization failed", error);
+            new android.app.AlertDialog.Builder(this).setTitle("Minecraft")
+                .setMessage("Cannot start the game engine: " + error.getClass().getSimpleName() + ": " + error.getMessage())
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> android.os.Process.killProcess(android.os.Process.myPid())).show();
+            return;
+        }
         new Thread(() -> {
             try {
-                ContextExecutor.setApplication(getApplication());
-                LocaleUtils.setLocale(this);
-                LauncherPreferences.loadPreferences(this);
-                Tools.DEVICE_ARCHITECTURE = Architecture.getDeviceArchitecture();
                 JSONObject request = new JSONObject(payload);
                 new NebulaGameAssets(this).prepare(request);
                 runOnUiThread(() -> {
