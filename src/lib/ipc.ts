@@ -21,6 +21,8 @@ async function launcherCall<T>(command: string, args?: Record<string, unknown>):
   return invoke<T>(command, args);
 }
 export const launcherApi = {
+  pinShortcut: (id: string, mode: "demo" | "account", accountId?: string) => launcherCall<void>("launcher_pin_shortcut", { id, mode, accountId }),
+  takeShortcut: () => launcherCall<{ id: string; requestId: string; mode: "demo" | "account"; accountId?: string } | null>("launcher_take_shortcut"),
   loaderVersions: (loader: import("@/features/launcher/types").Loader, gameVersion: string) => launcherCall<string[]>("launcher_loader_versions", { loader, gameVersion }),
   status: () => launcherCall<Record<string, import("@/features/launcher/types").ClientStatus>>("launcher_status"),
   start: (id: string, mode: "install" | "demo" | "account", accountId?: string) => launcherCall<void>("launcher_client_start", { id, mode, accountId }),

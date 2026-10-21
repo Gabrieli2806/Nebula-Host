@@ -1,6 +1,7 @@
 package net.g2806.nebulahost
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -26,6 +27,7 @@ class MainActivity : TauriActivity() {
     val volumes = getExternalFilesDirs(null).filterNotNull().joinToString("\n") { it.absolutePath }
     Os.setenv("NEBULA_STORAGE_DIRS", volumes, true)
     super.onCreate(savedInstanceState)
+    captureShortcut(intent)
 
     // The notification is how servers keep running in the background.
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -33,6 +35,23 @@ class MainActivity : TauriActivity() {
     ) {
       requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
     }
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    captureShortcut(intent)
+  }
+
+  private fun captureShortcut(intent: Intent?) {
+    val uri = intent?.data ?: return
+    if (intent.action != "net.g2806.nebulahost.PLAY_INSTANCE" || uri.scheme != "nebula" || uri.host != "instance") return
+    val id = uri.lastPathSegment ?: return
+    if (!id.matches(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))) return
+    // Account/mode come from our private preferences, never external extras.
+    val selection = getSharedPreferences("launcher-shortcuts", MODE_PRIVATE).getString(id, null) ?: return
+    val request = org.json.JSONObject(selection).put("requestId", java.util.UUID.randomUUID().toString())
+    synchronized(MainActivity::class.java) { pendingShortcut = request.toString() }
+    intent.data = null
   }
 
   override fun onResume() {
@@ -48,6 +67,12 @@ class MainActivity : TauriActivity() {
   }
 
   companion object {
+    private var pendingShortcut: String? = null
+    fun takeShortcut(): String? = synchronized(MainActivity::class.java) {
+      val value = pendingShortcut
+      pendingShortcut = null
+      value
+    }
     @Volatile
     var visible = false
   }

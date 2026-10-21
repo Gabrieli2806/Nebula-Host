@@ -10,6 +10,26 @@ use crate::{
 use std::sync::Arc;
 
 #[tauri::command]
+pub async fn launcher_pin_shortcut(id: uuid::Uuid, mode: String, account_id: Option<String>) -> AppResult<()> {
+    let profile = profile_by_id(id).await?;
+    if !matches!(mode.as_str(), "demo" | "account") || (mode == "account" && account_id.as_deref().and_then(|value| uuid::Uuid::parse_str(value).ok()).is_none()) {
+        return Err(crate::error::AppError::new(crate::error::ErrorCode::InvalidInput));
+    }
+    #[cfg(target_os = "android")]
+    return launcher::android::pin_shortcut(serde_json::json!({"id": profile.id, "name": profile.name, "mode": mode, "accountId": account_id}));
+    #[cfg(not(target_os = "android"))]
+    { let _ = profile; Err(crate::error::AppError::new(crate::error::ErrorCode::GameNotSupported)) }
+}
+
+#[tauri::command]
+pub async fn launcher_take_shortcut() -> AppResult<serde_json::Value> {
+    #[cfg(target_os = "android")]
+    return launcher::android::take_shortcut();
+    #[cfg(not(target_os = "android"))]
+    Ok(serde_json::Value::Null)
+}
+
+#[tauri::command]
 pub async fn launcher_status(
     state: tauri::State<'_, Arc<ClientEngine>>,
 ) -> AppResult<std::collections::HashMap<uuid::Uuid, ClientStatus>> {
@@ -50,6 +70,10 @@ pub async fn launcher_client_start(
         .into_iter()
         .find(|p| p.id == id)
         .ok_or_else(|| AppError::new(ErrorCode::NotFound))?;
+    #[cfg(target_os = "android")]
+    if state.statuses().await.get(&id).is_some_and(|s| s.phase == "running") {
+        return state.resume(id).await;
+    }
     let credentials = match mode.as_str() {
         "install" => None,
         "demo" => Some(Credentials {

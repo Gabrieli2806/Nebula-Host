@@ -36,6 +36,19 @@ public final class NebulaGameBridge {
         for (int index = 0; index < original.length(); index++) classpath.add(original.getString(index));
         List<String> args = new ArrayList<>();
         Tools.getCacioJavaArgs(args, false, activity);
+        if (hasSdl(libraries)) {
+            // SDL loads libvulkan in Android's normal linker namespace. Loading
+            // a second Vulkan loader through Turnip's isolated namespace gives
+            // RenderPearl a different vkGetInstanceProcAddr and invalid handles.
+            // Use the phone's Vulkan driver consistently on the SDL path.
+            android.system.Os.unsetenv("POJAV_LOAD_TURNIP");
+            android.system.Os.unsetenv("VULKAN_PTR");
+            android.system.Os.setenv("SDL_VULKAN_LIBRARY", "/system/lib64/libvulkan.so", true);
+            LauncherPreferences.PREF_ZINK_PREFER_SYSTEM_DRIVER = true;
+            Tools.useSFPEW = false;
+            args.add("-javaagent:" + new File(Tools.DIR_DATA, "nebula-graphics/nebula-graphics.jar").getAbsolutePath());
+            System.out.println("[Nebula] SDL graphics: shared OpenGL provider; system Vulkan driver");
+        }
         args.add("-Djava.library.path=" + Tools.lwjglNativesDir + ":" + Tools.NATIVE_LIB_DIR);
         args.add("-Dorg.lwjgl.librarypath=" + Tools.lwjglNativesDir);
         JSONArray launch = request.getJSONArray("args");
@@ -51,5 +64,12 @@ public final class NebulaGameBridge {
         LauncherPreferences.writeMGRendererSettings();
         JREUtils.redirectAndPrintJRELog();
         JREUtils.launchJavaVM(activity, MultiRTUtils.forceReread(request.getString("runtime")), new File(request.getString("gameDir")), args, "");
+    }
+
+    private static boolean hasSdl(JSONArray libraries) throws Exception {
+        for (int i = 0; i < libraries.length(); i++) {
+            if (libraries.getJSONObject(i).optString("name").startsWith("org.lwjgl:lwjgl-sdl:")) return true;
+        }
+        return false;
     }
 }

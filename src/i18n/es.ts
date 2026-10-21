@@ -119,6 +119,8 @@ export const es: Copy = {
     "addJar": "Añadir un .jar",
     "addZip": "Añadir un .zip",
     "returnToGame": "Volver al juego",
+    "pinShortcut": "Añadir a pantalla de inicio",
+    "shortcutRequested": "Solicitud enviada. Confirma el acceso directo en Android. Para jugar con tu cuenta se necesita una sesión activa.",
     "viewProject": "Ver en Modrinth",
     "previous": "Anterior",
     "next": "Siguiente",

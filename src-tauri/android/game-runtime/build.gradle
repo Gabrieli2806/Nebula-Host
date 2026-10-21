@@ -4,6 +4,40 @@ apply plugin: 'com.android.library'
 
 def upstream = file('../amethyst/app_pojavlauncher')
 def generatedJava = layout.buildDirectory.dir('generated/engine-java')
+def compileGraphicsAgent = tasks.register('compileGraphicsAgent', JavaCompile) {
+    source fileTree('src/agent/java') { include '**/*.java' }
+    classpath = files(new File(upstream, 'src/main/assets/components/MioLibPatcher/MioLibPatcher.jar'))
+    destinationDirectory = layout.buildDirectory.dir('graphics-agent/classes')
+    options.release = 8
+}
+def graphicsAgent = tasks.register('graphicsAgent', Jar) {
+    dependsOn(compileGraphicsAgent)
+    archiveFileName = 'nebula-graphics.jar'
+    destinationDirectory = layout.buildDirectory.dir('generated/engine-assets/components/nebula-graphics')
+    from(compileGraphicsAgent.flatMap { it.destinationDirectory })
+    from(zipTree(new File(upstream, 'src/main/assets/components/MioLibPatcher/MioLibPatcher.jar'))) { include 'javassist/**' }
+    manifest { attributes 'Premain-Class': 'net.g2806.nebula.GraphicsAgent' }
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    doLast {
+        def digest = java.security.MessageDigest.getInstance('SHA-256').digest(archiveFile.get().asFile.bytes)
+        new File(destinationDirectory.get().asFile, 'version').text = digest.encodeHex().toString()
+    }
+}
+def compileGraphicsAgentTest = tasks.register('compileGraphicsAgentTest', JavaCompile) {
+    dependsOn(graphicsAgent)
+    source fileTree('src/agentTest/java') { include '**/*.java' }
+    classpath = files(graphicsAgent.flatMap { it.archiveFile })
+    destinationDirectory = layout.buildDirectory.dir('graphics-agent/test-classes')
+}
+
+tasks.register('testGraphicsAgent', JavaExec) {
+    dependsOn(compileGraphicsAgentTest)
+    classpath = files(compileGraphicsAgentTest.flatMap { it.destinationDirectory }, graphicsAgent.flatMap { it.archiveFile })
+    mainClass = 'net.g2806.nebula.GraphicsAgentTest'
+    args new File(upstream, 'src/main/assets/components/lwjgl3/3.4.1').absolutePath
+}
+
 def prepareNotices = tasks.register('prepareEngineNotices', Sync) {
     from(file('../amethyst')) { include 'LICENSE', 'README.md' }
     into(layout.buildDirectory.dir('generated/engine-assets/licenses/amethyst'))
@@ -76,7 +110,7 @@ android {
         resources { excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE*', 'META-INF/NOTICE*'] }
     }
 }
-tasks.named('preBuild').configure { dependsOn(prepareEngine, prepareNotices) }
+tasks.named('preBuild').configure { dependsOn(prepareEngine, prepareNotices, graphicsAgent) }
 
 dependencies {
     implementation 'javax.annotation:javax.annotation-api:1.3.2'

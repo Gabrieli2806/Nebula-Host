@@ -8,6 +8,9 @@ final class NebulaGameAssets {
     private final Context context;
     NebulaGameAssets(Context context) { this.context = context; }
     void prepare(JSONObject request) throws Exception {
+        // This component is updated independently of the upstream runtime.
+        // Replace its bytes on APK updates, including already-created instances.
+        copyAssets("components/nebula-graphics", new File(Tools.DIR_DATA, "nebula-graphics"), true);
         for (String component : new String[]{"caciocavallo", "caciocavallo17", "lwjgl3/3.3.3", "lwjgl3/3.4.1"}) {
             copyAssets("components/" + component, new File(Tools.DIR_GAME_HOME, component));
         }
@@ -34,12 +37,16 @@ final class NebulaGameAssets {
     }
 
     private void copyAssets(String asset, File output) throws Exception {
+        copyAssets(asset, output, false);
+    }
+
+    private void copyAssets(String asset, File output, boolean replace) throws Exception {
         String[] children = context.getAssets().list(asset);
         if (children != null && children.length > 0) {
             if (!output.isDirectory() && !output.mkdirs()) throw new java.io.IOException("Cannot create game assets");
-            for (String child : children) copyAssets(asset + "/" + child, new File(output, child));
+            for (String child : children) copyAssets(asset + "/" + child, new File(output, child), replace);
         } else {
-            if (output.isFile()) return;
+            if (output.isFile() && !replace) return;
             File parent = output.getParentFile();
             if (parent != null) parent.mkdirs();
             File staging = new File(output.getPath() + ".part");

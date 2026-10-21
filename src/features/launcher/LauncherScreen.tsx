@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/i18n";
 import { launcherApi, toAppError } from "@/lib/ipc";
@@ -12,7 +13,15 @@ import "./launcher.css";
 const ROOT = ["launcher"];
 
 export function LauncherScreen() {
+  const [search] = useSearchParams();
+  return <LauncherContent key={search.get("request") ?? "launcher"} />;
+}
+
+function LauncherContent() {
   const { t } = useI18n();
+  const [search] = useSearchParams();
+  const location = useLocation();
+  const shortcutId = search.get("instance");
   const [tab, setTab] = useState<"library" | "discover" | "accounts">("library");
   // The instance (and kind of content) Discover installs into, when the person
   // came from an instance's "Add from Modrinth".
@@ -31,7 +40,8 @@ export function LauncherScreen() {
         { id: "accounts", label: t("launcher.accounts"), icon: "users" },
       ]} />
     </header>
-    {tab === "library" ? <Library focusId={lastProfile} renderControls={profile => <ProfileControls profile={profile} />} onBrowse={(profile, kind) => { setTarget({ profile, kind }); setTab("discover"); }} /> : tab === "discover" ? <Discover target={target} onOpenInstance={id => { setLastProfile(id); setTab("library"); }} /> : <Accounts />}
+    <Failure error={location.state?.shortcutError} />
+    {tab === "library" ? <Library key={search.get("request") ?? "library"} focusId={shortcutId ?? lastProfile} renderControls={profile => <ProfileControls profile={profile} />} onBrowse={(profile, kind) => { setTarget({ profile, kind }); setTab("discover"); }} /> : tab === "discover" ? <Discover target={target} onOpenInstance={id => { setLastProfile(id); setTab("library"); }} /> : <Accounts />}
   </div>;
 }
 
@@ -54,6 +64,7 @@ function ProfileControls({ profile }: { profile: LauncherProfile }) {
   const anyInstalling = Object.values(states.data ?? {}).some(s => s.phase === "installing");
   const start = useMutation({ mutationFn: (mode: "install" | "demo" | "account") => launcherApi.start(profile.id, mode, account === "demo" ? undefined : account), onSuccess: () => client.invalidateQueries({ queryKey: [...ROOT, "status"] }) });
   const resume = useMutation({ mutationFn: () => launcherApi.resume(profile.id) });
+  const shortcut = useMutation({ mutationFn: () => launcherApi.pinShortcut(profile.id, account === "demo" ? "demo" : "account", account === "demo" ? undefined : account) });
   const stop = useMutation({ mutationFn: () => launcherApi.stop(profile.id), onSuccess: () => client.invalidateQueries({ queryKey: [...ROOT, "status"] }) });
   return <div className="launcher-client">
     <label className="launcher-field"><span className="label">{t("launcher.playAs")}</span><Select value={account} disabled={running || installing} onChange={e => setAccount(e.target.value)}><option value="demo">{t("launcher.officialDemo")}</option>{accounts.data?.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></label>
@@ -67,8 +78,10 @@ function ProfileControls({ profile }: { profile: LauncherProfile }) {
         <Button icon="download" disabled={start.isPending || anyInstalling} onClick={() => start.mutate("install")}>{t("launcher.installRepair")}</Button>
       </>}
       <Button variant="quiet" icon="terminal" aria-expanded={showLogs} onClick={() => setShowLogs(!showLogs)}>{t("launcher.gameLogs")}</Button>
+      {caps.data?.platform === "android" ? <Button icon="plus" disabled={shortcut.isPending} onClick={() => shortcut.mutate()}>{t("launcher.pinShortcut")}</Button> : null}
     </div>
-    <Failure error={start.error || stop.error || resume.error || state?.error || states.error || accounts.error} />
+    {shortcut.isSuccess ? <p role="status" className="launcher-notice">{t("launcher.shortcutRequested")}</p> : null}
+    <Failure error={start.error || stop.error || resume.error || shortcut.error || state?.error || states.error || accounts.error} />
     {showLogs ? <><Failure error={logs.error} /><pre className="launcher-game-log selectable mono" aria-label={t("launcher.gameLogs")}>{logs.data?.join("\n") || t("launcher.noLogs")}</pre></> : null}
   </div>;
 }

@@ -11,6 +11,7 @@ import { ServersScreen } from "@/features/servers/ServersScreen";
 import { SettingsScreen } from "@/features/settings/SettingsScreen";
 import { MachinesScreen } from "@/features/machines/MachinesScreen";
 import { LauncherScreen } from "@/features/launcher/LauncherScreen";
+import { LauncherShortcutListener } from "@/features/launcher/LauncherShortcutListener";
 import { useSuppressNativeContextMenu } from "@/ui/ContextMenu";
 import { errorActions } from "@/ui";
 import { JavaInstallButton } from "@/features/java/JavaInstall";
@@ -53,6 +54,7 @@ function Shell() {
     <>
         <AgreementGate />
         <HashRouter>
+          <LauncherShortcutListener />
           <Routes>
             <Route path="/welcome" element={<FirstRun />} />
             <Route element={<AppShell />}>

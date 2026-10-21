@@ -119,6 +119,8 @@ export const en = {
     "addJar": "Add a .jar",
     "addZip": "Add a .zip",
     "returnToGame": "Return to game",
+    "pinShortcut": "Add to home screen",
+    "shortcutRequested": "Request sent. Confirm the shortcut in Android. Playing with your account requires an active session.",
     "viewProject": "View on Modrinth",
     "previous": "Previous",
     "next": "Next",

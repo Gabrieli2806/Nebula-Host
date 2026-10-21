@@ -49,6 +49,8 @@ macro_rules! ipc_handlers {
     () => {
         tauri::generate_handler![
             $crate::ipc::launcher::launcher_capabilities,
+            $crate::ipc::launcher::launcher_pin_shortcut,
+            $crate::ipc::launcher::launcher_take_shortcut,
             $crate::ipc::launcher::launcher_status,
             $crate::ipc::launcher::launcher_client_start,
             $crate::ipc::launcher::launcher_loader_versions,
