@@ -9,7 +9,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/i18n";
 import { launcherApi, toAppError } from "@/lib/ipc";
 import { formatBytes } from "@/lib/format";
-import { Button, ErrorNotice, Icon, Segmented, type IconName } from "@/ui";
+import { Button, ErrorNotice, Icon, Segmented, Switch, type IconName } from "@/ui";
+import { type AddonView, useAddonView } from "@/features/server/panels/addons/util";
 import type { ContentKind, InstalledContent, LauncherProfile } from "./types";
 
 const FALLBACK: Record<Exclude<ContentKind, "modpack">, IconName> = { mod: "puzzle", resourcepack: "image", shader: "sun" };
@@ -27,16 +28,16 @@ function toBase64(file: File): Promise<string> {
 
 /** The picture the file carries (a mod's logo, a pack's pack.png), loaded
  *  once and kept; the kind's own glyph when it has none. */
-function ContentIcon({ profile, item }: { profile: LauncherProfile; item: InstalledContent }) {
+function ContentIcon({ profile, item, size }: { profile: LauncherProfile; item: InstalledContent; size: number }) {
   const icon = useQuery({
     queryKey: ["launcher", "content-icon", profile.id, item.kind, item.file],
     queryFn: () => launcherApi.contentIcon(profile.id, item.kind, item.file),
     staleTime: Infinity,
     retry: false,
   });
-  return <span className="launcher-content-icon" aria-hidden="true">
-    {icon.data ? <img src={icon.data} alt="" loading="lazy" draggable={false} /> : <Icon name={FALLBACK[item.kind]} size={15} />}
-  </span>;
+  return icon.data
+    ? <img src={icon.data} alt="" width={size} height={size} loading="lazy" draggable={false} className="addon-icon" />
+    : <span className="addon-icon addon-icon-blank" style={{ width: size, height: size }} aria-hidden="true"><Icon name={FALLBACK[item.kind]} size={size > 36 ? 20 : 16} /></span>;
 }
 
 const KINDS: { id: Exclude<ContentKind, "modpack">; label: string }[] = [
@@ -49,6 +50,7 @@ export function InstanceContent({ profile, onBrowse }: { profile: LauncherProfil
   const { t } = useI18n();
   const client = useQueryClient();
   const [kind, setKind] = useState<Exclude<ContentKind, "modpack">>("mod");
+  const [view, setView] = useAddonView();
   const key = ["launcher", "content", profile.id];
   const list = useQuery({ queryKey: key, queryFn: () => launcherApi.contentList(profile.id) });
   const refresh = () => client.invalidateQueries({ queryKey: key });
@@ -79,20 +81,34 @@ export function InstanceContent({ profile, onBrowse }: { profile: LauncherProfil
         <Button size="sm" variant="primary" icon="plus" disabled={noLoader} title={noLoader ? t("launcher.vanillaNoMods") : undefined} onClick={() => onBrowse(kind)}>{t("launcher.addFromModrinth")}</Button>
       </div>
     </div>
-    <Segmented<Exclude<ContentKind, "modpack">> size="sm" label={t("launcher.content")} value={kind} onChange={setKind} options={KINDS.map(item => ({ id: item.id, label: `${t(item.label)} ${counts(item.id)}` }))} />
+    <div className="launcher-content-bar">
+      <Segmented<Exclude<ContentKind, "modpack">> size="sm" label={t("launcher.content")} value={kind} onChange={setKind} options={KINDS.map(item => ({ id: item.id, label: `${t(item.label)} ${counts(item.id)}` }))} />
+      <Segmented<AddonView> size="sm" label={t("addons.viewLabel")} value={view} onChange={setView} options={[{ id: "cards", label: t("servers.densityCards") }, { id: "list", label: t("servers.densityList") }]} />
+    </div>
     {noLoader ? <p className="launcher-muted">{t("launcher.vanillaNoMods")}</p> : null}
     {list.isPending ? <p role="status">{t("launcher.loading")}</p> : null}
     {failure ? <ErrorNotice error={toAppError(failure)} compact /> : null}
     {list.data && items.length === 0 && !noLoader ? <p className="launcher-muted">{t("launcher.noContent")}</p> : null}
-    <ul className="launcher-content-list">
-      {items.map(item => <li key={item.file} data-disabled={item.enabled ? undefined : ""}>
-        <ContentIcon profile={profile} item={item} />
-        <span className="launcher-content-name" title={item.file}>{item.file.replace(/\.disabled$/, "")}</span>
-        <span className="launcher-muted">{formatBytes(item.size)}</span>
-        <Button size="sm" variant="quiet" disabled={toggle.isPending} onClick={() => toggle.mutate(item)}>{t(item.enabled ? "launcher.disable" : "launcher.enable")}</Button>
-        <Button size="sm" variant="quiet" iconOnly icon="trash" disabled={remove.isPending} aria-label={t("launcher.removeContent")} onClick={() => remove.mutate(item)}>{t("launcher.removeContent")}</Button>
-      </li>)}
-    </ul>
+    {items.length ? <ul className="addons-collection" data-view={view} aria-label={t("launcher.content")}>
+      {items.map(item => {
+        const name = item.file.replace(/\.disabled$/, "").replace(/\.(jar|zip)$/i, "");
+        const actions = <div className="addons-actions">
+          <Switch checked={item.enabled} label={t(item.enabled ? "launcher.disable" : "launcher.enable")} disabled={toggle.isPending} onChange={() => toggle.mutate(item)} />
+          <Button size="sm" variant="quiet" iconOnly icon="trash" className="row-action" disabled={remove.isPending} onClick={() => remove.mutate(item)}>{t("launcher.removeContent")}</Button>
+        </div>;
+        const meta = <p className="addons-meta"><span className="mono truncate" title={item.file}>{item.file}</span><span className="mono">{formatBytes(item.size)}</span></p>;
+        return view === "list"
+          ? <li key={item.file} className="addons-row" data-disabled={item.enabled ? undefined : ""}>
+              <ContentIcon profile={profile} item={item} size={36} />
+              <div className="addons-row-body"><div className="addons-row-head"><span className="addons-name">{name}</span>{item.project_id ? <span className="tag">Modrinth</span> : null}</div>{meta}</div>
+              {actions}
+            </li>
+          : <li key={item.file} className="addons-card" data-disabled={item.enabled ? undefined : ""}>
+              <div className="addons-card-head"><ContentIcon profile={profile} item={item} size={44} /><div className="min-w-0 flex-1"><span className="addons-name">{name}</span>{meta}</div></div>
+              <div className="addons-card-foot">{actions}</div>
+            </li>;
+      })}
+    </ul> : null}
   </section>;
 }
 

@@ -143,6 +143,20 @@ pub async fn set_loader_version(id: uuid::Uuid, version: String) -> AppResult<Pr
     Ok(updated)
 }
 
+/// Change how much memory the game gets (same bounds as when creating).
+pub async fn set_memory(id: uuid::Uuid, memory_mb: u32) -> AppResult<Profile> {
+    if !(512..=32768).contains(&memory_mb) {
+        return Err(AppError::new(ErrorCode::InvalidInput).with("field", "memory_mb"));
+    }
+    let _guard = STORE_LOCK.get_or_init(Default::default).lock().await;
+    let mut profiles = read_profiles()?;
+    let profile = profiles.iter_mut().find(|p| p.id == id).ok_or_else(|| AppError::new(ErrorCode::NotFound))?;
+    profile.memory_mb = memory_mb;
+    let updated = profile.clone();
+    save_profiles(&profiles)?;
+    Ok(updated)
+}
+
 pub async fn remove(id: uuid::Uuid) -> AppResult<()> {
     let _guard = STORE_LOCK.get_or_init(Default::default).lock().await;
     let mut profiles = read_profiles()?;

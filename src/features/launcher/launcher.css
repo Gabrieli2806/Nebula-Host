@@ -535,6 +535,36 @@
     margin: 0;
   }
 
+  .launcher-cape-current {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .launcher-cape-current > span:not(.launcher-cape-none) {
+    flex: 1;
+  }
+
+  .launcher-cape-current .launcher-cape-art,
+  .launcher-cape-current .launcher-cape-none {
+    width: 30px;
+    height: 48px;
+  }
+
+  .launcher-memory {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .launcher-content-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
   .launcher-capes {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));

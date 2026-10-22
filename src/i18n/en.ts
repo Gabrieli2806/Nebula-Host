@@ -134,6 +134,8 @@ export const en = {
     "noCapesOwned": "No capes on this account",
     "installedTag": "Installed",
     "fitsInstance": "Showing what works with Minecraft {version} · {loader}.",
+    "changeCape": "Change cape",
+    "chooseCape": "Choose a cape",
     "viewProject": "View on Modrinth",
     "previous": "Previous",
     "next": "Next",

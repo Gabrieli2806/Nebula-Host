@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/i18n";
 import { openExternal } from "@/lib/external";
 import { launcherApi, toAppError } from "@/lib/ipc";
-import { Button, ErrorNotice, Icon, Panel, PlayerHead, Segmented } from "@/ui";
+import { Button, Dialog, ErrorNotice, Icon, Panel, PlayerHead, Segmented } from "@/ui";
 import { SkinViewer } from "skinview3d";
 import type { DeviceLogin, LauncherAccount } from "./types";
 
@@ -172,6 +172,7 @@ function SkinEditor({ account }: { account: LauncherAccount }) {
   });
   const capes = skin.data?.capes ?? [];
   const activeCape = capes.find((c) => c.active) ?? null;
+  const [choosing, setChoosing] = useState(false);
 
   const src = pending?.preview ?? skin.data?.url ?? null;
   return (
@@ -199,40 +200,64 @@ function SkinEditor({ account }: { account: LauncherAccount }) {
         </div>
         <p className="launcher-muted">{t("launcher.skinHelp")}</p>
         <span className="label">{t("launcher.cape")}</span>
-        {capes.length ? (
-          <div className="launcher-capes" role="radiogroup" aria-label={t("launcher.cape")}>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={!activeCape}
-              className="launcher-cape"
-              disabled={cape.isPending}
-              onClick={() => activeCape && cape.mutate(null)}
-            >
-              <span className="launcher-cape-none"><Icon name="close" size={16} /></span>
-              <span className="launcher-cape-name">{t("launcher.noCape")}</span>
-            </button>
-            {capes.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                role="radio"
-                aria-checked={c.active}
-                className="launcher-cape"
-                disabled={cape.isPending}
-                onClick={() => !c.active && cape.mutate(c.id)}
-              >
-                <CapeFront url={c.url} />
-                <span className="launcher-cape-name">{c.alias}</span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="launcher-muted">{t("launcher.noCapesOwned")}</p>
-        )}
+        <div className="launcher-cape-current">
+          {activeCape ? <CapeFront url={activeCape.url} /> : <span className="launcher-cape-none"><Icon name="close" size={16} /></span>}
+          <span>{activeCape?.alias ?? (capes.length ? t("launcher.noCape") : t("launcher.noCapesOwned"))}</span>
+          {capes.length ? <Button size="sm" onClick={() => setChoosing(true)}>{t("launcher.changeCape")}</Button> : null}
+        </div>
+        {choosing ? (
+          <CapeDialog
+            capes={capes}
+            current={activeCape?.id ?? null}
+            busy={cape.isPending}
+            onClose={() => setChoosing(false)}
+            onApply={(id) => cape.mutate(id, { onSuccess: () => setChoosing(false) })}
+            error={cape.error}
+          />
+        ) : null}
         <Failure error={skin.error || upload.error || cape.error} />
       </div>
     </div>
+  );
+}
+
+/** Pick a cape, then apply: nothing is sent to Minecraft until then. */
+function CapeDialog({ capes, current, busy, onClose, onApply, error }: {
+  capes: { id: string; alias: string; url: string }[];
+  current: string | null;
+  busy: boolean;
+  onClose: () => void;
+  onApply: (id: string | null) => void;
+  error: unknown;
+}) {
+  const { t } = useI18n();
+  const [picked, setPicked] = useState<string | null>(current);
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      dismissable={!busy}
+      title={t("launcher.chooseCape")}
+      width={560}
+      footer={<>
+        <Button variant="quiet" disabled={busy} onClick={onClose}>{t("launcher.cancel")}</Button>
+        <Button variant="primary" icon="check" disabled={busy || picked === current} onClick={() => onApply(picked)}>{t("launcher.applySkin")}</Button>
+      </>}
+    >
+      <div className="launcher-capes" role="radiogroup" aria-label={t("launcher.cape")}>
+        <button type="button" role="radio" aria-checked={picked === null} className="launcher-cape" onClick={() => setPicked(null)}>
+          <span className="launcher-cape-none"><Icon name="close" size={16} /></span>
+          <span className="launcher-cape-name">{t("launcher.noCape")}</span>
+        </button>
+        {capes.map((c) => (
+          <button key={c.id} type="button" role="radio" aria-checked={picked === c.id} className="launcher-cape" onClick={() => setPicked(c.id)}>
+            <CapeFront url={c.url} />
+            <span className="launcher-cape-name">{c.alias}</span>
+          </button>
+        ))}
+      </div>
+      <Failure error={error} />
+    </Dialog>
   );
 }
 

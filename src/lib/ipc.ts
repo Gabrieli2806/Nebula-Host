@@ -33,6 +33,7 @@ export const launcherApi = {
   profiles: () => launcherCall<LauncherProfile[]>("launcher_profiles"),
   create: (input: CreateProfile) => launcherCall<LauncherProfile>("launcher_create", { input }),
   remove: (id: string) => launcherCall<void>("launcher_remove", { id }),
+  setMemory: (id: string, memoryMb: number) => launcherCall<LauncherProfile>("launcher_set_memory", { id, memoryMb }),
   versions: () => launcherCall<GameVersion[]>("launcher_versions"),
   contentList: (id: string) => launcherCall<import("@/features/launcher/types").InstalledContent[]>("launcher_content_list", { id }),
   contentIcon: (id: string, kind: ContentKind, file: string) => launcherCall<string | null>("launcher_content_icon", { id, kind, file }),

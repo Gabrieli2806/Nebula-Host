@@ -105,6 +105,10 @@ pub async fn launcher_profiles() -> AppResult<Vec<Profile>> {
     launcher::profiles().await
 }
 #[tauri::command]
+pub async fn launcher_set_memory(id: uuid::Uuid, memory_mb: u32) -> AppResult<Profile> {
+    launcher::set_memory(id, memory_mb).await
+}
+#[tauri::command]
 pub async fn launcher_create(input: CreateProfile) -> AppResult<Profile> {
     launcher::create(input).await
 }
