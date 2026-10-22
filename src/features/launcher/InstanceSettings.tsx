@@ -5,7 +5,7 @@
  */
 
 import { useRef, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useI18n } from "@/i18n";
 import { launcherApi, toAppError } from "@/lib/ipc";
@@ -62,7 +62,7 @@ function squareIcon(file: File): Promise<string> {
   });
 }
 
-type Section = "general" | "memory" | "danger";
+type Section = "general" | "memory" | "tools" | "danger";
 
 export function InstanceSettings({
   profile,
@@ -86,6 +86,14 @@ export function InstanceSettings({
   const picker = useRef<HTMLInputElement>(null);
 
   const refresh = () => client.invalidateQueries({ queryKey: ["launcher", "profiles"] });
+  const caps = useQuery({ queryKey: ["launcher", "capabilities"], queryFn: launcherApi.capabilities });
+  const accounts = useQuery({ queryKey: ["launcher", "accounts"], queryFn: launcherApi.accounts });
+  const account = accounts.data?.[0]?.id;
+  const repair = useMutation({
+    mutationFn: () => launcherApi.start(profile.id, "install"),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["launcher", "status"] }),
+  });
+  const shortcut = useMutation({ mutationFn: () => launcherApi.pinShortcut(profile.id, account ? "account" : "demo", account) });
   const details = useMutation({ mutationFn: () => launcherApi.updateDetails(profile.id, name.trim(), icon), onSuccess: refresh });
   const ram = useMutation({ mutationFn: () => launcherApi.setMemory(profile.id, memory), onSuccess: refresh });
   const save = useMutation({
@@ -112,6 +120,7 @@ export function InstanceSettings({
           tabs={[
             { id: "general", label: t("launcher.general") },
             { id: "memory", label: t("launcher.memory") },
+            { id: "tools", label: t("launcher.tools") },
             { id: "danger", label: t("launcher.removeInstance") },
           ]}
         />
@@ -169,6 +178,24 @@ export function InstanceSettings({
             disabled={busy}
           />
           {busy ? <p className="launcher-muted">{t("launcher.closeGameFirst")}</p> : null}
+        </div>
+      ) : null}
+
+      {section === "tools" ? (
+        <div className="launcher-settings-tools">
+          <div className="launcher-tool">
+            <div><strong>{t("launcher.installRepair")}</strong><p className="launcher-muted">{t("launcher.repairHelp")}</p></div>
+            <Button icon="download" disabled={busy || repair.isPending} onClick={() => repair.mutate()}>{t("launcher.installRepair")}</Button>
+          </div>
+          {repair.isSuccess ? <p role="status" className="launcher-notice">{t("launcher.repairStarted")}</p> : null}
+          {caps.data?.platform === "android" ? (
+            <div className="launcher-tool">
+              <div><strong>{t("launcher.pinShortcut")}</strong><p className="launcher-muted">{t("launcher.shortcutHelp")}</p></div>
+              <Button icon="plus" disabled={shortcut.isPending} onClick={() => shortcut.mutate()}>{t("launcher.pinShortcut")}</Button>
+            </div>
+          ) : null}
+          {shortcut.isSuccess ? <p role="status" className="launcher-notice">{t("launcher.shortcutRequested")}</p> : null}
+          {repair.error || shortcut.error ? <ErrorNotice error={toAppError(repair.error || shortcut.error)} compact /> : null}
         </div>
       ) : null}
 

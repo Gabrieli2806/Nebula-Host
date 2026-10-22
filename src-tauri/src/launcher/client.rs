@@ -154,7 +154,10 @@ impl ClientEngine {
         let engine = self.clone();
         tokio::spawn(async move {
             let _guard = engine.operation.lock().await;
-            let result = engine.prepare(&profile, &cancel).await;
+            // Install / repair re-checks every file; Play trusts a finished
+            // install and only fetches what is missing.
+            let verify = credentials.is_none();
+            let result = engine.prepare(&profile, &cancel, verify).await;
             let result = match result {
                 Ok(prepared) => {
                     if let Some(credentials) = credentials {
@@ -293,10 +296,15 @@ impl ClientEngine {
             }
         }
     }
-    async fn prepare(&self, profile: &Profile, cancel: &Arc<AtomicBool>) -> AppResult<Prepared> {
+    async fn prepare(&self, profile: &Profile, cancel: &Arc<AtomicBool>, verify: bool) -> AppResult<Prepared> {
         let root = directory()?;
         let version_dir = root.join("versions").join(&profile.game_version);
         let game_dir = root.join("profiles").join(profile.id.to_string());
+        let marker_path = game_dir.join(".nebula-installed.json");
+        let marker: Value = std::fs::read(&marker_path)
+            .ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            .unwrap_or(Value::Null);
         std::fs::create_dir_all(&version_dir)?;
         std::fs::create_dir_all(&game_dir)?;
         check_cancel(cancel)?;
@@ -389,6 +397,10 @@ impl ClientEngine {
         }
         self.stage(profile.id, "assets", 0, objects.len() as u64)
             .await;
+        // Hashing every asset (tens of thousands of files) on each launch is
+        // what made Play look like a fresh download. After a finished install
+        // of this asset index, a file of the right size is trusted.
+        let trusted = !verify && marker["assets"] == index_id;
         let mut jobs = Vec::new();
         let mut unique_hashes = std::collections::HashSet::new();
         for object in objects.values() {
@@ -398,6 +410,13 @@ impl ClientEngine {
                 continue;
             }
             let object_path = assets.join("objects").join(&hash[..2]).join(hash);
+            if trusted
+                && object["size"].as_u64().is_some_and(|size| {
+                    std::fs::metadata(&object_path).is_ok_and(|m| m.len() == size)
+                })
+            {
+                continue;
+            }
             let desc = json!({ "url": format!("https://resources.download.minecraft.net/{}/{hash}", &hash[..2]), "sha1": hash, "size": object["size"] });
             jobs.push((desc, object_path));
         }
@@ -419,8 +438,8 @@ impl ClientEngine {
         .await?;
         check_cancel(cancel)?;
         std::fs::write(
-            game_dir.join(".nebula-installed.json"),
-            serde_json::to_vec(&json!({"version": profile.game_version, "java": major}))?,
+            &marker_path,
+            serde_json::to_vec(&json!({"version": profile.game_version, "java": major, "assets": index_id}))?,
         )?;
         Ok(Prepared {
             java: java.path.into(),

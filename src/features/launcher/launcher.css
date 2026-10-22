@@ -587,6 +587,54 @@
     gap: var(--space-3);
   }
 
+  .launcher-library-layout[data-single] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .launcher-back {
+    align-self: flex-start;
+  }
+
+  .launcher-play-as {
+    margin: 0;
+  }
+
+  .launcher-play {
+    min-width: 160px;
+  }
+
+  .launcher-log {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .launcher-log-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  .launcher-settings-tools {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .launcher-tool {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .launcher-tool p {
+    margin: 2px 0 0;
+  }
+
   .launcher-memory {
     display: flex;
     flex-direction: column;
