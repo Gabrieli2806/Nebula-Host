@@ -71,11 +71,14 @@ pub fn run() {
     #[cfg(target_os = "android")]
     let builder = builder.plugin(launcher::android::init());
     #[cfg(desktop)]
-    let builder = if launcher_preview { builder } else { builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-        // A second launch focuses the window that is already hosting.
+    let builder = if launcher_preview { builder } else { builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+        // A second launch focuses the window that is already hosting; a
+        // desktop shortcut's --play-instance is handed to the launcher.
+        launcher::media::note_args(args);
         tray::show_main(app);
     })) };
 
+    launcher::media::note_args(std::env::args());
     builder
         .manage(launcher::auth::AuthState::default())
         .manage(Arc::new(launcher::client::ClientEngine::default()))

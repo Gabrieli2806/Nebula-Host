@@ -4,7 +4,7 @@
  * saves on its own, so one change is never lost to another.
  */
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useI18n } from "@/i18n";
@@ -37,10 +37,19 @@ export function InstanceTile({ profile, icon, size = 40 }: { profile: LauncherPr
   );
 }
 
-/** Any picked image as a 128px square PNG, so the stored icon stays small. */
-function squareIcon(file: File): Promise<string> {
+/** Any picked image as a 128px square PNG, so the stored icon stays small.
+ *  Read as a data URL: the app's CSP allows data: images, not blob:. */
+export function squareIcon(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read"));
+    reader.onload = () => drawSquare(String(reader.result)).then(resolve, reject);
+    reader.readAsDataURL(file);
+  });
+}
+
+function drawSquare(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => {
       const side = Math.min(image.width, image.height);
@@ -51,13 +60,9 @@ function squareIcon(file: File): Promise<string> {
       // Pixel art stays sharp when it is scaled up.
       context.imageSmoothingEnabled = side >= 128;
       context.drawImage(image, (image.width - side) / 2, (image.height - side) / 2, side, side, 0, 0, 128, 128);
-      URL.revokeObjectURL(url);
       resolve(canvas.toDataURL("image/png"));
     };
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("image"));
-    };
+    image.onerror = () => reject(new Error("image"));
     image.src = url;
   });
 }
@@ -83,34 +88,10 @@ function DetailsBlock({ profile }: { profile: LauncherProfile }) {
   const { t } = useI18n();
   const refresh = useRefreshProfiles();
   const [name, setName] = useState(profile.name);
-  const [icon, setIcon] = useState<string | null>(profile.icon ?? null);
-  const [pickError, setPickError] = useState(false);
-  const picker = useRef<HTMLInputElement>(null);
-  const save = useMutation({ mutationFn: () => launcherApi.updateDetails(profile.id, name.trim(), icon), onSuccess: refresh });
-  const dirty = name.trim() !== profile.name || icon !== (profile.icon ?? null);
+  const save = useMutation({ mutationFn: () => launcherApi.updateDetails(profile.id, name.trim(), profile.icon ?? null), onSuccess: refresh });
+  const dirty = name.trim() !== profile.name;
   return (
     <Panel title={t("launcher.general")} bodyClassName="launcher-panel-body">
-      <div className="launcher-settings-icon">
-        <InstanceTile profile={profile} icon={icon} size={72} />
-        <input
-          ref={picker}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          hidden
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = "";
-            if (!file) return;
-            setPickError(false);
-            squareIcon(file).then(setIcon, () => setPickError(true));
-          }}
-        />
-        <div className="launcher-actions">
-          <Button size="sm" icon="image" onClick={() => picker.current?.click()}>{t("launcher.chooseIcon")}</Button>
-          {icon ? <Button size="sm" variant="quiet" onClick={() => setIcon(null)}>{t("launcher.resetIcon")}</Button> : null}
-        </div>
-      </div>
-      {pickError ? <p role="alert" className="launcher-muted">{t("launcher.iconFailed")}</p> : null}
       <Field label={t("launcher.instanceName")}>
         <TextInput value={name} maxLength={64} onChange={(e) => setName(e.target.value)} />
       </Field>
@@ -212,6 +193,7 @@ function ToolsBlock({ profile, busy }: { profile: LauncherProfile; busy: boolean
   const caps = useQuery({ queryKey: ["launcher", "capabilities"], queryFn: launcherApi.capabilities });
   const accounts = useQuery({ queryKey: ["launcher", "accounts"], queryFn: launcherApi.accounts });
   const account = accounts.data?.[0]?.id;
+  const android = caps.data?.platform === "android";
   const repair = useMutation({
     mutationFn: () => launcherApi.start(profile.id, "install"),
     onSuccess: () => client.invalidateQueries({ queryKey: ["launcher", "status"] }),
@@ -224,13 +206,11 @@ function ToolsBlock({ profile, busy }: { profile: LauncherProfile; busy: boolean
         <Button icon="download" disabled={busy || repair.isPending} onClick={() => repair.mutate()}>{t("launcher.installRepair")}</Button>
       </div>
       {repair.isSuccess ? <p role="status" className="launcher-notice">{t("launcher.repairStarted")}</p> : null}
-      {caps.data?.platform === "android" ? (
-        <div className="launcher-tool">
-          <div><strong>{t("launcher.pinShortcut")}</strong><p className="launcher-muted">{t("launcher.shortcutHelp")}</p></div>
-          <Button icon="plus" disabled={shortcut.isPending} onClick={() => shortcut.mutate()}>{t("launcher.pinShortcut")}</Button>
-        </div>
-      ) : null}
-      {shortcut.isSuccess ? <p role="status" className="launcher-notice">{t("launcher.shortcutRequested")}</p> : null}
+      <div className="launcher-tool">
+        <div><strong>{t(android ? "launcher.pinShortcut" : "launcher.desktopShortcut")}</strong><p className="launcher-muted">{t(android ? "launcher.shortcutHelp" : "launcher.desktopShortcutHelp")}</p></div>
+        <Button icon="plus" disabled={shortcut.isPending} onClick={() => shortcut.mutate()}>{t(android ? "launcher.pinShortcut" : "launcher.desktopShortcut")}</Button>
+      </div>
+      {shortcut.isSuccess ? <p role="status" className="launcher-notice">{t(android ? "launcher.shortcutRequested" : "launcher.desktopShortcutDone")}</p> : null}
       {repair.error || shortcut.error ? <ErrorNotice error={toAppError(repair.error || shortcut.error)} compact /> : null}
     </Panel>
   );

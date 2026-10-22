@@ -798,6 +798,105 @@
     gap: var(--space-2);
   }
 
+  .launcher-picture {
+    position: relative;
+    flex: none;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius);
+    background: none;
+    cursor: pointer;
+  }
+
+  .launcher-picture-edit {
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--surface-raised);
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity var(--duration-fast, 150ms) ease;
+  }
+
+  .launcher-picture:hover .launcher-picture-edit,
+  .launcher-picture:focus-visible .launcher-picture-edit {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .launcher-picture-edit {
+      opacity: 1;
+    }
+  }
+
+  .launcher-shots {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .launcher-shot {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md, 10px);
+    background: var(--surface-card, var(--surface-raised));
+  }
+
+  .launcher-shot-image {
+    display: block;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    cursor: zoom-in;
+  }
+
+  .launcher-shot-image img,
+  .launcher-shot-image .skeleton {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .launcher-shot-meta {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+
+  .launcher-shot-instance {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    font-weight: var(--weight-control, 600);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .launcher-shot-full {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-sm);
+  }
+
   .launcher-memory {
     display: flex;
     flex-direction: column;

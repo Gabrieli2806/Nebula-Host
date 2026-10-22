@@ -4,7 +4,9 @@
  */
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useContextMenu, type MenuItem } from "@/ui/ContextMenu";
+import { usePrimaryAccount } from "./primaryAccount";
 
 import { useI18n } from "@/i18n";
 import { launcherApi, toAppError } from "@/lib/ipc";
@@ -26,7 +28,32 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
   const visible = (profiles.data ?? []).filter(
     (profile) => (loader === "all" || profile.loader === loader) && `${profile.name} ${profile.game_version}`.toLowerCase().includes(search.toLowerCase()),
   );
-  const failure = profiles.error || caps.error || statuses.error;
+  const client = useQueryClient();
+  const { primary } = usePrimaryAccount();
+  const { open, menu } = useContextMenu();
+  const action = useMutation({
+    mutationFn: async ({ profile, what }: { profile: LauncherProfile; what: "play" | "stop" | "folder" | "shortcut" }) => {
+      if (what === "play") return launcherApi.start(profile.id, primary ? "account" : "demo", primary?.id);
+      if (what === "stop") return launcherApi.stop(profile.id);
+      if (what === "folder") return launcherApi.openFolder(profile.id);
+      return launcherApi.pinShortcut(profile.id, primary ? "account" : "demo", primary?.id);
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ["launcher", "status"] }),
+  });
+  const menuFor = (profile: LauncherProfile): MenuItem[] => {
+    const phase = statuses.data?.[profile.id]?.phase;
+    const busy = phase === "running" || phase === "installing" || phase === "stopping";
+    return [
+      busy
+        ? { label: t("launcher.stopGame"), icon: "stop", onSelect: () => action.mutate({ profile, what: "stop" }) }
+        : { label: t("launcher.play"), icon: "play", disabled: !caps.data?.can_launch, onSelect: () => action.mutate({ profile, what: "play" }) },
+      { label: t("launcher.manage"), icon: "sliders", onSelect: () => onOpen(profile) },
+      { kind: "separator" },
+      { label: t("launcher.openInstanceFolder"), icon: "folder", onSelect: () => action.mutate({ profile, what: "folder" }) },
+      { label: t(caps.data?.platform === "android" ? "launcher.pinShortcut" : "launcher.desktopShortcut"), icon: "plus", onSelect: () => action.mutate({ profile, what: "shortcut" }) },
+    ];
+  };
+  const failure = profiles.error || caps.error || statuses.error || action.error;
 
   return (
     <>
@@ -69,7 +96,7 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
             const phase = statuses.data?.[profile.id]?.phase;
             const canLaunch = !!caps.data?.can_launch && profile.loader !== "quilt";
             return (
-              <article key={profile.id} className="panel card-interactive server-card launcher-instance" data-phase={phase}>
+              <article key={profile.id} className="panel card-interactive server-card launcher-instance" data-phase={phase} onContextMenu={(event) => open(event, menuFor(profile))}>
                 <header className="flex items-start gap-3.5">
                   <InstanceTile profile={profile} size={44} />
                   <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -97,6 +124,8 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
       ) : null}
 
       {caps.data?.platform === "android" ? <p className="launcher-footnote">{t("launcher.androidRuntime")}</p> : null}
+      {menu}
+      {action.isSuccess && action.variables?.what === "shortcut" ? <p role="status" className="launcher-notice">{t(caps.data?.platform === "android" ? "launcher.shortcutRequested" : "launcher.desktopShortcutDone")}</p> : null}
       {creating ? <CreateInstanceDialog onClose={() => setCreating(false)} onCreated={(profile) => { setCreating(false); onOpen(profile); }} /> : null}
     </>
   );

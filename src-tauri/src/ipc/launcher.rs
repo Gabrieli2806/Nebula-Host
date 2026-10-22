@@ -18,7 +18,7 @@ pub async fn launcher_pin_shortcut(id: uuid::Uuid, mode: String, account_id: Opt
     #[cfg(target_os = "android")]
     return launcher::android::pin_shortcut(serde_json::json!({"id": profile.id, "name": profile.name, "mode": mode, "accountId": account_id}));
     #[cfg(not(target_os = "android"))]
-    { let _ = profile; Err(crate::error::AppError::new(crate::error::ErrorCode::GameNotSupported)) }
+    { launcher::media::create_shortcut(&profile).map(|_| ()) }
 }
 
 #[tauri::command]
@@ -26,7 +26,33 @@ pub async fn launcher_take_shortcut() -> AppResult<serde_json::Value> {
     #[cfg(target_os = "android")]
     return launcher::android::take_shortcut();
     #[cfg(not(target_os = "android"))]
-    Ok(serde_json::Value::Null)
+    Ok(launcher::media::take_pending())
+}
+
+#[tauri::command]
+pub async fn launcher_screenshots() -> AppResult<Vec<launcher::media::Screenshot>> {
+    Ok(launcher::media::screenshots(&launcher::profiles().await?))
+}
+#[tauri::command]
+pub async fn launcher_screenshot_data(id: uuid::Uuid, file: String) -> AppResult<String> {
+    tokio::task::spawn_blocking(move || launcher::media::screenshot_data(id, &file))
+        .await
+        .map_err(crate::error::AppError::unexpected)?
+}
+#[tauri::command]
+pub async fn launcher_screenshot_delete(id: uuid::Uuid, file: String) -> AppResult<()> {
+    launcher::media::delete_screenshot(id, &file)
+}
+/// Open an instance's folder (or its screenshots folder) in the file manager.
+#[tauri::command]
+pub async fn launcher_open_folder(app: tauri::AppHandle, id: uuid::Uuid, screenshots: bool) -> AppResult<()> {
+    let folder = if screenshots {
+        launcher::media::screenshots_dir(id)?
+    } else {
+        launcher::media::instance_folder(id)?
+    };
+    std::fs::create_dir_all(&folder)?;
+    crate::ipc::open_folder(&app, &folder)
 }
 
 #[tauri::command]

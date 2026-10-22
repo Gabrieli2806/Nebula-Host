@@ -4,6 +4,7 @@ pub mod auth;
 mod vault;
 pub mod client;
 pub mod content;
+pub mod media;
 pub mod loaders;
 #[cfg(all(target_os = "android", feature = "desktop"))]
 pub mod android;

@@ -17,9 +17,10 @@ import { AccountMenu, SkinTab } from "./Account";
 import { Browse } from "./Browse";
 import { InstancePage } from "./InstancePage";
 import { Library } from "./Library";
+import { Screenshots } from "./Screenshots";
 import "./launcher.css";
 
-type Tab = "library" | "discover" | "skin";
+type Tab = "library" | "discover" | "screenshots" | "skin";
 
 export function LauncherScreen() {
   const [search] = useSearchParams();
@@ -58,6 +59,7 @@ function LauncherContent() {
             options={[
               { id: "library", label: t("launcher.library"), icon: "servers" },
               { id: "discover", label: t("launcher.modpacks"), icon: "search" },
+              { id: "screenshots", label: t("launcher.screenshots"), icon: "image" },
               { id: "skin", label: t("launcher.skin"), icon: "users" },
             ]}
           />
@@ -70,6 +72,8 @@ function LauncherContent() {
         <Library onOpen={(profile) => setOpenId(profile.id)} />
       ) : tab === "discover" ? (
         <Browse modpacks onCreated={(profile) => { setTab("library"); setOpenId(profile.id); }} />
+      ) : tab === "screenshots" ? (
+        <Screenshots />
       ) : (
         <SkinTab />
       )}

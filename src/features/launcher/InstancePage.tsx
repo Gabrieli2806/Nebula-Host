@@ -4,7 +4,8 @@
  * log and its settings.
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useContextMenu } from "@/ui/ContextMenu";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useI18n } from "@/i18n";
@@ -13,7 +14,7 @@ import { Button, ErrorNotice, Icon, StatusDot, Tabs, statusStyle } from "@/ui";
 import { Browse } from "./Browse";
 import { InstanceContent } from "./Content";
 import { InstanceLog } from "./InstanceLog";
-import { InstanceSettingsPanel, InstanceTile } from "./InstanceSettings";
+import { InstanceSettingsPanel, InstanceTile, squareIcon } from "./InstanceSettings";
 import { loaderInfo } from "./loaderOptions";
 import { usePrimaryAccount } from "./primaryAccount";
 import type { ContentKind, LauncherProfile } from "./types";
@@ -44,7 +45,7 @@ export function InstancePage({ profile, onBack, onRemoved }: { profile: Launcher
       </button>
 
       <section className="panel launcher-instance-hero">
-        <InstanceTile profile={profile} size={64} />
+        <PictureButton profile={profile} />
         <div className="min-w-0 flex-1">
           <div className="server-card-title">
             <h2 className="launcher-detail-title" title={profile.name}>{profile.name}</h2>
@@ -78,6 +79,54 @@ export function InstancePage({ profile, onBack, onRemoved }: { profile: Launcher
       {tab === "log" ? <InstanceLog profile={profile} /> : null}
       {tab === "settings" ? <InstanceSettingsPanel profile={profile} busy={busy} onRemoved={onRemoved} /> : null}
     </div>
+  );
+}
+
+/** The instance picture; click to choose a new one (saved right away). */
+function PictureButton({ profile }: { profile: LauncherProfile }) {
+  const { t } = useI18n();
+  const client = useQueryClient();
+  const picker = useRef<HTMLInputElement>(null);
+  const [failed, setFailed] = useState(false);
+  const save = useMutation({
+    mutationFn: (icon: string | null) => launcherApi.updateDetails(profile.id, profile.name, icon),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["launcher", "profiles"] }),
+    onError: () => setFailed(true),
+  });
+  const { open, menu } = useContextMenu();
+  const choose = () => picker.current?.click();
+  return (
+    <>
+      <button
+        type="button"
+        className="launcher-picture"
+        title={failed ? t("launcher.iconFailed") : t("launcher.chooseIcon")}
+        aria-label={t("launcher.chooseIcon")}
+        disabled={save.isPending}
+        onClick={choose}
+        onContextMenu={(event) => open(event, [
+          { label: t("launcher.chooseIcon"), icon: "image", onSelect: choose },
+          { label: t("launcher.resetIcon"), icon: "restore", disabled: !profile.icon, onSelect: () => save.mutate(null) },
+        ])}
+      >
+        <InstanceTile profile={profile} size={64} />
+        <span className="launcher-picture-edit" aria-hidden="true"><Icon name="image" size={14} /></span>
+      </button>
+      <input
+        ref={picker}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (!file) return;
+          setFailed(false);
+          squareIcon(file).then((icon) => save.mutate(icon), () => setFailed(true));
+        }}
+      />
+      {menu}
+    </>
   );
 }
 

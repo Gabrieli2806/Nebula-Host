@@ -22,7 +22,7 @@ async function launcherCall<T>(command: string, args?: Record<string, unknown>):
 }
 export const launcherApi = {
   pinShortcut: (id: string, mode: "demo" | "account", accountId?: string) => launcherCall<void>("launcher_pin_shortcut", { id, mode, accountId }),
-  takeShortcut: () => launcherCall<{ id: string; requestId: string; mode: "demo" | "account"; accountId?: string } | null>("launcher_take_shortcut"),
+  takeShortcut: () => launcherCall<{ id: string; requestId: string; mode?: "demo" | "account"; accountId?: string } | null>("launcher_take_shortcut"),
   loaderVersions: (loader: import("@/features/launcher/types").Loader, gameVersion: string) => launcherCall<string[]>("launcher_loader_versions", { loader, gameVersion }),
   status: () => launcherCall<Record<string, import("@/features/launcher/types").ClientStatus>>("launcher_status"),
   start: (id: string, mode: "install" | "demo" | "account", accountId?: string) => launcherCall<void>("launcher_client_start", { id, mode, accountId }),
@@ -47,6 +47,10 @@ export const launcherApi = {
   search: (input: { query: string; kind: ContentKind; offset: number; limit?: number; sort?: string; instance?: string }) => launcherCall<LauncherSearch>("launcher_search", input),
   contentCheck: (id: string) => launcherCall<import("@/features/launcher/types").ContentStatus[]>("launcher_content_check", { id }),
   contentUpdate: (id: string, kind: ContentKind, file: string, versionId: string) => launcherCall<string>("launcher_content_update", { id, kind, file, versionId }),
+  screenshots: () => launcherCall<{ instance_id: string; file: string; size: number; taken: number }[]>("launcher_screenshots"),
+  screenshotData: (id: string, file: string) => launcherCall<string>("launcher_screenshot_data", { id, file }),
+  screenshotDelete: (id: string, file: string) => launcherCall<void>("launcher_screenshot_delete", { id, file }),
+  openFolder: (id: string, screenshots = false) => launcherCall<void>("launcher_open_folder", { id, screenshots }),
   changeVersion: (id: string, gameVersion: string, loader: import("@/features/launcher/types").Loader, loaderVersion: string | null) => launcherCall<LauncherProfile>("launcher_change_version", { id, gameVersion, loader, loaderVersion }),
   accounts: () => launcherCall<LauncherAccount[]>("launcher_accounts"),
   begin: () => launcherCall<DeviceLogin>("launcher_login_begin"),
