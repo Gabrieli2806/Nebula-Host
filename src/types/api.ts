@@ -791,3 +791,11 @@ export interface WorldImportProgress {
   done: number;
   total: number;
 }
+
+/** A folder the phone app may keep servers in. */
+export interface StorageLocation {
+  path: string;
+  kind: "internal" | "shared" | "sd";
+  freeGb: number;
+  totalGb: number;
+}

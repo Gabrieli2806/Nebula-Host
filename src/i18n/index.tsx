@@ -16,6 +16,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { IS_MOBILE } from "@/lib/web";
+
 import { en } from "./en";
 import { es } from "./es";
 import type { AppError } from "@/lib/ipc";
@@ -69,6 +71,13 @@ function systemLanguage(): Language {
   return navigator.language.toLowerCase().startsWith("es") ? "es" : "en";
 }
 
+/** Keys whose wording names the device: swapped for the phone's wording. */
+const PHONE_WORDING: Record<string, string> = {
+  "remote.thisPc": "phone.thisPhone",
+  "transfer.thisPc": "phone.thisPhone",
+  "node.thisMachine": "phone.thisPhone",
+};
+
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
     // Development only: `?lang=es|en` pins the language for previews.
@@ -95,6 +104,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const t = useCallback(
     (key: string, params?: Params) => {
+      // On the phone app, "This PC" reads "This phone".
+      if (IS_MOBILE) key = PHONE_WORDING[key] ?? key;
       const value = resolve(CATALOGUES[language], key) ?? resolve(en, key);
       return typeof value === "string" ? interpolate(value, params) : key;
     },

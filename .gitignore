@@ -24,3 +24,14 @@ src-tauri/msix/staging/
 Thumbs.db
 # Reference copy of the previous implementation, kept only during the rebuild
 .legacy/
+dist-android/
+
+# Android: runtimes and launcher are built by scripts, not stored
+.cache/
+src-tauri/gen/android/app/src/main/assets/jre-*/
+src-tauri/gen/android/app/src/main/jniLibs/
+
+# Gradle caches and local assistant settings
+.gradle/
+**/.gradle/
+.claude/

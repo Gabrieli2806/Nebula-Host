@@ -10,10 +10,18 @@ import { ServerScreen } from "@/features/server/ServerScreen";
 import { ServersScreen } from "@/features/servers/ServersScreen";
 import { SettingsScreen } from "@/features/settings/SettingsScreen";
 import { MachinesScreen } from "@/features/machines/MachinesScreen";
+import { LauncherScreen } from "@/features/launcher/LauncherScreen";
+import { LauncherShortcutListener } from "@/features/launcher/LauncherShortcutListener";
 import { useSuppressNativeContextMenu } from "@/ui/ContextMenu";
+import { errorActions } from "@/ui";
+import { JavaInstallButton } from "@/features/java/JavaInstall";
 import { I18nProvider } from "@/i18n";
 import { WebPair } from "@/features/web/WebPair";
 import { IS_WEB, webSession } from "@/lib/web";
+
+// A missing Java says which one; offer to install it right there.
+errorActions.java_not_found = (error) =>
+  error.params.major ? <JavaInstallButton major={Number(error.params.major)} /> : null;
 
 const client = new QueryClient({
   defaultOptions: {
@@ -46,10 +54,12 @@ function Shell() {
     <>
         <AgreementGate />
         <HashRouter>
+          <LauncherShortcutListener />
           <Routes>
             <Route path="/welcome" element={<FirstRun />} />
             <Route element={<AppShell />}>
               <Route path="/servers" element={<ServersScreen />} />
+              <Route path="/launcher" element={<LauncherScreen />} />
               {/* The open panel lives in the URL, so the sidebar can be plain
                   links and the back button walks through panels. */}
               <Route

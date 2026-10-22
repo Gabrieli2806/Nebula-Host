@@ -126,6 +126,12 @@
     transform: none;
   }
 
+  /* The phone app draws under the status bar: keep the bar clear of it. */
+  html[data-mobile] .titlebar {
+    height: calc(var(--titlebar-height) + var(--status-bar, 32px));
+    padding-top: var(--status-bar, 32px);
+  }
+
   .narrow-only {
     display: none !important;
   }
@@ -680,5 +686,17 @@
       min-height: 32px;
       padding-block: 4px;
     }
+  }
+}
+
+@layer components {
+  /* The machine block keeps its place while a reading is late or the link
+     is down: the last numbers stay, dimmed, instead of the block vanishing. */
+  .node-block .node-rings {
+    transition: opacity var(--duration) var(--ease);
+  }
+
+  .node-block[data-stale] .node-rings {
+    opacity: 0.45;
   }
 }

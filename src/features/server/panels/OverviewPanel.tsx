@@ -21,7 +21,7 @@ import {
 import { useI18n } from "@/i18n";
 import { api } from "@/lib/ipc";
 import { isRemote } from "@/lib/connection";
-import { IS_WEB } from "@/lib/web";
+import { DESKTOP_FEATURES, IS_WEB } from "@/lib/web";
 import {
   formatBytes,
   formatCount,
@@ -184,7 +184,7 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
             >
               {backup.isPending ? t("backups.creating") : t("overview.backupNow")}
             </Button>
-            {IS_WEB ? null : (
+            {!DESKTOP_FEATURES ? null : (
               <Button
                 size="sm"
                 icon="external"

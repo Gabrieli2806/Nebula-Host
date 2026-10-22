@@ -1,0 +1,153 @@
+// The Android game engine is built from the pinned Amethyst submodule.
+// Its launcher/account UI is not exported; Nebula owns profiles and sign-in.
+apply plugin: 'com.android.library'
+
+def upstream = file('../amethyst/app_pojavlauncher')
+def generatedJava = layout.buildDirectory.dir('generated/engine-java')
+def compileGraphicsAgent = tasks.register('compileGraphicsAgent', JavaCompile) {
+    source fileTree('src/agent/java') { include '**/*.java' }
+    classpath = files(new File(upstream, 'src/main/assets/components/MioLibPatcher/MioLibPatcher.jar'))
+    destinationDirectory = layout.buildDirectory.dir('graphics-agent/classes')
+    options.release = 8
+}
+def graphicsAgent = tasks.register('graphicsAgent', Jar) {
+    dependsOn(compileGraphicsAgent)
+    archiveFileName = 'nebula-graphics.jar'
+    destinationDirectory = layout.buildDirectory.dir('generated/engine-assets/components/nebula-graphics')
+    from(compileGraphicsAgent.flatMap { it.destinationDirectory })
+    from(zipTree(new File(upstream, 'src/main/assets/components/MioLibPatcher/MioLibPatcher.jar'))) { include 'javassist/**' }
+    manifest { attributes 'Premain-Class': 'net.g2806.nebula.GraphicsAgent' }
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    doLast {
+        def digest = java.security.MessageDigest.getInstance('SHA-256').digest(archiveFile.get().asFile.bytes)
+        new File(destinationDirectory.get().asFile, 'version').text = digest.encodeHex().toString()
+    }
+}
+def compileGraphicsAgentTest = tasks.register('compileGraphicsAgentTest', JavaCompile) {
+    dependsOn(graphicsAgent)
+    source fileTree('src/agentTest/java') { include '**/*.java' }
+    classpath = files(graphicsAgent.flatMap { it.archiveFile })
+    destinationDirectory = layout.buildDirectory.dir('graphics-agent/test-classes')
+}
+
+tasks.register('testGraphicsAgent', JavaExec) {
+    dependsOn(compileGraphicsAgentTest)
+    classpath = files(compileGraphicsAgentTest.flatMap { it.destinationDirectory }, graphicsAgent.flatMap { it.archiveFile })
+    mainClass = 'net.g2806.nebula.GraphicsAgentTest'
+    args new File(upstream, 'src/main/assets/components/lwjgl3/3.4.1').absolutePath
+}
+
+def prepareNotices = tasks.register('prepareEngineNotices', Sync) {
+    from(file('../amethyst')) { include 'LICENSE', 'README.md' }
+    into(layout.buildDirectory.dir('generated/engine-assets/licenses/amethyst'))
+}
+def prepareEngine = tasks.register('prepareEngine', Sync) {
+    from(new File(upstream, 'src/main/java'))
+    into(generatedJava)
+    doLast {
+        def main = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/MainActivity.java')
+        def text = main.text
+        def signature = 'private void runCraft('
+        def start = text.indexOf(signature)
+        if (start < 0) throw new GradleException('Pinned engine runCraft signature changed')
+        def opening = text.indexOf('{', start)
+        int depth = 1
+        int end = opening + 1
+        while (depth > 0 && end < text.length()) {
+            if (text.charAt(end) == '{') depth++
+            if (text.charAt(end) == '}') depth--
+            end++
+        }
+        main.text = text.substring(0, opening + 1) + '\nNebulaGameBridge.run(this);\n}' + text.substring(end)
+        main.text = main.text.replace('new File(Tools.DIR_GAME_HOME, "latestlog.txt")', 'new File(minecraftProfile.gameDir, "latest-client.log")')
+        def jre = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/utils/JREUtils.java')
+        // Keep the upstream editor/menu intact; append Nebula's in-game option.
+        main.text = main.text.replace('getResources().getStringArray(R.array.menu_ingame));', 'new java.util.ArrayList<>(java.util.Arrays.asList(getResources().getStringArray(R.array.menu_ingame))));\n            gameActionArrayAdapter.add(getString(R.string.nebula_console_mode));')
+        main.text = main.text.replace('case 4: openCustomControls(); break;', 'case 4: if (this instanceof NebulaGameActivity) ((NebulaGameActivity)this).onConsoleEditorStarting(); openCustomControls(); break;\n                    case 5: if (this instanceof NebulaGameActivity) ((NebulaGameActivity)this).showConsoleOptions(); break;')
+        main.text = main.text.replace('mControlLayout.toggleControlVisible();', 'mControlLayout.toggleControlVisible();\n        if (this instanceof NebulaGameActivity) ((NebulaGameActivity)this).onConsoleControlsLoaded();')
+        // SDL needs the game viewport, not the full unfolded display, when split.
+        def surface = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/MinecraftGLSurface.java')
+        surface.text = surface.text.replace('Tools.currentDisplayMetrics.widthPixels, Tools.currentDisplayMetrics.heightPixels', 'getWidth(), getHeight()')
+        def cursor = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/customcontrols/mouse/Touchpad.java')
+        cursor.text = cursor.text.replace('currentDisplayMetrics.widthPixels', 'getWidth()').replace('currentDisplayMetrics.heightPixels', 'getHeight()')
+        // Launch arrays contain the Minecraft access token. Keep them in memory.
+        jre.text = jre.text.replace('System.out.println(JVMArgs);', '')
+        jre.text = jre.text.replace('Logger.appendToLog("Java Exit code: " + exitCode);', 'net.kdt.pojavlaunch.NebulaGameActivity.reportExit(exitCode); Logger.appendToLog("Java Exit code: " + exitCode);')
+        def nativeEntry = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/services/GameService.java')
+        nativeEntry.text = nativeEntry.text.replace('new Intent(this, MainActivity.class)', 'new Intent(this, net.kdt.pojavlaunch.NebulaGameActivity.class)')
+        def gui = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/JavaGUILauncherActivity.java')
+        // Android library resource IDs are not Java compile-time constants.
+        gui.text = gui.text.replaceAll(/switch\s*\(v\.getId\(\)\)\s*\{([^}]+)\}/) { match, body ->
+            def conditions = []
+            body.eachMatch(/case\s+(R\.id\.\w+):([\s\S]*?)break;/) { entry, resource, action ->
+                conditions.add('if (v.getId() == ' + resource + ') {' + action + '}')
+            }
+            '{' + conditions.join(' else ') + '}'
+        }
+    }
+}
+
+android {
+    namespace 'net.kdt.pojavlaunch'
+    compileSdk 36
+    ndkVersion '27.3.13750724'
+    defaultConfig {
+        minSdk 24
+        buildConfigField 'String', 'VERSION_NAME', '"Nebula-0.5.1"'
+        buildConfigField 'int', 'VERSION_CODE', '5001'
+        resValue 'string', 'curseforge_api_key', 'DISABLED'
+        resValue 'string', 'application_package', 'net.g2806.nebulahost'
+        resValue 'string', 'storageProviderAuthorities', 'net.g2806.nebulahost.gamefiles'
+        resValue 'string', 'shareProviderAuthority', 'net.g2806.nebulahost.gamecontrols'
+        ndk { abiFilters 'arm64-v8a' }
+        externalNativeBuild { ndkBuild { arguments 'APP_SHORT_COMMANDS=true', 'APP_SUPPORT_FLEXIBLE_PAGE_SIZES=true' } }
+    }
+    sourceSets {
+        main {
+            java.srcDirs = [generatedJava, 'src/main/java']
+            res.srcDirs = [new File(upstream, 'src/main/res'), 'src/main/res']
+            assets.srcDirs = [new File(upstream, 'src/main/assets'), 'src/main/assets', layout.buildDirectory.dir('generated/engine-assets')]
+            jniLibs.srcDirs = [new File(upstream, 'src/main/jniLibs')]
+        }
+    }
+    externalNativeBuild { ndkBuild { path new File(upstream, 'src/main/jni/Android.mk') } }
+    buildFeatures { prefab true; buildConfig true }
+    testOptions { unitTests.includeAndroidResources = true }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_1_8; targetCompatibility JavaVersion.VERSION_1_8 }
+    packagingOptions {
+        jniLibs { useLegacyPackaging true; pickFirsts += ['**/libbytehook.so', '**/libc++_shared.so'] }
+        resources { excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE*', 'META-INF/NOTICE*'] }
+    }
+}
+tasks.named('preBuild').configure { dependsOn(prepareEngine, prepareNotices, graphicsAgent) }
+
+dependencies {
+    implementation 'androidx.window:window-java:1.5.1'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.16.1'
+    implementation 'javax.annotation:javax.annotation-api:1.3.2'
+    implementation 'commons-codec:commons-codec:1.15'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'androidx.preference:preference:1.2.0'
+    implementation 'androidx.drawerlayout:drawerlayout:1.2.0'
+    implementation 'androidx.viewpager2:viewpager2:1.1.0-beta01'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'com.github.duanhong169:checkerboarddrawable:1.0.2'
+    implementation 'com.github.PojavLauncherTeam:portrait-sdp:ed33e89cbc'
+    implementation 'com.github.PojavLauncherTeam:portrait-ssp:6c02fd739b'
+    implementation 'com.github.Mathias-Boulay:ExtendedView:1.0.0'
+    implementation 'com.github.Mathias-Boulay:android_gamepad_remapper:2.0.3'
+    implementation 'com.github.Mathias-Boulay:virtual-joystick-android:1.14'
+    implementation 'org.tukaani:xz:1.8'
+    implementation 'net.sourceforge.htmlcleaner:htmlcleaner:2.6.1'
+    implementation 'com.bytedance:bytehook:1.0.10'
+    implementation 'top.fifthlight.touchcontroller:proxy-client-android:0.0.4'
+    implementation 'net.java.dev.jna:jna:5.14.0@aar'
+    implementation fileTree(dir: new File(upstream, 'libs'), include: ['*.jar'])
+    new File(upstream, 'libs').listFiles().findAll { it.name.endsWith('.aar') }.each { library ->
+        implementation(name: library.name.substring(0, library.name.length() - 4), ext: 'aar')
+    }
+    implementation project(':androidnsbypass')
+}

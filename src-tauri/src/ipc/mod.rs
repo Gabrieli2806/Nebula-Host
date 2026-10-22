@@ -9,6 +9,7 @@ pub mod backups;
 pub mod files;
 pub mod games;
 pub mod instances;
+pub mod launcher;
 pub mod mcp;
 pub mod node;
 pub mod players;
@@ -47,6 +48,37 @@ pub fn open_folder(app: &tauri::AppHandle, folder: &std::path::Path) -> crate::e
 macro_rules! ipc_handlers {
     () => {
         tauri::generate_handler![
+            $crate::ipc::launcher::launcher_capabilities,
+            $crate::ipc::launcher::launcher_pin_shortcut,
+            $crate::ipc::launcher::launcher_take_shortcut,
+            $crate::ipc::launcher::launcher_status,
+            $crate::ipc::launcher::launcher_client_start,
+            $crate::ipc::launcher::launcher_loader_versions,
+            $crate::ipc::launcher::launcher_client_stop,
+            $crate::ipc::launcher::launcher_client_resume,
+            $crate::ipc::launcher::launcher_client_logs,
+            $crate::ipc::launcher::launcher_profiles,
+            $crate::ipc::launcher::launcher_create,
+            $crate::ipc::launcher::launcher_remove,
+            $crate::ipc::launcher::launcher_versions,
+            $crate::ipc::launcher::launcher_search,
+            $crate::ipc::launcher::launcher_content_list,
+            $crate::ipc::launcher::launcher_content_icon,
+            $crate::ipc::launcher::launcher_content_import,
+            $crate::ipc::launcher::launcher_content_install,
+            $crate::ipc::launcher::launcher_content_remove,
+            $crate::ipc::launcher::launcher_content_set_enabled,
+            $crate::ipc::launcher::launcher_modpack_install,
+            $crate::ipc::launcher::launcher_login_begin,
+            $crate::ipc::launcher::launcher_login_poll,
+            $crate::ipc::launcher::launcher_login_cancel,
+            $crate::ipc::launcher::launcher_accounts,
+            $crate::ipc::launcher::launcher_logout,
+            $crate::ipc::launcher::launcher_login_wait,
+            $crate::ipc::launcher::launcher_skin,
+            $crate::ipc::launcher::launcher_set_skin,
+            $crate::ipc::launcher::launcher_set_cape,
+            $crate::ipc::launcher::launcher_set_memory,
             // node
             $crate::ipc::node::node_get,
             $crate::ipc::node::node_rename,
@@ -135,6 +167,7 @@ macro_rules! ipc_handlers {
             $crate::ipc::settings::java_runtimes,
             $crate::ipc::settings::java_download,
             $crate::ipc::settings::java_overview,
+            $crate::ipc::settings::storage_locations,
             $crate::ipc::settings::app_log,
             $crate::ipc::settings::app_open_log_folder,
             // transfers

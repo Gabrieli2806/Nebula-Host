@@ -1,0 +1,22 @@
+<resources>
+    <string name="nebula_console_mode">Modo consola</string>
+    <string name="nebula_console_help_action">Cómo funciona</string>
+    <string name="nebula_console_tap">Toca para seleccionar</string>
+    <string name="nebula_console_auto">Automático al semiplegar</string>
+    <string name="nebula_console_on">Activado · pantalla dividida</string>
+    <string name="nebula_console_off">Desactivado · pantalla completa</string>
+    <string name="nebula_console_help">Con el pliegue horizontal, Minecraft queda sobre la bisagra y los controles debajo. Despliega para volver a pantalla completa. «Activado» permite probar la distribución en una pantalla grande.</string>
+    <string name="nebula_console_small">No hay espacio suficiente para el modo consola. Despliega el teléfono o gíralo para que la bisagra quede horizontal.</string>
+    <string name="nebula_console_look">Desliza para mirar</string>
+    <string name="nebula_console_cursor">Desliza para mover el cursor · toca para seleccionar</string>
+    <string name="nebula_console_move">Joystick de movimiento</string>
+    <string name="nebula_console_attack">Atacar</string>
+    <string name="nebula_console_use">Usar</string>
+    <string name="nebula_console_jump">Saltar</string>
+    <string name="nebula_console_sneak">Agacharse</string>
+    <string name="nebula_console_inventory">Inventario</string>
+    <string name="nebula_console_drop">Soltar</string>
+    <string name="nebula_console_keyboard">Teclado</string>
+    <string name="nebula_console_menu">Menú del juego</string>
+    <string name="nebula_console_slot">Casilla %1$d de la barra rápida</string>
+</resources>

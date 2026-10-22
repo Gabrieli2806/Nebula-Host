@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="servers_channel">Servidores en marcha</string>
+    <string name="no_servers_running">Nebula Host está listo</string>
+    <string name="server_with_players">%1$s (%2$d jugadores)</string>
+    <plurals name="servers_running">
+        <item quantity="one">%d servidor en marcha</item>
+        <item quantity="other">%d servidores en marcha</item>
+    </plurals>
+    <string name="battery_title">Mantén los servidores en segundo plano</string>
+    <string name="battery_text">Algunos teléfonos pausan apps para ahorrar batería. Toca y marca Nebula Host como \"Sin optimizar\" para que no se desconecten los jugadores.</string>
+</resources>

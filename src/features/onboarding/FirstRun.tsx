@@ -11,14 +11,19 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 
 import { TitleBar } from "@/app/TitleBar";
 import { keys, useNode, useNodeHealth, useRequirements } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { formatMegabytes } from "@/lib/format";
+import { JavaInstallButton } from "@/features/java/JavaInstall";
 import { api } from "@/lib/ipc";
 import type { InstanceStatus, Requirement } from "@/types/api";
+import { isRemote } from "@/lib/connection";
+import { IS_MOBILE } from "@/lib/web";
+import { useLauncherEnabled } from "@/lib/launcherPref";
+import { PHONE_HOSTING_KEY, PhoneHostingNotice, PhoneWelcome } from "./PhoneWelcome";
 import { Button, ErrorNotice, Field, Mark, Skeleton, StatusDot, TextInput } from "@/ui";
 
 const ADVICE: Record<string, string> = {
@@ -45,6 +50,7 @@ export function FirstRun() {
   const { data: node } = useNode();
   const requirements = useRequirements();
   const [name, setName] = useState("");
+  const launcher = useLauncherEnabled();
 
   const finish = useMutation({
     mutationFn: async () => {
@@ -56,10 +62,29 @@ export function FirstRun() {
     },
     onSuccess: () => {
       localStorage.setItem(FIRST_RUN_KEY, "1");
-      // ServersScreen opens the create dialog when it sees create=1.
-      navigate("/servers?create=1", { replace: true });
+      // ServersScreen opens the create dialog when it sees create=1; the
+      // first time, the tour is shown instead, so two dialogs do not stack.
+      let toured = true;
+      try {
+        toured = localStorage.getItem("nebula.tourDone") === "1";
+      } catch {
+        // Storage blocked: no tour either.
+      }
+      navigate(toured ? "/servers?create=1" : "/servers", { replace: true });
     },
   });
+
+  // The phone app opens on "manage your computer" first; hosting here is the
+  // second choice. Once it manages another machine, setup is done.
+  const [hostHere, setHostHere] = useState(() => {
+    try {
+      return localStorage.getItem(PHONE_HOSTING_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  if (IS_MOBILE && isRemote()) return <Navigate to="/servers" replace />;
+  if (IS_MOBILE && !hostHere) return <PhoneWelcome onHostHere={() => setHostHere(true)} />;
 
   const ready =
     requirements.data !== undefined &&
@@ -77,6 +102,7 @@ export function FirstRun() {
           <p className="first-run-intro">{t("firstRun.intro")}</p>
 
           <section className="first-run-card" aria-label={t("firstRun.welcome")}>
+            {IS_MOBILE ? <PhoneHostingNotice /> : null}
             <Field label={t("firstRun.nameLabel")} help={t("firstRun.nameHelp")}>
               <TextInput
                 value={name || (node?.name ?? "")}
@@ -108,6 +134,7 @@ export function FirstRun() {
             {finish.error ? <ErrorNotice error={finish.error} /> : null}
 
             <footer className="first-run-footer">
+              {launcher ? <Button icon="play" onClick={() => navigate("/launcher")}>Launcher</Button> : null}
               <Button
                 variant="quiet"
                 onClick={() => {
@@ -152,6 +179,11 @@ function RequirementRow({ requirement }: { requirement: Requirement }) {
       </div>
       {requirement.status !== "ready" && advice ? (
         <p className="first-run-requirement-advice">{advice}</p>
+      ) : null}
+      {requirement.id === "java" && requirement.status === "missing" ? (
+        <div className="first-run-requirement-advice">
+          <JavaInstallButton major={25} />
+        </div>
       ) : null}
     </li>
   );

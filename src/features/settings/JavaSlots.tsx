@@ -17,6 +17,7 @@ import type { JavaInstallation, JavaOverview, JavaSlot } from "@/types/api";
 import { Button, ErrorNotice, Icon, Panel, Select, Skeleton } from "@/ui";
 
 import "./JavaSlots.css";
+import { IS_MOBILE } from "@/lib/web";
 
 const OVERVIEW_KEY = ["java", "overview"] as const;
 
@@ -172,7 +173,7 @@ function SlotRow({
           </optgroup>
         ) : null}
         <optgroup label={t("java.more")}>
-          {remote ? null : <option value={BROWSE}>{t("java.browse")}…</option>}
+          {remote || IS_MOBILE ? null : <option value={BROWSE}>{t("java.browse")}…</option>}
           {canDownload && !exact ? <option value={DOWNLOAD}>{t("java.download", { major: slot.major })}</option> : null}
         </optgroup>
       </Select>

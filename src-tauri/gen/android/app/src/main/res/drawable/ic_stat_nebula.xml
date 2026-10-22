@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status bar icon: the orbit mark in one colour, as Android requires. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <group android:pivotX="12" android:pivotY="12" android:rotation="14">
+        <path android:pathData="M5.2,12 a6.8,10 0 1,0 13.6,0 a6.8,10 0 1,0 -13.6,0"
+            android:strokeColor="#FFFFFFFF" android:strokeWidth="1.6" android:fillColor="#00000000" />
+    </group>
+    <group android:pivotX="12" android:pivotY="12" android:rotation="-22">
+        <path android:pathData="M1.6,12 a10.4,4.6 0 1,0 20.8,0 a10.4,4.6 0 1,0 -20.8,0"
+            android:strokeColor="#FFFFFFFF" android:strokeWidth="1.6" android:fillColor="#00000000" />
+    </group>
+    <path android:pathData="M9,12 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" android:fillColor="#FFFFFFFF" />
+</vector>

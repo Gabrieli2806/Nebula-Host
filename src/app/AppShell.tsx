@@ -38,9 +38,12 @@ import { useI18n } from "@/i18n";
 import { switchTo } from "@/lib/connection";
 import { formatMegabytes } from "@/lib/format";
 import { toAppError } from "@/lib/ipc";
+import { useLauncherEnabled } from "@/lib/launcherPref";
 import type { InstanceView } from "@/types/api";
 import { Button, ErrorNotice, Icon, Ring, StatusDot, type IconName } from "@/ui";
 import { useTransferTracking } from "@/features/server/transfer/active";
+import { Tour } from "@/features/onboarding/Tour";
+import { MobileTabs } from "./MobileTabs";
 import { TitleBar } from "./TitleBar";
 
 /** The panels a server has, in the order they are worked through. */
@@ -97,6 +100,11 @@ export function AppShell() {
   useTransferTracking();
 
   const narrow = useNarrow();
+  // Tells the stylesheet to leave room for the tab bar.
+  useEffect(() => {
+    if (narrow) document.documentElement.dataset.tabs = "";
+    else delete document.documentElement.dataset.tabs;
+  }, [narrow]);
   const { pathname } = useLocation();
   // The drawer belongs to the page it was opened on: picking a destination
   // in it closes it.
@@ -148,17 +156,16 @@ export function AppShell() {
 
   useEffect(() => {
     // A node that has never been named and has no servers is a first run.
-    if (isSuccess && node && instances?.length === 0 && !node.paired_devices.length) {
+    if (pathname !== "/launcher" && isSuccess && node && instances?.length === 0 && !node.paired_devices.length) {
       const seen = localStorage.getItem("nebula.firstRunDone");
       if (!seen) navigate("/welcome", { replace: true });
     }
-  }, [isSuccess, node, instances, navigate]);
+  }, [isSuccess, node, instances, navigate, pathname]);
 
   return (
     <div className="flex h-full flex-col">
-      <TitleBar
-        sidebar={{ collapsed: narrow ? !drawerOpen : collapsed, onToggle: toggleSidebar, controls: RAIL_ID }}
-      />
+      {/* Phone width: the tab bar along the bottom replaces the sidebar. */}
+      <TitleBar sidebar={narrow ? undefined : { collapsed, onToggle: toggleSidebar, controls: RAIL_ID }} />
       <div className="relative flex min-h-0 flex-1">
         {narrow && drawerOpen ? (
           <button
@@ -168,6 +175,7 @@ export function AppShell() {
             onClick={() => setDrawerOpen(false)}
           />
         ) : null}
+        {narrow ? null : (
         <nav
           id={RAIL_ID}
           className="rail"
@@ -195,12 +203,15 @@ export function AppShell() {
             )}
           </div>
         </nav>
+        )}
 
         <main ref={mainRef} className="app-main min-w-0 flex-1 overflow-auto">
           <RemoteLinkBanner />
           <Outlet />
         </main>
       </div>
+      {narrow ? <MobileTabs instanceId={instanceId} /> : null}
+      <Tour />
       {tooltip.element}
     </div>
   );
@@ -273,9 +284,11 @@ function useRailTooltip(enabled: boolean) {
 
 function AppNav() {
   const { t } = useI18n();
+  const launcher = useLauncherEnabled();
   return (
     <div className="flex flex-col gap-0.5">
       <NavItem to="/servers" icon="servers" label={t("nav.servers")} />
+      {launcher ? <NavItem to="/launcher" icon="play" label="Launcher" /> : null}
       <NavItem to="/settings" icon="sliders" label={t("nav.settings")} />
     </div>
   );
@@ -523,18 +536,20 @@ function useMachine() {
   const { remote, reachable } = useRemoteLink();
   const { data: node } = useNode();
   const health = useNodeHealth();
-  // Numbers from before the link dropped would be stale: hide them.
-  const data = reachable && !health.isError ? health.data : undefined;
+  // The last numbers stay on screen (dimmed) when a reading fails or the link
+  // drops: taking the block away and putting it back on every missed poll made
+  // the sidebar jump. Before the first reading, the dials show empty.
+  const stale = !reachable || health.isError;
   const title = remote ? (node?.name ?? remote.name) : t("node.thisMachine");
-  return { remote, reachable, up: data !== undefined, title, health: data };
+  return { remote, reachable, up: !stale && health.data !== undefined, stale, title, health: health.data };
 }
 
 function NodeBlock() {
   const { t } = useI18n();
-  const { remote, reachable, up, title, health } = useMachine();
+  const { remote, reachable, up, stale, title, health } = useMachine();
 
   return (
-    <section className="node-block" aria-label={title}>
+    <section className="node-block" aria-label={title} data-stale={stale || !health ? "" : undefined}>
       <div className="flex items-center justify-between gap-2">
         <span className="label node-block-title" title={title}>
           {title}
@@ -544,27 +559,23 @@ function NodeBlock() {
 
       {remote && !reachable ? <p className="node-block-reconnecting">{t("remote.reconnecting")}</p> : null}
 
-      {health ? (
-        <>
-          <div className="node-rings">
-            <Ring size={52} label={t("node.cpu")} value={health.cpu_percent} />
-            <Ring
-              size={52}
-              label={t("node.memory")}
-              value={health.memory_used_mb}
-              max={health.memory_total_mb}
-              detail={formatMegabytes(health.memory_total_mb)}
-            />
-            <Ring
-              size={52}
-              label={t("node.disk")}
-              value={health.disk_used_gb}
-              max={health.disk_total_gb}
-              detail={`${health.disk_total_gb} GB`}
-            />
-          </div>
-        </>
-      ) : null}
+      <div className="node-rings">
+        <Ring size={52} label={t("node.cpu")} value={health?.cpu_percent ?? 0} />
+        <Ring
+          size={52}
+          label={t("node.memory")}
+          value={health?.memory_used_mb ?? 0}
+          max={health?.memory_total_mb ?? 1}
+          detail={health ? formatMegabytes(health.memory_total_mb) : "—"}
+        />
+        <Ring
+          size={52}
+          label={t("node.disk")}
+          value={health?.disk_used_gb ?? 0}
+          max={health?.disk_total_gb ?? 1}
+          detail={health ? `${health.disk_total_gb} GB` : "—"}
+        />
+      </div>
     </section>
   );
 }

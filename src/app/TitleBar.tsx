@@ -15,7 +15,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { useI18n } from "@/i18n";
-import { IS_WEB, signOutWeb, webSession } from "@/lib/web";
+import { IS_MOBILE, IS_WEB, signOutWeb, webSession } from "@/lib/web";
 import { Icon, Mark } from "@/ui";
 
 import { NodeSwitcher } from "./NodeSwitcher";
@@ -30,6 +30,7 @@ export interface SidebarToggle {
 
 export function TitleBar({ sidebar }: { sidebar?: SidebarToggle } = {}) {
   if (IS_WEB) return <WebTitleBar sidebar={sidebar} />;
+  if (IS_MOBILE) return <MobileTitleBar sidebar={sidebar} />;
   return <WindowTitleBar sidebar={sidebar} />;
 }
 
@@ -60,6 +61,24 @@ function WebTitleBar({ sidebar }: { sidebar?: SidebarToggle }) {
           </button>
         </div>
       ) : null}
+    </header>
+  );
+}
+
+/** The phone app: no window to move or close, the machine switcher stays. */
+function MobileTitleBar({ sidebar }: { sidebar?: SidebarToggle }) {
+  const { t } = useI18n();
+  return (
+    <header className="titlebar titlebar-mobile">
+      <div className="titlebar-brand">
+        {sidebar ? <SidebarButton {...sidebar} /> : null}
+        <Mark size={16} />
+        <span className="wordmark">{t("app.name")}</span>
+        <span className="titlebar-sep" aria-hidden="true">
+          /
+        </span>
+        <NodeSwitcher />
+      </div>
     </header>
   );
 }

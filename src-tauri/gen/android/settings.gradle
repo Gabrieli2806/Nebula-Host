@@ -1,0 +1,6 @@
+include ':app'
+include ':game-runtime', ':androidnsbypass'
+project(':game-runtime').projectDir = file('../../android/game-runtime')
+project(':androidnsbypass').projectDir = file('../../android/namespace-bypass')
+
+apply from: 'tauri.settings.gradle'

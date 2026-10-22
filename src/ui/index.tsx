@@ -269,6 +269,13 @@ export function EmptyState({
  * raw upstream text tucked behind a disclosure, where it belongs.
  * `compact` shows the title only (inline under a card's address).
  */
+/**
+ * Actions an error can offer to fix itself ("Install Java 21"), registered by
+ * the features that know how (the UI kit cannot import them). Keyed by error
+ * code; returning null shows nothing.
+ */
+export const errorActions: Record<string, (error: AppError) => ReactNode> = {};
+
 export function ErrorNotice({
   error,
   onRetry,
@@ -281,7 +288,9 @@ export function ErrorNotice({
   className?: string;
 }) {
   const { t, describeError } = useI18n();
-  const described = describeError(toAppError(error as AppError));
+  const appError = toAppError(error as AppError);
+  const described = describeError(appError);
+  const fix = errorActions[appError.code]?.(appError) ?? null;
 
   return (
     <div className={`notice ${className}`} data-compact={compact ? "" : undefined} role="alert">
@@ -308,6 +317,7 @@ export function ErrorNotice({
             ) : null}
           </>
         ) : null}
+        {fix ? <div className="mt-1">{fix}</div> : null}
       </div>
       {onRetry ? (
         <Button size="sm" onClick={onRetry}>

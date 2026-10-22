@@ -1,0 +1,18 @@
+Nebula Android game integration
+
+Amethyst Android / PojavLauncher contributors
+Source: https://github.com/AngelAuraMC/Amethyst-Android
+Revision: 330c6eae3164df64bdc4828e946a9e62cc5169e4
+License: GNU Lesser General Public License, version 3.
+The unmodified source is kept in src-tauri/android/amethyst as a Git submodule.
+Nebula adaptations are in src-tauri/android/game-runtime, namespace-bypass,
+and the generated Android project's GamePlugin.kt. build.gradle documents the
+source transformations used to integrate the engine and remove token logging.
+The upstream launcher, account, and downloader screens are not entry points.
+
+The engine's third-party libraries, Java components, renderer and native
+libraries retain their own licenses. See Amethyst's README and source tree
+at the revision above for the original attribution and component sources.
+OpenJDK runtimes include their legal notices under game-jre/<major>/legal.
+Runtime source: https://github.com/AngelAuraMC/angelauramc-openjdk-build
+The SHA-256 release asset pins are recorded in scripts/android-game-jre.mjs.

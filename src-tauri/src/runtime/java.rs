@@ -30,6 +30,27 @@ pub fn configure_no_window_command(command: &mut Command) -> &mut Command {
     command
 }
 
+/// A command that runs `java`.
+///
+/// On Android an app may only execute what the package installed, never a
+/// file in its own data folder, so a runtime kept there (the one that ships
+/// in the app, or one the user picked) is started through the launcher
+/// library instead: `libnebula_java.so`, which loads the runtime and runs it
+/// in-process (see `src-tauri/android/launcher/nebula_java.c`). Anywhere else
+/// this is just `Command::new(java)`.
+pub fn java_command(java: &Path) -> Command {
+    #[cfg(target_os = "android")]
+    if let Some(lib_dir) = std::env::var_os("NEBULA_NATIVE_LIB_DIR") {
+        // <home>/bin/java → <home>
+        if let Some(home) = java.parent().and_then(Path::parent) {
+            let mut command = Command::new(PathBuf::from(lib_dir).join("libnebula_java.so"));
+            command.env("NEBULA_JRE_DIR", home);
+            return command;
+        }
+    }
+    Command::new(java)
+}
+
 /// A JVM the user has configured, or that was found on this machine.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JavaInstallation {
@@ -89,10 +110,6 @@ pub fn resolve_java(override_path: Option<&str>, required_major: u32) -> AppResu
         return Ok(PathBuf::from(path));
     }
 
-    if cfg!(target_os = "android") {
-        return Err(AppError::new(ErrorCode::JavaNotFound).with("major", required_major));
-    }
-
     if let Some(path) = discovered_java_for_major(required_major) {
         return Ok(path);
     }
@@ -104,7 +121,28 @@ pub fn resolve_java(override_path: Option<&str>, required_major: u32) -> AppResu
         return Ok(PathBuf::from(found.path));
     }
 
-    Ok(PathBuf::from("java"))
+    // Plain `java` only when there is one on PATH; otherwise say which Java
+    // is missing, so the app can offer to install it instead of failing with
+    // "file not found" when the server starts.
+    let on_path = std::env::var_os("PATH")
+        .is_some_and(|path| std::env::split_paths(&path).any(|dir| dir.join(java_exe()).is_file()));
+    if on_path && !cfg!(target_os = "android") {
+        return Ok(PathBuf::from("java"));
+    }
+    Err(AppError::new(ErrorCode::JavaNotFound).with("major", required_major))
+}
+
+/// The app can install a Java for this machine: from the package on Android,
+/// from Eclipse Temurin elsewhere.
+pub fn can_install() -> bool {
+    #[cfg(target_os = "android")]
+    {
+        !crate::runtime::android_java::bundled_majors().is_empty()
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        adoptium_platform().is_some()
+    }
 }
 
 /// Where JVMs usually live, per platform. JAVA_HOME first.
@@ -244,7 +282,7 @@ fn major_from_version(version: &str) -> u32 {
 /// time limit: a broken install that never answers must not hold up the
 /// health check or a detection pass.
 fn version_output(java: &Path) -> std::io::Result<String> {
-    let mut command = Command::new(java);
+    let mut command = java_command(java);
     let mut child = configure_no_window_command(&mut command)
         .arg("-version")
         .stdin(Stdio::null())
@@ -751,6 +789,7 @@ pub fn adoptium_platform() -> Option<(&'static str, &'static str)> {
 }
 
 /// The folder a downloaded Temurin of `major` lives in.
+#[cfg_attr(target_os = "android", allow(dead_code))]
 fn managed_home(major: u32) -> AppResult<PathBuf> {
     Ok(crate::store::paths::runtimes_dir()?.join(format!("temurin-{major}")))
 }
@@ -765,6 +804,16 @@ pub async fn download_temurin(
 ) -> AppResult<JavaInstallation> {
     let progress = std::sync::Arc::new(progress);
     let report = progress.clone();
+    // Android installs the runtime that ships in the package instead.
+    #[cfg(target_os = "android")]
+    let result = {
+        let progress = progress.clone();
+        tokio::task::spawn_blocking(move || crate::runtime::android_java::install(major, &*progress))
+            .await
+            .map_err(AppError::unexpected)
+            .and_then(|result| result)
+    };
+    #[cfg(not(target_os = "android"))]
     let result = download_temurin_inner(major, progress).await;
     if let Err(error) = &result {
         report(JavaDownloadProgress::Failed { code: error.code });
@@ -772,6 +821,7 @@ pub async fn download_temurin(
     result
 }
 
+#[cfg_attr(target_os = "android", allow(dead_code))]
 async fn download_temurin_inner(
     major: u32,
     progress: std::sync::Arc<impl Fn(JavaDownloadProgress) + Send + Sync + 'static>,
@@ -857,6 +907,7 @@ async fn download_temurin_inner(
 
 /// Unpack into a scratch folder, then swap it in as `home` in one rename, so
 /// a half-extracted runtime is never what a server starts with.
+#[cfg_attr(target_os = "android", allow(dead_code))]
 fn install_archive(archive: &Path, runtimes: &Path, home: &Path) -> AppResult<PathBuf> {
     let scratch = runtimes.join(format!(".extract-{}", uuid::Uuid::new_v4()));
     std::fs::create_dir_all(&scratch)?;

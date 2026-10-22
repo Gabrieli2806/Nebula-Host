@@ -13,6 +13,7 @@ import { openExternal } from "@/lib/external";
 import { api } from "@/lib/ipc";
 import { Button, Dialog, ErrorNotice, Icon, Mark, type IconName } from "@/ui";
 
+import { openTour } from "@/features/onboarding/tourEvents";
 import { LICENCE_GROUPS } from "./licences";
 import "./AboutSettings.css";
 
@@ -126,6 +127,20 @@ export function AboutSettings() {
         </span>
         <span className="about-sep" aria-hidden="true" />
         <span className="about-author">{t("about.createdBy")} Gabrieli2806</span>
+      </div>
+      <div className="about-card about-row">
+        <span className="about-row-icon" aria-hidden="true">
+          <Icon name="info" size={20} />
+        </span>
+        <span className="about-row-text">
+          <span className="about-row-title">{t("tour.showAgain")}</span>
+          <span className="about-row-help">{t("tour.showAgainHelp")}</span>
+        </span>
+        <span className="about-row-actions">
+          <Button size="sm" variant="quiet" onClick={openTour}>
+            {t("tour.showAgain")}
+          </Button>
+        </span>
       </div>
       <LinkRow icon="chat" title="Discord" help={t("about.discordHelp")} url={DISCORD_URL} />
       <LinkRow icon="globe" title="G2806.net" help={t("about.siteHelp")} url={SITE_URL} />

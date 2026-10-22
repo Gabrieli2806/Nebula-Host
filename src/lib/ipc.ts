@@ -12,6 +12,47 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 import { activeRemote, remoteCall, remoteEvents, uploadFromBrowser, type RemoteNode } from "@/lib/connection";
 import { IS_WEB, setWebPrefs, webPrefs } from "@/lib/web";
+import type { ContentKind, CreateProfile, DeviceLogin, GameVersion, LauncherAccount, LauncherCapabilities, LauncherProfile, LauncherSearch, LoginResult } from "@/features/launcher/types";
+
+// Client accounts and profiles always belong to this device, even while the
+// host UI is connected to another node. Never send credentials to remoteCall.
+async function launcherCall<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  if (IS_WEB) throw { code: "local_only", params: {} };
+  return invoke<T>(command, args);
+}
+export const launcherApi = {
+  pinShortcut: (id: string, mode: "demo" | "account", accountId?: string) => launcherCall<void>("launcher_pin_shortcut", { id, mode, accountId }),
+  takeShortcut: () => launcherCall<{ id: string; requestId: string; mode: "demo" | "account"; accountId?: string } | null>("launcher_take_shortcut"),
+  loaderVersions: (loader: import("@/features/launcher/types").Loader, gameVersion: string) => launcherCall<string[]>("launcher_loader_versions", { loader, gameVersion }),
+  status: () => launcherCall<Record<string, import("@/features/launcher/types").ClientStatus>>("launcher_status"),
+  start: (id: string, mode: "install" | "demo" | "account", accountId?: string) => launcherCall<void>("launcher_client_start", { id, mode, accountId }),
+  stop: (id: string) => launcherCall<void>("launcher_client_stop", { id }),
+  resume: (id: string) => launcherCall<void>("launcher_client_resume", { id }),
+  logs: (id: string) => launcherCall<string[]>("launcher_client_logs", { id }),
+  capabilities: () => launcherCall<LauncherCapabilities>("launcher_capabilities"),
+  profiles: () => launcherCall<LauncherProfile[]>("launcher_profiles"),
+  create: (input: CreateProfile) => launcherCall<LauncherProfile>("launcher_create", { input }),
+  remove: (id: string) => launcherCall<void>("launcher_remove", { id }),
+  setMemory: (id: string, memoryMb: number) => launcherCall<LauncherProfile>("launcher_set_memory", { id, memoryMb }),
+  versions: () => launcherCall<GameVersion[]>("launcher_versions"),
+  contentList: (id: string) => launcherCall<import("@/features/launcher/types").InstalledContent[]>("launcher_content_list", { id }),
+  contentIcon: (id: string, kind: ContentKind, file: string) => launcherCall<string | null>("launcher_content_icon", { id, kind, file }),
+  contentImport: (id: string, kind: ContentKind, name: string, data: string) => launcherCall<string>("launcher_content_import", { id, kind, name, data }),
+  contentInstall: (id: string, projectId: string, kind: ContentKind) => launcherCall<string[]>("launcher_content_install", { id, projectId, kind }),
+  contentRemove: (id: string, kind: ContentKind, file: string) => launcherCall<void>("launcher_content_remove", { id, kind, file }),
+  contentSetEnabled: (id: string, kind: ContentKind, file: string, enabled: boolean) => launcherCall<void>("launcher_content_set_enabled", { id, kind, file, enabled }),
+  modpackInstall: (projectId: string) => launcherCall<import("@/features/launcher/types").LauncherProfile>("launcher_modpack_install", { projectId }),
+  search: (query: string, kind: ContentKind, offset: number, instance?: string) => launcherCall<LauncherSearch>("launcher_search", { query, kind, offset, instance }),
+  accounts: () => launcherCall<LauncherAccount[]>("launcher_accounts"),
+  begin: () => launcherCall<DeviceLogin>("launcher_login_begin"),
+  poll: (id: string) => launcherCall<LoginResult>("launcher_login_poll", { id }),
+  cancel: (id: string) => launcherCall<void>("launcher_login_cancel", { id }),
+  logout: (id: string) => launcherCall<void>("launcher_logout", { id }),
+  wait: (id: string) => launcherCall<LoginResult>("launcher_login_wait", { id }),
+  skin: (id: string) => launcherCall<import("@/features/launcher/types").SkinInfo>("launcher_skin", { id }),
+  setSkin: (id: string, data: string, slim: boolean) => launcherCall<import("@/features/launcher/types").SkinInfo>("launcher_set_skin", { id, data, slim }),
+  setCape: (id: string, cape: string | null) => launcherCall<import("@/features/launcher/types").SkinInfo>("launcher_set_cape", { id, cape }),
+};
 
 import type {
   AddonBrowseRequest,
@@ -46,6 +87,7 @@ import type {
   AppLog,
   RemoteStatus,
   UpnpCheck,
+  StorageLocation,
   FileEntry,
   GameManifest,
   InstalledAddon,
@@ -420,6 +462,11 @@ export const api = {
         throw toAppError(error);
       }
     },
+  },
+
+  storage: {
+    /** Folders the phone app can keep servers in (empty on the desktop). */
+    locations: () => call<StorageLocation[]>("storage_locations"),
   },
 
   app: {

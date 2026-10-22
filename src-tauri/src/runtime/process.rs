@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 use std::io::{BufReader, Write};
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex as StdMutex, RwLock as StdRwLock};
 use std::thread;
@@ -660,7 +660,7 @@ impl LineSink {
 fn spawn(request: &StartRequest, container_name: &str) -> AppResult<Child> {
     let mut command = match request.runtime_kind {
         RuntimeKind::HostProcess => {
-            let mut command = Command::new(&request.plan.program);
+            let mut command = crate::runtime::java::java_command(std::path::Path::new(&request.plan.program));
             command.args(&request.plan.args).current_dir(&request.plan.working_dir);
             for (key, value) in &request.plan.env {
                 command.env(key, value);

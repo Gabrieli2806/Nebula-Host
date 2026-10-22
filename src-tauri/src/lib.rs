@@ -19,6 +19,7 @@ pub mod game;
 #[cfg(feature = "desktop")]
 pub mod ipc;
 pub mod logging;
+pub mod launcher;
 pub mod mcp;
 pub mod model;
 pub mod net;
@@ -29,7 +30,7 @@ pub mod service;
 #[cfg(all(windows, feature = "desktop"))]
 pub mod shutdown_guard;
 pub mod store;
-#[cfg(feature = "desktop")]
+#[cfg(all(feature = "desktop", desktop))]
 pub mod tray;
 
 use std::sync::Arc;
@@ -48,16 +49,42 @@ const EVENT_NAME: &str = "nebula:event";
 #[cfg(feature = "desktop")]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let context = tauri::generate_context!();
+    // A debug-only preview must never adopt servers, bind the current host's
+    // ports, or replace an already-running production window.
+    let launcher_preview = cfg!(debug_assertions) && std::env::args().any(|arg| arg == "--launcher-preview");
+    if launcher_preview {
+        if let Some(data) = dirs::data_dir() {
+            store::paths::set_base(data.join("nebula-launcher-preview"));
+        }
+    }
+    // Android has no config or data folders of its own: everything lives in
+    // the app's private files folder.
+    #[cfg(target_os = "android")]
+    store::paths::set_base(std::path::PathBuf::from(format!("/data/data/{}/files", context.config().identifier)));
+
     logging::init("desktop");
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            // A second launch focuses the window that is already hosting.
-            tray::show_main(app);
-        }))
-        .setup(|app| {
+        .plugin(tauri_plugin_dialog::init());
+    #[cfg(target_os = "android")]
+    let builder = builder.plugin(launcher::android::init());
+    #[cfg(desktop)]
+    let builder = if launcher_preview { builder } else { builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        // A second launch focuses the window that is already hosting.
+        tray::show_main(app);
+    })) };
+
+    builder
+        .manage(launcher::auth::AuthState::default())
+        .manage(Arc::new(launcher::client::ClientEngine::default()))
+        .setup(move |app| {
+            if launcher_preview {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_title("Nebula Host · Launcher Preview");
+                }
+            }
             let handle = app.handle().clone();
 
             tauri::async_runtime::block_on(async move {
@@ -71,6 +98,18 @@ pub fn run() {
                         store::nodes::save(&node)?;
                         node
                     }
+                };
+
+                // A phone set up before it knew its own name was called
+                // "This PC": give it the phone's name.
+                #[cfg(target_os = "android")]
+                let node = {
+                    let mut node = node;
+                    if node.name == "This PC" {
+                        node.name = store::nodes::suggested_name();
+                        store::nodes::save(&node)?;
+                    }
+                    node
                 };
 
                 let service = InstanceService::new(node).await?;
@@ -97,6 +136,7 @@ pub fn run() {
                 Ok::<(), error::AppError>(())
             })?;
 
+            #[cfg(desktop)]
             if let Some(service) = app.try_state::<Arc<InstanceService>>() {
                 if let Err(error) = tray::install(app.handle(), service.inner().clone()) {
                     tracing::warn!(%error, "system tray unavailable");
@@ -105,8 +145,15 @@ pub fn run() {
 
             Ok(())
         })
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+        .on_page_load(move |webview, payload| {
+            if payload.event() == tauri::webview::PageLoadEvent::Finished && (launcher_preview || std::env::args().any(|arg| arg == "--launcher")) {
+                let _ = webview.eval("window.location.hash = '#/launcher'");
+            }
+        })
+        .on_window_event(|_window, _event| {
+            #[cfg(desktop)]
+            if let tauri::WindowEvent::CloseRequested { api, .. } = _event {
+                let window = _window;
                 // With "keep running in the tray" (the default) closing the
                 // window only hides it: servers keep hosting, and the tray is
                 // the way back or out. Otherwise stop every server before the
@@ -123,7 +170,7 @@ pub fn run() {
             }
         })
         .invoke_handler(ipc_handlers!())
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running Nebula Host");
 }
 

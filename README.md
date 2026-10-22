@@ -3,7 +3,38 @@
 Self-hosted game-server manager for Windows. Runs game servers on your own machine and
 manages them from a native desktop app (Tauri v2 + React).
 
-No account, no login, no cloud. The machine is the product.
+Server management needs no account or cloud. The optional Launcher section
+supports Microsoft sign-in for Minecraft Java profiles on this device.
+
+## Launcher (development)
+
+The `Launcher` section is available in the desktop and Android navigation:
+local profile configurations, the official Minecraft version list, a client-side
+Modrinth catalog (mods, modpacks, resource packs and shaders), and session-only
+Microsoft/Xbox/Minecraft Java account verification. UI copy is available in English
+and Spanish. Launcher commands stay local even when managing a remote server.
+
+**Windows x64 can install and play Vanilla releases from 1.20.5 onward.** Choose
+the official demo without an account, or a verified Java account after Microsoft
+application setup. The engine verifies downloads, prepares Java, isolates profile
+files and supervises the game process, with progress, cancellation, repair and logs.
+Mod-loader installation and modpack import remain pending. Android still needs a
+native graphical runtime and touch controls. Account tokens stay in Rust memory;
+persistent accounts and refresh require platform secure storage.
+
+Microsoft login uses Nebula Host's own public-client application registration
+(device authorization, personal accounts), approved by Mojang for Minecraft
+services. It is fixed in `src-tauri/src/launcher/auth.rs` and cannot be changed
+from the app. Forks must register and get their own application approved: never
+reuse another launcher's application ID, and never add a client secret.
+See [docs/LAUNCHER.md](docs/LAUNCHER.md) for architecture, references and remaining work.
+
+For local testing, `tauri dev -- -- --launcher-preview` opens a debug-only window
+with separate app data under `nebula-launcher-preview`, leaving an existing host
+installation alone. `--launcher` opens the Launcher in the regular application.
+`cargo run -p nebula-host --bin nebula-launcher --no-default-features -- demo 1.21.4 --smoke`
+exercises the same engine against the official demo without passing account tokens
+through a command line.
 
 ## Layout
 

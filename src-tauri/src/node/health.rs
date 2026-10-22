@@ -57,11 +57,19 @@ pub fn sample(instances_running: u32) -> NodeHealth {
     let memory_used_mb = system.used_memory() / 1024 / 1024;
 
     let disks = Disks::new_with_refreshed_list();
-    let (disk_total, disk_available) = disks
+    // Android lists system partitions first (read-only, no free space);
+    // the volume that matters is the one holding the app's data.
+    let listed = disks
         .list()
         .first()
         .map(|disk| (disk.total_space(), disk.available_space()))
-        .unwrap_or((0, 0));
+        .filter(|(total, _)| *total > 0);
+    let (disk_total, disk_available) = if cfg!(target_os = "android") {
+        data_volume().or(listed)
+    } else {
+        listed.or_else(data_volume)
+    }
+    .unwrap_or((0, 0));
 
     NodeHealth {
         cpu_percent,
@@ -75,6 +83,81 @@ pub fn sample(instances_running: u32) -> NodeHealth {
         os: System::long_os_version().or_else(System::name).unwrap_or_default(),
         cpu_count: system.cpus().len(),
     }
+}
+
+/// Space on the volume holding the app's data, for systems where the disk
+/// list is not readable (Android hides /proc/diskstats from apps).
+#[cfg(unix)]
+fn data_volume() -> Option<(u64, u64)> {
+    volume_space(&crate::store::paths::config_dir().ok()?)
+}
+
+/// (total, available) bytes of the volume holding `dir`.
+#[cfg(unix)]
+pub fn volume_space(dir: &std::path::Path) -> Option<(u64, u64)> {
+    let path = std::ffi::CString::new(dir.to_string_lossy().as_bytes()).ok()?;
+    let mut stat: libc::statvfs = unsafe { std::mem::zeroed() };
+    // SAFETY: a valid C string and a zeroed out-struct, as statvfs expects.
+    if unsafe { libc::statvfs(path.as_ptr(), &mut stat) } != 0 {
+        return None;
+    }
+    let block = stat.f_frsize as u64;
+    Some((stat.f_blocks as u64 * block, stat.f_bavail as u64 * block))
+}
+
+#[cfg(not(unix))]
+fn data_volume() -> Option<(u64, u64)> {
+    None
+}
+
+#[cfg(not(unix))]
+pub fn volume_space(_dir: &std::path::Path) -> Option<(u64, u64)> {
+    None
+}
+
+/// A folder the phone app may keep servers in.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StorageLocation {
+    /// The instances folder to store in settings.
+    pub path: String,
+    /// `internal` (private to the app), `shared` (the phone's storage) or `sd`.
+    pub kind: &'static str,
+    pub free_gb: u64,
+    pub total_gb: u64,
+}
+
+/// Where the Android app can store servers without any storage permission:
+/// its private folder, and its own folder on each storage volume (the
+/// activity passes those as `NEBULA_STORAGE_DIRS`). Real folders, so Java
+/// can open the files directly, which a folder chosen through Android's
+/// document picker would not allow. Empty on the desktop, which picks any
+/// folder instead.
+pub fn storage_locations() -> Vec<StorageLocation> {
+    let Ok(raw) = std::env::var("NEBULA_STORAGE_DIRS") else { return Vec::new() };
+    let mut out = Vec::new();
+    let mut push = |path: std::path::PathBuf, kind: &'static str| {
+        let _ = std::fs::create_dir_all(&path);
+        let (total, free) = volume_space(&path).unwrap_or((0, 0));
+        // An SD slot with no card answers with an empty volume: leave it out.
+        if total == 0 && kind != "internal" {
+            return;
+        }
+        out.push(StorageLocation {
+            path: path.display().to_string(),
+            kind,
+            free_gb: free / 1024 / 1024 / 1024,
+            total_gb: total / 1024 / 1024 / 1024,
+        });
+    };
+    if let Ok(internal) = crate::store::paths::default_instances_dir() {
+        push(internal, "internal");
+    }
+    for (index, dir) in raw.lines().filter(|l| !l.trim().is_empty()).enumerate() {
+        let path = std::path::PathBuf::from(dir.trim()).join("instances");
+        push(path, if index == 0 { "shared" } else { "sd" });
+    }
+    out
 }
 
 /// The first-run check: everything that has to be true before a server can

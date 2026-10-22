@@ -1,0 +1,22 @@
+<resources>
+    <string name="nebula_console_mode">Console mode</string>
+    <string name="nebula_console_help_action">How it works</string>
+    <string name="nebula_console_tap">Tap to select</string>
+    <string name="nebula_console_auto">Automatic when half folded</string>
+    <string name="nebula_console_on">On · split screen</string>
+    <string name="nebula_console_off">Off · full screen</string>
+    <string name="nebula_console_help">With a horizontal fold, Minecraft stays above the hinge and controls sit below it. Unfold to return to full screen. “On” lets you try the layout on a large screen.</string>
+    <string name="nebula_console_small">Not enough space for console mode. Unfold the phone or rotate it so the hinge is horizontal.</string>
+    <string name="nebula_console_look">Slide to look</string>
+    <string name="nebula_console_cursor">Slide to move the cursor · tap to select</string>
+    <string name="nebula_console_move">Movement joystick</string>
+    <string name="nebula_console_attack">Attack</string>
+    <string name="nebula_console_use">Use</string>
+    <string name="nebula_console_jump">Jump</string>
+    <string name="nebula_console_sneak">Sneak</string>
+    <string name="nebula_console_inventory">Inventory</string>
+    <string name="nebula_console_drop">Drop</string>
+    <string name="nebula_console_keyboard">Keyboard</string>
+    <string name="nebula_console_menu">Game menu</string>
+    <string name="nebula_console_slot">Hotbar slot %1$d</string>
+</resources>
