@@ -1,10 +1,12 @@
-//! Device authorization. Secrets stay in Rust memory for this app session;
-//! neither device codes nor bearer/refresh tokens cross IPC or go to disk.
+//! Device authorization. Tokens never cross IPC. Minecraft access tokens stay
+//! in Rust memory; only the Microsoft refresh token is remembered on disk
+//! (see vault.rs) so a restart does not ask for the device code again.
 use crate::error::{AppError, AppResult, ErrorCode};
 use serde::Serialize;
+use super::vault::{self, Remembered};
 use serde_json::{json, Value};
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap, HashSet},
     time::{Duration, Instant},
 };
 use tokio::sync::Mutex;
@@ -19,6 +21,21 @@ pub struct AuthState {
 struct Inner {
     pending: HashMap<uuid::Uuid, Pending>,
     accounts: HashMap<String, Session>,
+    remembered: Option<BTreeMap<String, Remembered>>,
+}
+impl Inner {
+    fn remembered(&mut self) -> &mut BTreeMap<String, Remembered> {
+        self.remembered
+            .get_or_insert_with(|| if cfg!(test) { BTreeMap::new() } else { vault::load() })
+    }
+    fn persist(&mut self) {
+        let accounts = self.remembered().clone();
+        if !cfg!(test) {
+            if let Err(error) = vault::save(&accounts) {
+                tracing::warn!("could not remember the Minecraft sign-in: {error:?}");
+            }
+        }
+    }
 }
 struct Pending {
     client_id: String,
@@ -75,7 +92,31 @@ fn field<'a>(value: &'a Value, key: &str, stage: &str) -> AppResult<&'a str> {
 
 impl AuthState {
     pub async fn credentials(&self, id: &str) -> AppResult<super::client::Credentials> {
-        let inner = self.inner.lock().await;
+        let mut inner = self.inner.lock().await;
+        let fresh = inner
+            .accounts
+            .get(id)
+            .is_some_and(|session| session.expires > Instant::now() + Duration::from_secs(300));
+        if !fresh {
+            if let Some(saved) = inner.remembered().get(id).cloned() {
+                match refresh(&saved.refresh_token).await {
+                    Ok((session, next)) if session.account.id == id => {
+                        let name = session.account.name.clone();
+                        inner.accounts.insert(id.to_string(), session);
+                        inner
+                            .remembered()
+                            .insert(id.to_string(), Remembered { name, refresh_token: next });
+                        inner.persist();
+                    }
+                    Ok(_) | Err(_) => {
+                        // Revoked, expired after long disuse, or another profile:
+                        // forget it so the UI asks for a new sign-in.
+                        inner.remembered().remove(id);
+                        inner.persist();
+                    }
+                }
+            }
+        }
         let session = inner
             .accounts
             .get(id)
@@ -98,7 +139,7 @@ impl AuthState {
             .post(format!("{AUTH}/devicecode"))
             .form(&[
                 ("client_id", client_id.as_str()),
-                ("scope", "XboxLive.signin"),
+                ("scope", "XboxLive.signin offline_access"),
             ])
             .send()
             .await?;
@@ -195,54 +236,16 @@ impl AuthState {
             }
         }
         inner.pending.remove(&id);
-        let access = field(&value, "access_token", "microsoft_token")?;
-        let client = crate::game::http_client();
-        let xbox = post(&client, "https://user.auth.xboxlive.com/user/authenticate", json!({
-            "Properties": { "AuthMethod": "RPS", "SiteName": "user.auth.xboxlive.com", "RpsTicket": format!("d={access}") },
-            "RelyingParty": "http://auth.xboxlive.com", "TokenType": "JWT"
-        }), "xbox_live").await?;
-        let xsts = post(&client, "https://xsts.auth.xboxlive.com/xsts/authorize", json!({
-            "Properties": { "SandboxId": "RETAIL", "UserTokens": [field(&xbox, "Token", "xbox_live")?] },
-            "RelyingParty": "rp://api.minecraftservices.com/", "TokenType": "JWT"
-        }), "xsts").await?;
-        let uhs = xsts["DisplayClaims"]["xui"][0]["uhs"]
-            .as_str()
-            .ok_or_else(|| rejected("xsts"))?;
-        let minecraft = post(
-            &client,
-            "https://api.minecraftservices.com/authentication/login_with_xbox",
-            json!({
-                "identityToken": format!("XBL3.0 x={uhs};{}", field(&xsts, "Token", "xsts")?)
-            }),
-            "minecraft_login",
-        )
-        .await?;
-        let token = field(&minecraft, "access_token", "minecraft_login")?;
-        // A successful Java profile lookup verifies access to a real profile.
-        let response = client
-            .get("https://api.minecraftservices.com/minecraft/profile")
-            .bearer_auth(token)
-            .send()
-            .await?;
-        if !response.status().is_success() {
-            return Err(rejected("minecraft_java_profile"));
+        let session = minecraft_session(field(&value, "access_token", "microsoft_token")?).await?;
+        let account = session.account.clone();
+        if let Some(refresh_token) = value["refresh_token"].as_str().filter(|t| !t.is_empty()) {
+            inner.remembered().insert(
+                account.id.clone(),
+                Remembered { name: account.name.clone(), refresh_token: refresh_token.into() },
+            );
+            inner.persist();
         }
-        let profile: Value = response.json().await?;
-        let account = Account {
-            id: field(&profile, "id", "minecraft_java_profile")?.into(),
-            name: field(&profile, "name", "minecraft_java_profile")?.into(),
-        };
-        inner.accounts.insert(
-            account.id.clone(),
-            Session {
-                account: account.clone(),
-                _token: token.into(),
-                expires: Instant::now()
-                    + Duration::from_secs(
-                        minecraft["expires_in"].as_u64().unwrap_or(3600).min(86400),
-                    ),
-            },
-        );
+        inner.accounts.insert(account.id.clone(), session);
         Ok(LoginResult::Complete { account })
     }
 
@@ -250,15 +253,99 @@ impl AuthState {
         let mut inner = self.inner.lock().await;
         inner.accounts.retain(|_, s| s.expires > Instant::now());
         let mut accounts: Vec<_> = inner.accounts.values().map(|s| s.account.clone()).collect();
+        // Remembered sign-ins are listed too; their token is refreshed on play.
+        let live: HashSet<String> = accounts.iter().map(|a| a.id.clone()).collect();
+        let saved: Vec<Account> = inner
+            .remembered()
+            .iter()
+            .filter(|(id, _)| !live.contains(*id))
+            .map(|(id, r)| Account { id: id.clone(), name: r.name.clone() })
+            .collect();
+        accounts.extend(saved);
         accounts.sort_by(|a, b| a.name.cmp(&b.name));
         accounts
     }
     pub async fn logout(&self, id: String) {
-        self.inner.lock().await.accounts.remove(&id);
+        let mut inner = self.inner.lock().await;
+        inner.accounts.remove(&id);
+        if inner.remembered().remove(&id).is_some() {
+            inner.persist();
+        }
     }
     pub async fn cancel(&self, id: uuid::Uuid) {
         self.inner.lock().await.pending.remove(&id);
     }
+}
+
+/// A new Minecraft session from a remembered refresh token. Microsoft rotates
+/// refresh tokens, so the next one comes back to be stored in its place.
+async fn refresh(refresh_token: &str) -> AppResult<(Session, String)> {
+    let response = crate::game::http_client()
+        .post(format!("{AUTH}/token"))
+        .form(&[
+            ("client_id", client_id()),
+            ("refresh_token", refresh_token),
+            ("grant_type", "refresh_token"),
+            ("scope", "XboxLive.signin offline_access"),
+        ])
+        .send()
+        .await?;
+    if !response.status().is_success() {
+        return Err(rejected("microsoft_refresh"));
+    }
+    let value: Value = response.json().await?;
+    let session = minecraft_session(field(&value, "access_token", "microsoft_refresh")?).await?;
+    let next = value["refresh_token"]
+        .as_str()
+        .filter(|t| !t.is_empty())
+        .unwrap_or(refresh_token);
+    Ok((session, next.to_string()))
+}
+
+/// Microsoft access token -> Xbox Live -> XSTS -> Minecraft, verified by a
+/// Java profile lookup.
+async fn minecraft_session(access: &str) -> AppResult<Session> {
+    let client = crate::game::http_client();
+    let xbox = post(&client, "https://user.auth.xboxlive.com/user/authenticate", json!({
+        "Properties": { "AuthMethod": "RPS", "SiteName": "user.auth.xboxlive.com", "RpsTicket": format!("d={access}") },
+        "RelyingParty": "http://auth.xboxlive.com", "TokenType": "JWT"
+    }), "xbox_live").await?;
+    let xsts = post(&client, "https://xsts.auth.xboxlive.com/xsts/authorize", json!({
+        "Properties": { "SandboxId": "RETAIL", "UserTokens": [field(&xbox, "Token", "xbox_live")?] },
+        "RelyingParty": "rp://api.minecraftservices.com/", "TokenType": "JWT"
+    }), "xsts").await?;
+    let uhs = xsts["DisplayClaims"]["xui"][0]["uhs"]
+        .as_str()
+        .ok_or_else(|| rejected("xsts"))?;
+    let minecraft = post(
+        &client,
+        "https://api.minecraftservices.com/authentication/login_with_xbox",
+        json!({
+            "identityToken": format!("XBL3.0 x={uhs};{}", field(&xsts, "Token", "xsts")?)
+        }),
+        "minecraft_login",
+    )
+    .await?;
+    let token = field(&minecraft, "access_token", "minecraft_login")?;
+    // A successful Java profile lookup verifies access to a real profile.
+    let response = client
+        .get("https://api.minecraftservices.com/minecraft/profile")
+        .bearer_auth(token)
+        .send()
+        .await?;
+    if !response.status().is_success() {
+        return Err(rejected("minecraft_java_profile"));
+    }
+    let profile: Value = response.json().await?;
+    Ok(Session {
+        account: Account {
+            id: field(&profile, "id", "minecraft_java_profile")?.into(),
+            name: field(&profile, "name", "minecraft_java_profile")?.into(),
+        },
+        _token: token.into(),
+        expires: Instant::now()
+            + Duration::from_secs(minecraft["expires_in"].as_u64().unwrap_or(3600).min(86400)),
+    })
 }
 
 async fn post(client: &reqwest::Client, url: &str, body: Value, stage: &str) -> AppResult<Value> {

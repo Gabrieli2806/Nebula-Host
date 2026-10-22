@@ -1,6 +1,7 @@
 //! Local client launcher workspace. Deliberately separate from server instances
 //! and never exposed through the remote-node dispatch surface.
 pub mod auth;
+mod vault;
 pub mod client;
 pub mod content;
 pub mod loaders;
