@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useInstances } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
-import { IS_WEB } from "@/lib/web";
+import { useLauncherEnabled } from "@/lib/launcherPref";
 import { Button, Dialog, Icon, type IconName } from "@/ui";
 
 import { OPEN_TOUR } from "./tourEvents";
@@ -78,6 +78,7 @@ export function Tour() {
   const [manual, setManual] = useState(false);
   const [closed, setClosed] = useState(false);
   const [index, setIndex] = useState(0);
+  const launcher = useLauncherEnabled();
   const { data: instances, isSuccess } = useInstances();
 
   useEffect(() => {
@@ -105,7 +106,7 @@ export function Tour() {
   }, []);
 
   // The launcher does not exist in the browser panel.
-  const steps = IS_WEB ? STEPS.filter((step) => step.id !== "launcher") : STEPS;
+  const steps = launcher ? STEPS : STEPS.filter((step) => step.id !== "launcher");
   const step = steps[Math.min(index, steps.length - 1)] ?? WELCOME;
   const last = index >= steps.length - 1;
 

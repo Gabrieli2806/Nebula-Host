@@ -1121,6 +1121,8 @@ export const es: Copy = {
     javaPathsHelp:
       "Las versiones antiguas del juego necesitan Java antiguo. Indica una instalación por versión y se usará la correcta sola.",
     launchAtStartup: "Empezar a hospedar al iniciar sesión",
+    launcherEnabled: "Launcher de Minecraft",
+    launcherEnabledHelp: "Muestra el Launcher, para jugar Minecraft tú mismo en este dispositivo. No afecta a tus servidores.",
     runInTray: "Seguir funcionando al cerrar la ventana",
     allowUpnp: "Dejar que el router abra puertos solo (UPnP)",
     listenOnLan: "Responder a otros equipos de esta red",

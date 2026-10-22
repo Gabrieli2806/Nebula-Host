@@ -12,8 +12,8 @@ import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
 import { useI18n } from "@/i18n";
+import { useLauncherEnabled } from "@/lib/launcherPref";
 import { remoteNodes } from "@/lib/connection";
-import { IS_WEB } from "@/lib/web";
 import { Icon, type IconName } from "@/ui";
 
 import { SERVER_PANELS } from "./AppShell";
@@ -26,12 +26,13 @@ export function MobileTabs({ instanceId }: { instanceId: string | null }) {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [more, setMore] = useState(false);
+  const launcher = useLauncherEnabled();
 
   if (!instanceId) {
     return (
       <nav className="mobile-tabs" aria-label={t("nav.sidebar")}>
         <Tab to="/servers" icon="servers" label={t("nav.servers")} />
-        {!IS_WEB ? <Tab to="/launcher" icon="play" label="Launcher" /> : null}
+        {launcher ? <Tab to="/launcher" icon="play" label="Launcher" /> : null}
         {remoteNodes().length ? <Tab to="/machines" icon="activity" label={t("fleet.tabMachines")} /> : null}
         <Tab to="/settings" icon="sliders" label={t("nav.settings")} />
       </nav>

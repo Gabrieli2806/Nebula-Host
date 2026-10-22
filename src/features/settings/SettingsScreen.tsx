@@ -23,7 +23,8 @@ import { AboutSettings, DiagnosticsSettings } from "./AboutSettings";
 import { JavaSlots } from "./JavaSlots";
 import { McpSettings } from "./McpSettings";
 import { RemoteSettings, UpnpTest } from "./RemoteSettings";
-import { DESKTOP_FEATURES } from "@/lib/web";
+import { DESKTOP_FEATURES, IS_WEB } from "@/lib/web";
+import { setLauncherEnabled, useLauncherEnabled } from "@/lib/launcherPref";
 import {
   Button,
   ErrorNotice,
@@ -72,6 +73,7 @@ function useSavedTick() {
 // -- screen -----------------------------------------------------------------
 
 export function SettingsScreen() {
+  const launcherOn = useLauncherEnabled();
   const remote = isRemote();
   const { t, language, setLanguage } = useI18n();
   const client = useQueryClient();
@@ -286,6 +288,15 @@ export function SettingsScreen() {
       </Panel>
 
       <Panel title={t("settings.startupNetwork")}>
+        {!IS_WEB ? (
+          <SwitchRow
+            label={t("settings.launcherEnabled")}
+            help={t("settings.launcherEnabledHelp")}
+            checked={launcherOn}
+            onChange={setLauncherEnabled}
+            saved={false}
+          />
+        ) : null}
         {DESKTOP_FEATURES ? (
           <>
         <SwitchRow

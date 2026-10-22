@@ -38,7 +38,7 @@ import { useI18n } from "@/i18n";
 import { switchTo } from "@/lib/connection";
 import { formatMegabytes } from "@/lib/format";
 import { toAppError } from "@/lib/ipc";
-import { IS_WEB } from "@/lib/web";
+import { useLauncherEnabled } from "@/lib/launcherPref";
 import type { InstanceView } from "@/types/api";
 import { Button, ErrorNotice, Icon, Ring, StatusDot, type IconName } from "@/ui";
 import { useTransferTracking } from "@/features/server/transfer/active";
@@ -284,10 +284,11 @@ function useRailTooltip(enabled: boolean) {
 
 function AppNav() {
   const { t } = useI18n();
+  const launcher = useLauncherEnabled();
   return (
     <div className="flex flex-col gap-0.5">
       <NavItem to="/servers" icon="servers" label={t("nav.servers")} />
-      {!IS_WEB ? <NavItem to="/launcher" icon="play" label="Launcher" /> : null}
+      {launcher ? <NavItem to="/launcher" icon="play" label="Launcher" /> : null}
       <NavItem to="/settings" icon="sliders" label={t("nav.settings")} />
     </div>
   );

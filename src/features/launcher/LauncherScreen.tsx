@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { Navigate, useLocation, useSearchParams } from "react-router-dom";
+import { useLauncherEnabled } from "@/lib/launcherPref";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/i18n";
 import { launcherApi, toAppError } from "@/lib/ipc";
@@ -15,6 +16,9 @@ const ROOT = ["launcher"];
 
 export function LauncherScreen() {
   const [search] = useSearchParams();
+  // A home-screen shortcut still opens it; otherwise it follows the setting.
+  const enabled = useLauncherEnabled();
+  if (!enabled && !search.get("instance")) return <Navigate to="/servers" replace />;
   return <LauncherContent key={search.get("request") ?? "launcher"} />;
 }
 

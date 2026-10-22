@@ -1121,6 +1121,8 @@ export const en = {
     javaPathsHelp:
       "Older game versions need older Java. Point each version at an installation and the right one is used automatically.",
     launchAtStartup: "Start hosting when I log in",
+    launcherEnabled: "Minecraft launcher",
+    launcherEnabledHelp: "Show the Launcher, to play Minecraft yourself on this device. It does not affect your servers.",
     runInTray: "Keep running when the window is closed",
     allowUpnp: "Let the router open ports automatically (UPnP)",
     listenOnLan: "Answer other machines on this network",

@@ -22,6 +22,7 @@ import { api } from "@/lib/ipc";
 import type { InstanceStatus, Requirement } from "@/types/api";
 import { isRemote } from "@/lib/connection";
 import { IS_MOBILE } from "@/lib/web";
+import { useLauncherEnabled } from "@/lib/launcherPref";
 import { PHONE_HOSTING_KEY, PhoneHostingNotice, PhoneWelcome } from "./PhoneWelcome";
 import { Button, ErrorNotice, Field, Mark, Skeleton, StatusDot, TextInput } from "@/ui";
 
@@ -49,6 +50,7 @@ export function FirstRun() {
   const { data: node } = useNode();
   const requirements = useRequirements();
   const [name, setName] = useState("");
+  const launcher = useLauncherEnabled();
 
   const finish = useMutation({
     mutationFn: async () => {
@@ -132,7 +134,7 @@ export function FirstRun() {
             {finish.error ? <ErrorNotice error={finish.error} /> : null}
 
             <footer className="first-run-footer">
-              <Button icon="play" onClick={() => navigate("/launcher")}>Launcher</Button>
+              {launcher ? <Button icon="play" onClick={() => navigate("/launcher")}>Launcher</Button> : null}
               <Button
                 variant="quiet"
                 onClick={() => {
