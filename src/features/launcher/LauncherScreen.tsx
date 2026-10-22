@@ -6,7 +6,7 @@ import { useI18n } from "@/i18n";
 import { launcherApi, toAppError } from "@/lib/ipc";
 import { openExternal } from "@/lib/external";
 import { IS_WEB } from "@/lib/web";
-import { Button, ErrorNotice, Icon, Segmented, Select, StatusDot } from "@/ui";
+import { Button, CopyAddress, Dialog, ErrorNotice, Icon, Segmented, Select, StatusDot } from "@/ui";
 import type { ContentKind, LauncherProfile, LauncherProject } from "./types";
 import { Library } from "./Library";
 import { Accounts } from "./Account";
@@ -73,6 +73,8 @@ function ProfileControls({ profile }: { profile: LauncherProfile }) {
   const start = useMutation({ mutationFn: (mode: "install" | "demo" | "account") => launcherApi.start(profile.id, mode, account === "demo" ? undefined : account), onSuccess: () => client.invalidateQueries({ queryKey: [...ROOT, "status"] }) });
   const resume = useMutation({ mutationFn: () => launcherApi.resume(profile.id) });
   const shortcut = useMutation({ mutationFn: () => launcherApi.pinShortcut(profile.id, account === "demo" ? "demo" : "account", account === "demo" ? undefined : account) });
+  const [sharing, setSharing] = useState(false);
+  const share = useMutation({ mutationFn: () => launcherApi.shareLog(profile.id) });
   const stop = useMutation({ mutationFn: () => launcherApi.stop(profile.id), onSuccess: () => client.invalidateQueries({ queryKey: [...ROOT, "status"] }) });
   return <div className="launcher-client">
     <label className="launcher-field"><span className="label">{t("launcher.playAs")}</span>{signedIn.length ? <Select value={account} disabled={running || installing || signedIn.length < 2} onChange={e => setChosen(e.target.value)}>{signedIn.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</Select> : <Select value="demo" disabled><option value="demo">{t("launcher.officialDemo")}</option></Select>}</label>
@@ -86,10 +88,17 @@ function ProfileControls({ profile }: { profile: LauncherProfile }) {
         <Button icon="download" disabled={start.isPending || anyInstalling} onClick={() => start.mutate("install")}>{t("launcher.installRepair")}</Button>
       </>}
       <Button variant="quiet" icon="terminal" aria-expanded={showLogs} onClick={() => setShowLogs(!showLogs)}>{t("launcher.gameLogs")}</Button>
+      <Button variant="quiet" icon="upload" onClick={() => { share.reset(); setSharing(true); }}>{t("launcher.shareLog")}</Button>
       {caps.data?.platform === "android" ? <Button icon="plus" disabled={shortcut.isPending} onClick={() => shortcut.mutate()}>{t("launcher.pinShortcut")}</Button> : null}
     </div>
     {shortcut.isSuccess ? <p role="status" className="launcher-notice">{t("launcher.shortcutRequested")}</p> : null}
     <Failure error={start.error || stop.error || resume.error || shortcut.error || state?.error || states.error || accounts.error} />
+    {sharing ? <Dialog open onClose={() => setSharing(false)} dismissable={!share.isPending} title={t("launcher.shareLog")} footer={share.data
+        ? <><Button onClick={() => setSharing(false)}>{t("launcher.close")}</Button><Button variant="primary" icon="external" onClick={() => void openExternal(share.data!.url)}>{t("launcher.openLink")}</Button></>
+        : <><Button variant="quiet" disabled={share.isPending} onClick={() => setSharing(false)}>{t("launcher.cancel")}</Button><Button variant="primary" icon="upload" disabled={share.isPending} onClick={() => share.mutate()}>{share.isPending ? t("launcher.uploading") : t("launcher.upload")}</Button></>}>
+      {share.data ? <div className="flex flex-col gap-3"><p>{t("launcher.logShared")}</p><CopyAddress value={share.data.url} /></div> : <p>{t("launcher.shareLogWarning")}</p>}
+      <Failure error={share.error} />
+    </Dialog> : null}
     {showLogs ? <><Failure error={logs.error} /><pre className="launcher-game-log selectable mono" aria-label={t("launcher.gameLogs")}>{logs.data?.join("\n") || t("launcher.noLogs")}</pre></> : null}
   </div>;
 }

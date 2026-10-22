@@ -26,6 +26,9 @@ pub struct Profile {
     pub memory_mb: u32,
     #[serde(default)]
     pub loader_version: Option<String>,
+    /// The instance's picture, a small PNG/JPEG data URL chosen by the person.
+    #[serde(default)]
+    pub icon: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -125,6 +128,7 @@ pub async fn create(input: CreateProfile) -> AppResult<Profile> {
         game_version: input.game_version,
         loader: input.loader,
         memory_mb: input.memory_mb,
+        icon: None,
         loader_version,
     };
     profiles.push(profile.clone());
@@ -155,6 +159,42 @@ pub async fn set_memory(id: uuid::Uuid, memory_mb: u32) -> AppResult<Profile> {
     let updated = profile.clone();
     save_profiles(&profiles)?;
     Ok(updated)
+}
+
+/// Name and picture, from the instance settings.
+pub async fn update_details(id: uuid::Uuid, name: String, icon: Option<String>) -> AppResult<Profile> {
+    let name = name.trim().to_string();
+    if name.is_empty() || name.chars().count() > 64 || name.chars().any(char::is_control) {
+        return Err(AppError::new(ErrorCode::InvalidInput).with("field", "name"));
+    }
+    if let Some(icon) = &icon {
+        let image = icon.starts_with("data:image/png;base64,") || icon.starts_with("data:image/jpeg;base64,");
+        if !image || icon.len() > 256 * 1024 {
+            return Err(AppError::new(ErrorCode::InvalidInput).with("field", "icon"));
+        }
+    }
+    let _guard = STORE_LOCK.get_or_init(Default::default).lock().await;
+    let mut profiles = read_profiles()?;
+    let profile = profiles.iter_mut().find(|p| p.id == id).ok_or_else(|| AppError::new(ErrorCode::NotFound))?;
+    profile.name = name;
+    profile.icon = icon;
+    let updated = profile.clone();
+    save_profiles(&profiles)?;
+    Ok(updated)
+}
+
+/// Put the game's log on mclo.gs: the game's own latest.log when there is
+/// one, else what Nebula captured. Access tokens are redacted line by line.
+pub async fn share_log(id: uuid::Uuid, captured: Vec<String>) -> AppResult<crate::service::logs::SharedLog> {
+    let latest = client::directory()?.join("profiles").join(id.to_string()).join("logs").join("latest.log");
+    let text = match crate::service::logs::read_tail(&latest).await {
+        Ok(text) if !text.trim().is_empty() => text.lines().map(client::redact_line).collect::<Vec<_>>().join("\n"),
+        _ => captured.join("\n"),
+    };
+    if text.trim().is_empty() {
+        return Err(AppError::new(ErrorCode::NotFound).detail("No game log yet. Start the game once."));
+    }
+    crate::service::logs::share_text(&text).await
 }
 
 pub async fn remove(id: uuid::Uuid) -> AppResult<()> {

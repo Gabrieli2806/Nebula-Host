@@ -736,7 +736,7 @@ fn expand_arguments(
     }
     Ok(result)
 }
-fn redact_line(line: &str) -> String {
+pub(crate) fn redact_line(line: &str) -> String {
     static REDACT: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
     REDACT
         .get_or_init(|| {

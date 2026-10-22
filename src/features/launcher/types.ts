@@ -1,9 +1,9 @@
 export type Loader = "vanilla" | "fabric" | "forge" | "neoforge" | "quilt";
 export type ContentKind = "mod" | "modpack" | "resourcepack" | "shader";
 export interface LauncherProfile {
-  id: string; name: string; game_version: string; loader: Loader; memory_mb: number; loader_version?: string | null;
+  id: string; name: string; game_version: string; loader: Loader; memory_mb: number; loader_version?: string | null; icon?: string | null;
 }
-export type CreateProfile = Omit<LauncherProfile, "id" | "loader_version">;
+export type CreateProfile = Omit<LauncherProfile, "id" | "loader_version" | "icon">;
 export interface LauncherCapabilities { platform: string; can_launch: boolean }
 export interface ClientStatus { phase: string; stage: string; completed: number; total: number; error: import("@/lib/ipc").AppError | null; exit_code: number | null }
 export interface GameVersion { id: string; type: string; client_supported: boolean }

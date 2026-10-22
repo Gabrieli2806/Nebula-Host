@@ -13,6 +13,7 @@
 
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useState, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 
 import { useI18n } from "@/i18n";
 import { IS_MOBILE, IS_WEB, signOutWeb, webSession } from "@/lib/web";
@@ -67,19 +68,34 @@ function WebTitleBar({ sidebar }: { sidebar?: SidebarToggle }) {
 
 /** The phone app: no window to move or close, the machine switcher stays. */
 function MobileTitleBar({ sidebar }: { sidebar?: SidebarToggle }) {
-  const { t } = useI18n();
   return (
     <header className="titlebar titlebar-mobile">
       <div className="titlebar-brand">
         {sidebar ? <SidebarButton {...sidebar} /> : null}
         <Mark size={16} />
-        <span className="wordmark">{t("app.name")}</span>
-        <span className="titlebar-sep" aria-hidden="true">
-          /
-        </span>
-        <NodeSwitcher />
+        <Crumbs />
       </div>
     </header>
+  );
+}
+
+/** Where you are: Nebula / Launcher, or Nebula / Host / the machine. */
+function Crumbs() {
+  const { t } = useI18n();
+  const { pathname } = useLocation();
+  const launcher = pathname.startsWith("/launcher");
+  return (
+    <>
+      <span className="wordmark">Nebula</span>
+      <span className="titlebar-sep" aria-hidden="true">/</span>
+      <span className="titlebar-section">{launcher ? "Launcher" : t("nav.host")}</span>
+      {launcher ? null : (
+        <>
+          <span className="titlebar-sep" aria-hidden="true">/</span>
+          <NodeSwitcher />
+        </>
+      )}
+    </>
   );
 }
 
@@ -105,13 +121,9 @@ function WindowTitleBar({ sidebar }: { sidebar?: SidebarToggle }) {
       <div className="titlebar-brand">
         {sidebar ? <SidebarButton {...sidebar} /> : null}
         <Mark size={16} />
-        <span className="wordmark">{t("app.name")}</span>
-        {/* Always there: the way to another machine must not depend on the
-            one being managed answering. */}
-        <span className="titlebar-sep" aria-hidden="true">
-          /
-        </span>
-        <NodeSwitcher />
+        {/* The machine switcher is always there on the host side: the way to
+            another machine must not depend on the one being managed answering. */}
+        <Crumbs />
       </div>
 
       <div className="no-drag flex flex-none items-stretch">

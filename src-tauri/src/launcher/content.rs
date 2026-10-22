@@ -518,6 +518,7 @@ mod tests {
             loader: Loader::Fabric,
             memory_mb: 2048,
             loader_version: None,
+            icon: None,
         };
         let version = best_version(&profile, "fabric-api", ContentKind::Mod).await.expect("a version");
         let file = primary_file(&version).expect("a safe file");
@@ -568,7 +569,7 @@ mod tests {
 
     fn profile_in(dir: &Path) -> Profile {
         let _ = dir;
-        Profile { id: uuid::Uuid::new_v4(), name: "t".into(), game_version: "1.21.4".into(), loader: Loader::Fabric, memory_mb: 2048, loader_version: None }
+        Profile { id: uuid::Uuid::new_v4(), name: "t".into(), game_version: "1.21.4".into(), loader: Loader::Fabric, memory_mb: 2048, loader_version: None, icon: None }
     }
 
     #[test]

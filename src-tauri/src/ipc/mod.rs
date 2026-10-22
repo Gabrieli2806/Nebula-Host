@@ -79,6 +79,8 @@ macro_rules! ipc_handlers {
             $crate::ipc::launcher::launcher_set_skin,
             $crate::ipc::launcher::launcher_set_cape,
             $crate::ipc::launcher::launcher_set_memory,
+            $crate::ipc::launcher::launcher_update_details,
+            $crate::ipc::launcher::launcher_log_share,
             // node
             $crate::ipc::node::node_get,
             $crate::ipc::node::node_rename,

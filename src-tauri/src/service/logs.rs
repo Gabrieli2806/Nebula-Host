@@ -168,7 +168,7 @@ fn console_text(lines: &[ConsoleLine]) -> String {
 
 /// Read a log file, keeping only its end when it is huge: a server left up
 /// for a week writes a `latest.log` far past anything worth uploading.
-async fn read_tail(path: &Path) -> AppResult<String> {
+pub(crate) async fn read_tail(path: &Path) -> AppResult<String> {
     let path = path.to_path_buf();
     tokio::task::spawn_blocking(move || -> AppResult<String> {
         use std::io::{Read, Seek, SeekFrom};
@@ -215,6 +215,12 @@ fn fit_for_upload(text: &str) -> (String, usize) {
     } else {
         (format!("[Nebula Host] {omitted} earlier lines were left out to fit mclo.gs's size limit.\n{body}"), omitted)
     }
+}
+
+/// Upload any text (trimmed to fit) — used by the launcher's game logs.
+pub(crate) async fn share_text(text: &str) -> AppResult<SharedLog> {
+    let (content, omitted) = fit_for_upload(text);
+    upload(&content, omitted).await
 }
 
 async fn upload(content: &str, omitted_lines: usize) -> AppResult<SharedLog> {
