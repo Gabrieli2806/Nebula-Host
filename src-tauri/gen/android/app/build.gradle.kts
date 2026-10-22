@@ -15,6 +15,8 @@ val tauriProperties = Properties().apply {
 
 android {
     compileSdk = 36
+    // Pinned so CI installs the same NDK the launcher library is built with.
+    ndkVersion = "28.0.12674087"
     namespace = "net.g2806.nebulahost"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
