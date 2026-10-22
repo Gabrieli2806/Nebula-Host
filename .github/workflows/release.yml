@@ -6,6 +6,7 @@
 #   Windows desktop : .msi and NSIS .exe          (windows-latest)
 #   Linux desktop   : .deb, .rpm, .AppImage       (ubuntu-22.04, x86_64)
 #   Linux node      : headless nebula-node .tar.gz (x86_64 and aarch64)
+#   Android         : arm64 APK                   (android.yml)
 name: Release
 
 on:
@@ -173,7 +174,7 @@ jobs:
     name: Publish release
     permissions:
       contents: write
-    needs: [desktop, node]
+    needs: [desktop, node, android]
     runs-on: ubuntu-latest
     steps:
       - name: Publish the draft

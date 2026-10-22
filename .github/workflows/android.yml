@@ -1,0 +1,101 @@
+# Builds the Android APK (arm64, debug-signed). Run by hand to get the APK as
+# a workflow artifact, or from the Release workflow, which attaches it to the
+# release.
+name: Android
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      tag:
+        description: "Release tag to build and attach the APK to."
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  NDK_VERSION: "28.0.12674087"
+  GAME_NDK_VERSION: "27.3.13750724"
+
+jobs:
+  apk:
+    name: APK (arm64)
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      # The game engine is a pinned submodule; its own native dependency
+      # needs a mirror URL.
+      - name: Game engine sources
+        run: |
+          git submodule update --init src-tauri/android/amethyst
+          git -C src-tauri/android/amethyst -c submodule.androidnsbypass.url=https://github.com/alexytomi/androidnsbypass.git submodule update --init androidnsbypass
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Android NDKs
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;${NDK_VERSION}" "ndk;${GAME_NDK_VERSION}" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+          echo "NDK_HOME=$ANDROID_HOME/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          targets: aarch64-linux-android
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          key: android-arm64
+
+      - name: Cache bundled runtimes
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: android-runtimes-${{ hashFiles('scripts/android-jre.mjs', 'scripts/android-game-jre.mjs') }}
+
+      - run: npm ci
+
+      - name: Bundled Java runtimes
+        run: |
+          node scripts/android-game-jre.mjs
+          node scripts/android-jre.mjs arm64-v8a 21,25
+
+      - name: Build APK
+        run: npx tauri android build --debug --target aarch64 --apk --ci
+
+      - name: Name the APK
+        id: apk
+        run: |
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          name="NebulaHost-${version}-android-arm64.apk"
+          mkdir -p out
+          cp src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk "out/$name"
+          (cd out && sha256sum "$name" > "$name.sha256")
+          echo "file=out/$name" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: out/
+
+      - name: Attach to release
+        if: inputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ inputs.tag }}" "${{ steps.apk.outputs.file }}" "${{ steps.apk.outputs.file }}.sha256" --clobber
