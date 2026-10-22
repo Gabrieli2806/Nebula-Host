@@ -43,6 +43,7 @@ import type { InstanceView } from "@/types/api";
 import { Button, ErrorNotice, Icon, Ring, StatusDot, type IconName } from "@/ui";
 import { useTransferTracking } from "@/features/server/transfer/active";
 import { Tour } from "@/features/onboarding/Tour";
+import { AccountMenu } from "@/features/launcher/Account";
 import { MobileTabs } from "./MobileTabs";
 import { TitleBar } from "./TitleBar";
 
@@ -198,7 +199,8 @@ export function AppShell() {
             ) : (
               <>
                 <AppNav />
-                {collapsed ? <NodeMini /> : <NodeBlock />}
+                {/* In the launcher the foot of the rail is the account, not the machine. */}
+                {pathname.startsWith("/launcher") ? (collapsed ? null : <div className="rail-account"><AccountMenu placement="up" /></div>) : collapsed ? <NodeMini /> : <NodeBlock />}
               </>
             )}
           </div>

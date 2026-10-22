@@ -11,6 +11,6 @@ export interface LauncherAccount { id: string; name: string }
 export interface SkinInfo { url: string | null; variant: "classic" | "slim"; capes: { id: string; alias: string; url: string; active: boolean }[] }
 export interface DeviceLogin { id: string; user_code: string; verification_uri: string; expires_in: number; interval: number }
 export type LoginResult = { status: "pending"; interval: number } | { status: "complete"; account: LauncherAccount };
-export interface LauncherProject { project_id: string; slug: string; title: string; description: string; author: string; downloads: number; project_type: string; icon_url: string | null }
+export interface LauncherProject { project_id: string; slug: string; title: string; description: string; author: string; downloads: number; project_type: string; icon_url: string | null; categories?: string[]; date_modified?: string | null; follows?: number }
 export interface LauncherSearch { hits: LauncherProject[]; total_hits: number }
 export interface InstalledContent { kind: Exclude<ContentKind, "modpack">; file: string; size: number; enabled: boolean; project_id: string | null }

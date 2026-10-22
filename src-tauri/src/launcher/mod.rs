@@ -197,6 +197,44 @@ pub async fn share_log(id: uuid::Uuid, captured: Vec<String>) -> AppResult<crate
     crate::service::logs::share_text(&text).await
 }
 
+/// Move an instance to another Minecraft version or loader, keeping its
+/// worlds, settings and content (mods that do not fit are left for the person
+/// to update or remove). Only versions from Mojang's manifest are accepted.
+pub async fn change_version(
+    id: uuid::Uuid,
+    game_version: String,
+    loader: Loader,
+    loader_version: Option<String>,
+) -> AppResult<Profile> {
+    if !versions().await?.iter().any(|v| v.id == game_version) {
+        return Err(AppError::new(ErrorCode::VersionNotFound).with("version", &game_version));
+    }
+    let loader_version = if matches!(loader, Loader::Vanilla | Loader::Quilt) {
+        None
+    } else {
+        let available = loaders::versions(&loader, &game_version).await?;
+        match loader_version.filter(|v| !v.is_empty()) {
+            Some(chosen) if available.contains(&chosen) => Some(chosen),
+            Some(_) => return Err(AppError::new(ErrorCode::VersionNotFound).with("version", &game_version)),
+            None => Some(
+                available
+                    .into_iter()
+                    .next()
+                    .ok_or_else(|| AppError::new(ErrorCode::VersionNotFound).with("version", &game_version))?,
+            ),
+        }
+    };
+    let _guard = STORE_LOCK.get_or_init(Default::default).lock().await;
+    let mut profiles = read_profiles()?;
+    let profile = profiles.iter_mut().find(|p| p.id == id).ok_or_else(|| AppError::new(ErrorCode::NotFound))?;
+    profile.game_version = game_version;
+    profile.loader = loader;
+    profile.loader_version = loader_version;
+    let updated = profile.clone();
+    save_profiles(&profiles)?;
+    Ok(updated)
+}
+
 pub async fn remove(id: uuid::Uuid) -> AppResult<()> {
     let _guard = STORE_LOCK.get_or_init(Default::default).lock().await;
     let mut profiles = read_profiles()?;
@@ -265,6 +303,12 @@ pub struct Project {
     pub downloads: u64,
     pub project_type: String,
     pub icon_url: Option<String>,
+    #[serde(default)]
+    pub categories: Vec<String>,
+    #[serde(default)]
+    pub date_modified: Option<String>,
+    #[serde(default)]
+    pub follows: u64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -275,10 +319,22 @@ pub struct SearchResult {
 
 /// Search Modrinth. With an instance, only what fits it is listed: its
 /// Minecraft version and, for mods, its loader (as the server add-ons do).
-pub async fn search(query: String, kind: ContentKind, offset: u32, fit: Option<&Profile>) -> AppResult<SearchResult> {
-    if query.len() > 200 || offset > 10000 {
+pub async fn search(
+    query: String,
+    kind: ContentKind,
+    offset: u32,
+    limit: u32,
+    sort: Option<String>,
+    fit: Option<&Profile>,
+) -> AppResult<SearchResult> {
+    if query.len() > 200 || offset > 10000 || !(1..=100).contains(&limit) {
         return Err(AppError::new(ErrorCode::InvalidInput));
     }
+    let index = match sort.as_deref() {
+        Some(sort @ ("relevance" | "downloads" | "follows" | "updated" | "newest")) => sort,
+        _ if query.trim().is_empty() => "downloads",
+        _ => "relevance",
+    };
     let mut facets = vec![
         serde_json::json!([format!("project_type:{}", kind.tag())]),
         serde_json::json!(["client_side:required", "client_side:optional"]),
@@ -297,17 +353,9 @@ pub async fn search(query: String, kind: ContentKind, offset: u32, fit: Option<&
         .query(&[
             ("query", query.trim().to_string()),
             ("facets", facets.to_string()),
-            ("limit", "20".into()),
+            ("limit", limit.to_string()),
             ("offset", offset.to_string()),
-            (
-                "index",
-                if query.trim().is_empty() {
-                    "downloads"
-                } else {
-                    "relevance"
-                }
-                .into(),
-            ),
+            ("index", index.to_string()),
         ])
         .send()
         .await?

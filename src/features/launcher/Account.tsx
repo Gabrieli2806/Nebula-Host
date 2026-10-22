@@ -24,7 +24,7 @@ function Failure({ error }: { error: unknown }) {
  * Top right of the launcher: the primary account's face and name, and a menu
  * to switch account, add one, or sign out.
  */
-export function AccountMenu() {
+export function AccountMenu({ placement = "down" }: { placement?: "down" | "up" }) {
   const { t } = useI18n();
   const client = useQueryClient();
   const { accounts, primary } = usePrimaryAccount();
@@ -51,7 +51,7 @@ export function AccountMenu() {
   }, [open]);
 
   return (
-    <div className="launcher-account-menu" ref={box}>
+    <div className="launcher-account-menu" data-placement={placement} ref={box}>
       {primary ? (
         <button type="button" className="launcher-account-button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
           <PlayerHead name={primary.name} uuid={primary.id} size={24} />

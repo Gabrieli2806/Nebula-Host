@@ -116,6 +116,15 @@ pub async fn launcher_log_share(
     launcher::share_log(id, state.logs(id)).await
 }
 #[tauri::command]
+pub async fn launcher_change_version(
+    id: uuid::Uuid,
+    game_version: String,
+    loader: launcher::Loader,
+    loader_version: Option<String>,
+) -> AppResult<Profile> {
+    launcher::change_version(id, game_version, loader, loader_version).await
+}
+#[tauri::command]
 pub async fn launcher_set_memory(id: uuid::Uuid, memory_mb: u32) -> AppResult<Profile> {
     launcher::set_memory(id, memory_mb).await
 }
@@ -141,13 +150,15 @@ pub async fn launcher_search(
     query: String,
     kind: ContentKind,
     offset: u32,
+    limit: Option<u32>,
+    sort: Option<String>,
     instance: Option<uuid::Uuid>,
 ) -> AppResult<SearchResult> {
     let fit = match instance {
         Some(id) => Some(profile_by_id(id).await?),
         None => None,
     };
-    launcher::search(query, kind, offset, fit.as_ref()).await
+    launcher::search(query, kind, offset, limit.unwrap_or(20), sort, fit.as_ref()).await
 }
 #[tauri::command]
 pub async fn launcher_login_begin(
