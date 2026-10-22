@@ -188,6 +188,7 @@ export const en = {
     "desktopShortcut": "Create desktop shortcut",
     "desktopShortcutHelp": "A shortcut on your desktop that opens Nebula and starts this instance.",
     "desktopShortcutDone": "Shortcut created on your desktop.",
+    "javaProfile": "Minecraft Java profile",
     "viewProject": "View on Modrinth",
     "previous": "Previous",
     "next": "Next",

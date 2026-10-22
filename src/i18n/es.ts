@@ -188,6 +188,7 @@ export const es: Copy = {
     "desktopShortcut": "Crear acceso directo",
     "desktopShortcutHelp": "Un acceso directo en el escritorio que abre Nebula e inicia esta instancia.",
     "desktopShortcutDone": "Acceso directo creado en el escritorio.",
+    "javaProfile": "Perfil de Minecraft Java",
     "viewProject": "Ver en Modrinth",
     "previous": "Anterior",
     "next": "Siguiente",

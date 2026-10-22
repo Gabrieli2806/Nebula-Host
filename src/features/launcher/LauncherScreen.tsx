@@ -4,9 +4,10 @@
  * top right on a phone.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useLocation, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePrimaryAccount } from "./primaryAccount";
 
 import { useI18n } from "@/i18n";
 import { launcherApi, toAppError } from "@/lib/ipc";
@@ -38,6 +39,12 @@ function LauncherContent() {
   const [openId, setOpenId] = useState<string | null>(search.get("instance"));
   const profiles = useQuery({ queryKey: ["launcher", "profiles"], queryFn: launcherApi.profiles });
   const open = profiles.data?.find((profile) => profile.id === openId) ?? null;
+  // Fetch the skin early so the Skin tab opens with it ready.
+  const client = useQueryClient();
+  const { primary } = usePrimaryAccount();
+  useEffect(() => {
+    if (primary) void client.prefetchQuery({ queryKey: ["launcher", "skin", primary.id], queryFn: () => launcherApi.skin(primary.id), staleTime: 5 * 60_000 });
+  }, [primary, client]);
   if (IS_WEB) return <div className="launcher"><h1 className="display servers-node">Launcher</h1><p className="launcher-muted">{t("launcher.localOnly")}</p></div>;
 
   const shortcutError = location.state?.shortcutError;

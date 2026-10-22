@@ -200,7 +200,7 @@ export function AppShell() {
               <>
                 <AppNav />
                 {/* In the launcher the foot of the rail is the account, not the machine. */}
-                {pathname.startsWith("/launcher") ? (collapsed ? null : <div className="rail-account"><AccountMenu placement="up" /></div>) : collapsed ? <NodeMini /> : <NodeBlock />}
+                {pathname.startsWith("/launcher") ? <div className="rail-account" data-collapsed={collapsed ? "" : undefined}><AccountMenu placement="up" compact={collapsed} /></div> : collapsed ? <NodeMini /> : <NodeBlock />}
               </>
             )}
           </div>

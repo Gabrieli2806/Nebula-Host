@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useI18n } from "@/i18n";
@@ -24,13 +25,27 @@ function Failure({ error }: { error: unknown }) {
  * Top right of the launcher: the primary account's face and name, and a menu
  * to switch account, add one, or sign out.
  */
-export function AccountMenu({ placement = "down" }: { placement?: "down" | "up" }) {
+export function AccountMenu({ placement = "down", compact = false }: { placement?: "down" | "up"; compact?: boolean }) {
   const { t } = useI18n();
   const client = useQueryClient();
   const { accounts, primary } = usePrimaryAccount();
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const [where, setWhere] = useState<React.CSSProperties>({});
+  const toggle = () => {
+    // The menu lives in a portal (the sidebar clips overflow), placed from
+    // the button's position on screen.
+    const rect = trigger.current?.getBoundingClientRect();
+    if (rect) {
+      setWhere(placement === "up"
+        ? { left: rect.left, bottom: window.innerHeight - rect.top + 6 }
+        : { right: window.innerWidth - rect.right, top: rect.bottom + 6 });
+    }
+    setOpen(!open);
+  };
   const logout = useMutation({
     mutationFn: launcherApi.logout,
     onSuccess: () => client.invalidateQueries({ queryKey: [...ROOT, "accounts"] }),
@@ -39,7 +54,8 @@ export function AccountMenu({ placement = "down" }: { placement?: "down" | "up" 
   useEffect(() => {
     if (!open) return;
     const close = (event: PointerEvent) => {
-      if (!box.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (!box.current?.contains(target) && !pop.current?.contains(target)) setOpen(false);
     };
     const escape = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
     document.addEventListener("pointerdown", close);
@@ -53,16 +69,27 @@ export function AccountMenu({ placement = "down" }: { placement?: "down" | "up" 
   return (
     <div className="launcher-account-menu" data-placement={placement} ref={box}>
       {primary ? (
-        <button type="button" className="launcher-account-button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <button
+          ref={trigger}
+          type="button"
+          className="launcher-account-button"
+          data-compact={compact ? "" : undefined}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-label={compact ? primary.name : undefined}
+          title={compact ? primary.name : undefined}
+          onClick={toggle}
+        >
           <PlayerHead name={primary.name} uuid={primary.id} size={24} />
-          <span className="launcher-account-name">{primary.name}</span>
-          <Icon name="chevron-down" size={12} />
+          {compact ? null : <><span className="launcher-account-name">{primary.name}</span><Icon name="chevron-down" size={12} /></>}
         </button>
+      ) : compact ? (
+        <Button variant="primary" icon="users" iconOnly onClick={() => setAdding(true)}>{t("launcher.signIn")}</Button>
       ) : (
         <Button variant="primary" icon="external" onClick={() => setAdding(true)}>{t("launcher.signIn")}</Button>
       )}
-      {open ? (
-        <div className="launcher-account-popover" role="menu">
+      {open ? createPortal(
+        <div ref={pop} className="launcher-account-popover" role="menu" style={where}>
           {accounts.map((account) => (
             <div key={account.id} className="launcher-account-item">
               <button
@@ -86,7 +113,8 @@ export function AccountMenu({ placement = "down" }: { placement?: "down" | "up" 
             <span>{t("launcher.addAccount")}</span>
           </button>
           <Failure error={logout.error} />
-        </div>
+        </div>,
+        document.body,
       ) : null}
       {adding ? <SignInDialog onClose={() => setAdding(false)} /> : null}
     </div>
@@ -128,14 +156,7 @@ export function SkinTab() {
     );
   }
   return (
-    <Panel bodyClassName="launcher-panel-body" key={primary.id}>
-      <div className="launcher-profile">
-        <PlayerHead name={primary.name} uuid={primary.id} size={48} />
-        <div className="launcher-profile-text">
-          <strong>{primary.name}</strong>
-          <span className="launcher-muted"><Icon name="check" size={12} /> {t("launcher.verified")}</span>
-        </div>
-      </div>
+    <Panel title={t("launcher.javaProfile")} bodyClassName="launcher-panel-body" key={primary.id}>
       <SkinEditor account={primary} />
     </Panel>
   );
@@ -245,7 +266,10 @@ function SkinEditor({ account }: { account: LauncherAccount }) {
   const src = pending?.preview ?? skin.data?.url ?? null;
   return (
     <div className="launcher-skin">
-      <SkinPreview src={src} slim={variant} cape={activeCape?.url ?? null} />
+      <div className="launcher-skin-stage">
+        <SkinPreview src={src} slim={variant} cape={activeCape?.url ?? null} />
+        {skin.isPending ? <span className="launcher-skin-loading" role="status" aria-label={t("launcher.loading")}><span className="launcher-spinner" /></span> : null}
+      </div>
       <div className="launcher-skin-side">
         <span className="label">{t("launcher.skin")}</span>
         <Segmented
