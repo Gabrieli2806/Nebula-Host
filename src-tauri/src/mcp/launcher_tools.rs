@@ -376,7 +376,8 @@ pub async fn call(name: &str, args: &Value) -> AppResult<String> {
                     .filter(|e| e.file_name().to_string_lossy().ends_with(".txt"))
                     .max_by_key(|e| e.metadata().and_then(|m| m.modified()).ok());
                 let Some(entry) = newest else { return Ok("No crash reports for this instance.".into()) };
-                let text = crate::service::logs::read_tail(&entry.path()).await?;
+                let raw = crate::service::logs::read_tail(&entry.path()).await?;
+                let text = raw.lines().map(launcher::client::redact_line).collect::<Vec<_>>().join("\n");
                 return Ok(format!("{}\n\n{}", entry.file_name().to_string_lossy(), tail(&text, lines, errors_only)));
             }
             let latest = dir.join("logs").join("latest.log");
@@ -496,6 +497,12 @@ pub async fn call(name: &str, args: &Value) -> AppResult<String> {
             if args.get("install_only").and_then(Value::as_bool).unwrap_or(false) {
                 engine.start(profile.clone(), None).await?;
                 return Ok(format!("Checking and installing `{}`. Poll launcher_get_instance.", profile.name));
+            }
+            // Playing with the account is a separate, opt-in permission.
+            if !crate::store::settings::load().map(|s| s.mcp_launcher_play).unwrap_or(false) {
+                return Err(AppError::new(ErrorCode::InvalidInput).detail(
+                    "Starting the game with the user's account is off for assistants. The user can allow it in Settings → AI assistants (MCP) → \"Let assistants start the game\". install_only still works.",
+                ));
             }
             let accounts = auth.accounts().await;
             let account = match args.get("account").and_then(Value::as_str) {

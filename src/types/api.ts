@@ -726,6 +726,7 @@ export interface McpStatus {
   enabled: boolean;
   running: boolean;
   readOnly: boolean;
+  launcherPlay: boolean;
   port: number;
   url: string;
   token?: string | null;

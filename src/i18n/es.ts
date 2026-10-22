@@ -552,6 +552,8 @@ export const es: Copy = {
     enable: "Permitir asistentes de IA",
     enableHelp: "Abre un endpoint MCP local solo en este equipo (127.0.0.1), protegido con un token.",
     readOnly: "Solo lectura",
+    launcherPlay: "Permitir que los asistentes inicien el juego",
+    launcherPlayHelp: "Deja que un asistente abra Minecraft con tu cuenta. Déjalo desactivado salvo que confíes en el asistente: junto con instalar jars podría ejecutar código que tenga acceso a tu sesión.",
     readOnlyHelp: "Los asistentes pueden consultar y diagnosticar, pero no arrancar, detener, crear ni cambiar nada.",
     running: "Endpoint activo",
     notRunning: "Endpoint detenido",

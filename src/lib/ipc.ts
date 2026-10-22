@@ -489,8 +489,8 @@ export const api = {
 
   mcp: {
     status: () => call<McpStatus>("mcp_status"),
-    configure: (enabled: boolean, readOnly: boolean, port?: number) =>
-      call<McpStatus>("mcp_configure", { enabled, readOnly, port }),
+    configure: (enabled: boolean, readOnly: boolean, port?: number, launcherPlay?: boolean) =>
+      call<McpStatus>("mcp_configure", { enabled, readOnly, port, launcherPlay }),
     regenerateToken: () => call<McpStatus>("mcp_regenerate_token"),
   },
 

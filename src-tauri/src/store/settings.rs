@@ -45,6 +45,11 @@ pub struct AppSettings {
     pub mcp_token: Option<String>,
     /// Let MCP clients read, but refuse every tool that changes something.
     pub mcp_read_only: bool,
+    /// Let MCP clients start the game signed in with the user's account. Off
+    /// by default and separate from read-only: an assistant that can install
+    /// a jar and then launch with the account could run code holding the
+    /// account's session.
+    pub mcp_launcher_play: bool,
     /// Let other devices on the LAN pair with and control this machine.
     pub remote_enabled: bool,
     /// Port for the remote API.
@@ -71,6 +76,7 @@ impl Default for AppSettings {
             mcp_port: 47391,
             mcp_token: None,
             mcp_read_only: false,
+            mcp_launcher_play: false,
             remote_enabled: false,
             remote_port: crate::remote::DEFAULT_PORT,
             web_panel: false,

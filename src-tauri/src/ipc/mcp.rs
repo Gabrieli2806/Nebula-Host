@@ -22,10 +22,14 @@ pub async fn mcp_configure(
     enabled: bool,
     read_only: bool,
     port: Option<u16>,
+    launcher_play: Option<bool>,
 ) -> AppResult<McpStatus> {
     let mut config = settings::load()?;
     config.mcp_enabled = enabled;
     config.mcp_read_only = read_only;
+    if let Some(play) = launcher_play {
+        config.mcp_launcher_play = play;
+    }
     if let Some(port) = port.filter(|p| *p >= 1024) {
         config.mcp_port = port;
     }

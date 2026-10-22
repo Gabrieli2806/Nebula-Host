@@ -552,6 +552,8 @@ export const en = {
     enable: "Allow AI assistants",
     enableHelp: "Serves a local MCP endpoint on this PC only (127.0.0.1), protected by a token.",
     readOnly: "Read-only",
+    launcherPlay: "Let assistants start the game",
+    launcherPlayHelp: "Lets an assistant launch Minecraft signed in with your account. Leave off unless you trust the assistant: together with installing jars it could run code that holds your session.",
     readOnlyHelp: "Assistants can look and diagnose, but cannot start, stop, create or change anything.",
     running: "Endpoint running",
     notRunning: "Endpoint not running",

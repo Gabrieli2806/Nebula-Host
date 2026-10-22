@@ -72,7 +72,8 @@ export function McpSettings() {
 
   const set = (data: McpStatus) => client.setQueryData(KEY, data);
   const configure = useMutation({
-    mutationFn: (next: { enabled: boolean; readOnly: boolean }) => api.mcp.configure(next.enabled, next.readOnly),
+    mutationFn: (next: { enabled: boolean; readOnly: boolean; launcherPlay?: boolean }) =>
+      api.mcp.configure(next.enabled, next.readOnly, undefined, next.launcherPlay),
     onSuccess: set,
   });
   const regenerate = useMutation({ mutationFn: api.mcp.regenerateToken, onSuccess: set });
@@ -128,6 +129,25 @@ export function McpSettings() {
               </span>
             </label>
           </div>
+
+          {!data.readOnly ? (
+            <div className="settings-row" data-switch="">
+              <label className="settings-row-hit">
+                <span className="settings-row-text">
+                  <span className="settings-row-label">{t("mcp.launcherPlay")}</span>
+                  <span className="settings-row-help">{t("mcp.launcherPlayHelp")}</span>
+                </span>
+                <span className="settings-row-control">
+                  <Switch
+                    checked={data.launcherPlay}
+                    disabled={configure.isPending}
+                    onChange={(launcherPlay) => configure.mutate({ enabled: true, readOnly: data.readOnly, launcherPlay })}
+                    label={t("mcp.launcherPlay")}
+                  />
+                </span>
+              </label>
+            </div>
+          ) : null}
 
           <div className="mcp-status" data-running={data.running ? "" : undefined}>
             <span className="mcp-status-dot" aria-hidden="true" />
