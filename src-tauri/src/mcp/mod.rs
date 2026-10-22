@@ -17,6 +17,7 @@
 //! - `mcp_read_only` refuses every tool that changes something.
 
 mod diagnose;
+mod launcher_tools;
 mod tools;
 
 use std::net::{Ipv4Addr, SocketAddr};

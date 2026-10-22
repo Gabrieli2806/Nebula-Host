@@ -79,9 +79,12 @@ pub fn run() {
     })) };
 
     launcher::media::note_args(std::env::args());
+    let launcher_auth = launcher::auth::AuthState::default();
+    let launcher_engine = Arc::new(launcher::client::ClientEngine::default());
+    let _ = launcher::ENGINES.set((launcher_engine.clone(), launcher_auth.clone()));
     builder
-        .manage(launcher::auth::AuthState::default())
-        .manage(Arc::new(launcher::client::ClientEngine::default()))
+        .manage(launcher_auth)
+        .manage(launcher_engine)
         .setup(move |app| {
             if launcher_preview {
                 if let Some(window) = app.get_webview_window("main") {

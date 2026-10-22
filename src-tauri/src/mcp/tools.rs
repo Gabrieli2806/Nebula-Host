@@ -24,7 +24,11 @@ Use list_servers first to find a server; every server argument accepts the serve
 When a server will not start or has crashed, call diagnose_server: it returns the latest console errors, \
 the newest crash report and known-problem hints, which you can use to explain the cause and suggest a fix. \
 Prefer explaining and asking before destructive changes. Creating a server downloads files and takes a minute; \
-poll get_server until status is offline (installed) before starting it.";
+poll get_server until status is offline (installed) before starting it. \
+The launcher_* tools manage Minecraft instances the user plays on this device: create instances, search and install mods/resource packs/shaders \
+from Modrinth, check updates and compatibility after a version change, change an instance's version, start or stop the game, and read its log \
+or newest crash report. For mod development, launcher_install_local_file copies a freshly built jar into a test instance; \
+launcher_set_content_enabled helps bisect which mod breaks the game.";
 
 struct Tool {
     name: &'static str,
@@ -239,6 +243,7 @@ fn catalog() -> Vec<Tool> {
 pub fn definitions(read_only: bool) -> Vec<Value> {
     catalog()
         .into_iter()
+        .chain(launcher_catalog())
         .filter(|tool| !(read_only && tool.mutates))
         .map(|tool| {
             json!({
@@ -248,8 +253,8 @@ pub fn definitions(read_only: bool) -> Vec<Value> {
                 "inputSchema": tool.schema,
                 "annotations": {
                     "readOnlyHint": !tool.mutates,
-                    "destructiveHint": false,
-                    "openWorldHint": tool.name.contains("addon") || tool.name == "list_versions" || tool.name == "create_server",
+                    "destructiveHint": tool.name == "launcher_remove_content",
+                    "openWorldHint": tool.name.contains("addon") || tool.name.contains("content") || tool.name.contains("version") || tool.name == "create_server" || tool.name == "launcher_install_modpack",
                 }
             })
         })
@@ -330,13 +335,28 @@ fn summary(view: &InstanceView) -> Value {
     })
 }
 
+/// The launcher tools in this module's shape.
+fn launcher_catalog() -> impl Iterator<Item = Tool> {
+    super::launcher_tools::catalog().into_iter().map(|t| Tool {
+        name: t.name,
+        title: t.title,
+        description: t.description,
+        schema: t.schema,
+        mutates: t.mutates,
+    })
+}
+
 pub async fn call(service: &Arc<InstanceService>, read_only: bool, name: &str, args: &Value) -> AppResult<String> {
-    let Some(tool) = catalog().into_iter().find(|t| t.name == name) else {
+    let Some(tool) = catalog().into_iter().chain(launcher_catalog()).find(|t| t.name == name) else {
         return Err(invalid(&format!("unknown tool `{name}`")));
     };
     if read_only && tool.mutates {
         return Err(AppError::new(ErrorCode::InvalidInput)
             .detail("Nebula Host's MCP access is read-only. The user can allow changes in Settings → AI assistants (MCP)."));
+    }
+
+    if name.starts_with("launcher_") {
+        return super::launcher_tools::call(name, args).await;
     }
 
     match name {

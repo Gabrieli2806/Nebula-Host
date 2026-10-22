@@ -5,6 +5,10 @@ mod vault;
 pub mod client;
 pub mod content;
 pub mod media;
+
+/// The running launcher's game engine and sign-ins, for the MCP tools (set
+/// once by the desktop app at start; absent in the headless node).
+pub static ENGINES: std::sync::OnceLock<(std::sync::Arc<client::ClientEngine>, auth::AuthState)> = std::sync::OnceLock::new();
 pub mod loaders;
 #[cfg(all(target_os = "android", feature = "desktop"))]
 pub mod android;

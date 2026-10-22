@@ -568,7 +568,7 @@ export const en = {
     setupHelp_claudeDesktop: "Add this to claude_desktop_config.json (Settings › Developer › Edit config) and restart Claude Desktop. Requires Node.js.",
     setupHelp_cursor: "For Cursor, VS Code and other clients that support MCP over HTTP: add this to their MCP configuration.",
     toolsTitle: "What assistants can do",
-    toolsList: "List servers, details and machine status · read the console · diagnose crashes (recent errors, newest crash report, known-problem hints) · players and game settings · files (read) · backups · Modrinth search and installed mods/plugins · start, stop, restart · run console commands · create servers · change memory and game settings · make backups · install mods/plugins. Deleting servers is never available.",
+    toolsList: "List servers, details and machine status · read the console · diagnose crashes (recent errors, newest crash report, known-problem hints) · players and game settings · files (read) · backups · Modrinth search and installed mods/plugins · start, stop, restart · run console commands · create servers · change memory and game settings · make backups · install mods/plugins. Deleting servers is never available. Launcher: list and create instances, search and install mods/resource packs/shaders, install a local jar (mod development), check updates and compatibility, change version or memory, turn content on/off, start/stop the game and read its log or crash report.",
   },
 
   common: {

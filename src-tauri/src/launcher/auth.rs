@@ -13,9 +13,10 @@ use tokio::sync::Mutex;
 
 const AUTH: &str = "https://login.microsoftonline.com/consumers/oauth2/v2.0";
 
-#[derive(Default)]
+/// Cheap to clone: clones share the same sessions (the UI and the MCP tools).
+#[derive(Default, Clone)]
 pub struct AuthState {
-    inner: Mutex<Inner>,
+    inner: std::sync::Arc<Mutex<Inner>>,
 }
 #[derive(Default)]
 struct Inner {

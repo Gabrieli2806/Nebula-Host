@@ -568,7 +568,7 @@ export const es: Copy = {
     setupHelp_claudeDesktop: "Añade esto a claude_desktop_config.json (Ajustes › Desarrollador › Editar configuración) y reinicia Claude Desktop. Requiere Node.js.",
     setupHelp_cursor: "Para Cursor, VS Code y otros clientes con MCP por HTTP: añádelo a su configuración MCP.",
     toolsTitle: "Qué pueden hacer los asistentes",
-    toolsList: "Listar servidores, detalles y estado del equipo · leer la consola · diagnosticar errores (errores recientes, último crash report, pistas de problemas conocidos) · jugadores y ajustes del juego · archivos (lectura) · copias de seguridad · buscar en Modrinth y ver mods/plugins instalados · arrancar, detener, reiniciar · ejecutar comandos · crear servidores · cambiar memoria y ajustes del juego · hacer copias · instalar mods/plugins. Eliminar servidores nunca está disponible.",
+    toolsList: "Listar servidores, detalles y estado del equipo · leer la consola · diagnosticar errores (errores recientes, último crash report, pistas de problemas conocidos) · jugadores y ajustes del juego · archivos (lectura) · copias de seguridad · buscar en Modrinth y ver mods/plugins instalados · arrancar, detener, reiniciar · ejecutar comandos · crear servidores · cambiar memoria y ajustes del juego · hacer copias · instalar mods/plugins. Eliminar servidores nunca está disponible. Launcher: listar y crear instancias, buscar e instalar mods/resource packs/shaders, instalar un jar local (desarrollo de mods), revisar actualizaciones y compatibilidad, cambiar versión o memoria, activar/desactivar contenido, iniciar/detener el juego y leer su registro o informe de fallo.",
   },
 
   common: {
