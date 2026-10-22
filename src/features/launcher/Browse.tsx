@@ -56,7 +56,7 @@ export function Browse({
   }, [query]);
 
   const results = useQuery({
-    queryKey: ["launcher", "search", searchKind, debounced, sort, offset, PAGE, profile?.id],
+    queryKey: ["launcher", "search", searchKind, debounced, sort, offset, PAGE, profile?.id, profile?.game_version, profile?.loader],
     queryFn: () => launcherApi.search({ query: debounced, kind: searchKind, offset, limit: PAGE, sort, instance: profile?.id }),
     staleTime: 120_000,
     // Keep the current page on screen while the next one loads: no flash.

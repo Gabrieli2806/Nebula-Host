@@ -13,4 +13,8 @@ export interface DeviceLogin { id: string; user_code: string; verification_uri: 
 export type LoginResult = { status: "pending"; interval: number } | { status: "complete"; account: LauncherAccount };
 export interface LauncherProject { project_id: string; slug: string; title: string; description: string; author: string; downloads: number; project_type: string; icon_url: string | null; categories?: string[]; date_modified?: string | null; follows?: number }
 export interface LauncherSearch { hits: LauncherProject[]; total_hits: number }
+export interface ContentStatus {
+  kind: Exclude<ContentKind, "modpack">; file: string; project_id: string | null; title: string | null; icon_url: string | null;
+  version: string | null; compatible: boolean; update: { version_id: string; version_number: string; file_name: string } | null;
+}
 export interface InstalledContent { kind: Exclude<ContentKind, "modpack">; file: string; size: number; enabled: boolean; project_id: string | null }

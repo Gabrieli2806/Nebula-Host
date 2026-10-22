@@ -258,6 +258,14 @@ pub async fn launcher_content_install(id: uuid::Uuid, project_id: String, kind: 
 }
 
 #[tauri::command]
+pub async fn launcher_content_check(id: uuid::Uuid) -> AppResult<Vec<launcher::content::ContentStatus>> {
+    launcher::content::check(&profile_by_id(id).await?).await
+}
+#[tauri::command]
+pub async fn launcher_content_update(id: uuid::Uuid, kind: ContentKind, file: String, version_id: String) -> AppResult<String> {
+    launcher::content::update(&profile_by_id(id).await?, kind, &file, &version_id).await
+}
+#[tauri::command]
 pub async fn launcher_content_remove(id: uuid::Uuid, kind: ContentKind, file: String) -> AppResult<()> {
     launcher::content::remove(&profile_by_id(id).await?, kind, &file)
 }

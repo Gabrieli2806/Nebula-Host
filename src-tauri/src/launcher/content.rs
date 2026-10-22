@@ -612,3 +612,163 @@ mod tests {
         assert!(project_ref("").is_err());
     }
 }
+
+// -- updates and compatibility --------------------------------------------------
+
+/// What Modrinth says about one installed file, for this instance's version
+/// and loader.
+#[derive(Serialize)]
+pub struct ContentStatus {
+    pub kind: &'static str,
+    pub file: String,
+    pub project_id: Option<String>,
+    pub title: Option<String>,
+    pub icon_url: Option<String>,
+    /// The installed version's number, when Modrinth knows the file.
+    pub version: Option<String>,
+    /// False when the installed version is not made for this Minecraft
+    /// version (or, for mods, this loader).
+    pub compatible: bool,
+    /// A newer file that fits, when there is one.
+    pub update: Option<UpdateOffer>,
+}
+#[derive(Serialize)]
+pub struct UpdateOffer {
+    pub version_id: String,
+    pub version_number: String,
+    pub file_name: String,
+}
+
+fn sha1_of(path: &Path) -> Option<String> {
+    use sha1::{Digest, Sha1};
+    let mut file = std::fs::File::open(path).ok()?;
+    let mut digest = Sha1::new();
+    let mut buffer = [0u8; 65536];
+    loop {
+        let count = file.read(&mut buffer).ok()?;
+        if count == 0 {
+            break;
+        }
+        digest.update(&buffer[..count]);
+    }
+    Some(digest.finalize().iter().map(|b| format!("{b:02x}")).collect())
+}
+
+/// Look every installed file up on Modrinth by its hash (so even jars added
+/// by hand are recognised), then ask which newer file fits this instance.
+pub async fn check(profile: &Profile) -> AppResult<Vec<ContentStatus>> {
+    let installed = list(profile)?;
+    let root = profile_dir(profile)?;
+    let mut hashes: Vec<(String, &Installed)> = Vec::new();
+    for item in &installed {
+        let dir = KINDS.iter().find(|(kind, _, _)| *kind == item.kind).map(|(_, _, dir)| *dir).unwrap_or("mods");
+        let path = root.join(dir).join(&item.file);
+        let item_ref = item;
+        if let Some(hash) = tokio::task::spawn_blocking(move || sha1_of(&path)).await.map_err(AppError::unexpected)? {
+            hashes.push((hash, item_ref));
+        }
+    }
+    if hashes.is_empty() {
+        return Ok(Vec::new());
+    }
+    let client = crate::game::http_client();
+    let all: Vec<&str> = hashes.iter().map(|(h, _)| h.as_str()).collect();
+    let known: Value = client
+        .post(format!("{API}/version_files"))
+        .json(&serde_json::json!({ "hashes": all, "algorithm": "sha1" }))
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    let mut updates = serde_json::Map::new();
+    for (kind, content_kind, _) in KINDS {
+        let group: Vec<&str> = hashes.iter().filter(|(_, i)| i.kind == kind).map(|(h, _)| h.as_str()).collect();
+        if group.is_empty() {
+            continue;
+        }
+        let mut body = serde_json::json!({ "hashes": group, "algorithm": "sha1", "game_versions": [profile.game_version] });
+        if matches!(content_kind, ContentKind::Mod) {
+            match loader_name(&profile.loader) {
+                Some(loader) => body["loaders"] = serde_json::json!([loader]),
+                None => continue,
+            }
+        }
+        let answer: Value = client
+            .post(format!("{API}/version_files/update"))
+            .json(&body)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        if let Value::Object(map) = answer {
+            updates.extend(map);
+        }
+    }
+    // Project titles and icons in one request.
+    let ids: Vec<String> = known
+        .as_object()
+        .map(|m| m.values().filter_map(|v| v["project_id"].as_str().map(String::from)).collect::<HashSet<_>>().into_iter().collect())
+        .unwrap_or_default();
+    let projects: Value = if ids.is_empty() {
+        Value::Array(Vec::new())
+    } else {
+        get_json(&format!("{API}/projects"), &[("ids", serde_json::json!(ids).to_string())]).await?
+    };
+    let project = |id: &str| projects.as_array().and_then(|list| list.iter().find(|p| p["id"] == id)).cloned();
+
+    let loader = loader_name(&profile.loader);
+    let mut out = Vec::new();
+    for (hash, item) in &hashes {
+        let current = &known[hash.as_str()];
+        let project_id = current["project_id"].as_str().map(String::from).or_else(|| item.project_id.clone());
+        let fits_version = current["game_versions"].as_array().is_some_and(|v| v.iter().any(|g| g == profile.game_version.as_str()));
+        let fits_loader = item.kind != "mod"
+            || loader.is_some_and(|l| current["loaders"].as_array().is_some_and(|v| v.iter().any(|x| x == l)));
+        let known_file = current.is_object();
+        let update = updates.get(hash.as_str()).and_then(|next| {
+            if next["id"] == current["id"] {
+                return None;
+            }
+            let file = next["files"].as_array()?.iter().find(|f| f["primary"] == true).or_else(|| next["files"].as_array()?.first())?;
+            Some(UpdateOffer {
+                version_id: next["id"].as_str()?.into(),
+                version_number: next["version_number"].as_str().unwrap_or_default().into(),
+                file_name: file["filename"].as_str()?.into(),
+            })
+        });
+        let info = project_id.as_deref().and_then(project);
+        out.push(ContentStatus {
+            kind: item.kind,
+            file: item.file.clone(),
+            project_id,
+            title: info.as_ref().and_then(|p| p["title"].as_str().map(String::from)),
+            icon_url: info.as_ref().and_then(|p| p["icon_url"].as_str().map(String::from)),
+            version: current["version_number"].as_str().map(String::from),
+            // Unknown files are not called incompatible: there is nothing to go on.
+            compatible: !known_file || (fits_version && fits_loader),
+            update,
+        });
+    }
+    Ok(out)
+}
+
+/// Replace an installed file with the given Modrinth version (from `check`),
+/// keeping it switched off if it was off.
+pub async fn update(profile: &Profile, kind: ContentKind, file: &str, version_id: &str) -> AppResult<String> {
+    let old = existing(profile, kind, file)?;
+    let version = get_json(&format!("{API}/version/{}", project_ref(version_id)?), &[]).await?;
+    let next = primary_file(&version)?;
+    let disabled = file.ends_with(".disabled");
+    let name = if disabled { format!("{}.disabled", next.name) } else { next.name.clone() };
+    let target = profile_dir(profile)?.join(folder(kind)?).join(&name);
+    download(&next, &target).await?;
+    if target != old {
+        let _ = std::fs::remove_file(&old);
+    }
+    if let Some(id) = version["project_id"].as_str() {
+        record_sources(profile, &[(next.name.clone(), id.to_string())])?;
+    }
+    Ok(name)
+}

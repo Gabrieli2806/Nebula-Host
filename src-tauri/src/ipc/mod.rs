@@ -80,6 +80,8 @@ macro_rules! ipc_handlers {
             $crate::ipc::launcher::launcher_set_cape,
             $crate::ipc::launcher::launcher_set_memory,
             $crate::ipc::launcher::launcher_change_version,
+            $crate::ipc::launcher::launcher_content_check,
+            $crate::ipc::launcher::launcher_content_update,
             $crate::ipc::launcher::launcher_update_details,
             $crate::ipc::launcher::launcher_log_share,
             // node
