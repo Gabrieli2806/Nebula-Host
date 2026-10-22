@@ -132,6 +132,8 @@ export const es: Copy = {
     "cape": "Capa",
     "noCape": "Sin capa",
     "noCapesOwned": "Esta cuenta no tiene capas",
+    "installedTag": "Instalado",
+    "fitsInstance": "Mostrando lo compatible con Minecraft {version} · {loader}.",
     "viewProject": "Ver en Modrinth",
     "previous": "Anterior",
     "next": "Siguiente",

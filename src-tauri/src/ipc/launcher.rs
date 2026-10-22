@@ -126,8 +126,13 @@ pub async fn launcher_search(
     query: String,
     kind: ContentKind,
     offset: u32,
+    instance: Option<uuid::Uuid>,
 ) -> AppResult<SearchResult> {
-    launcher::search(query, kind, offset).await
+    let fit = match instance {
+        Some(id) => Some(profile_by_id(id).await?),
+        None => None,
+    };
+    launcher::search(query, kind, offset, fit.as_ref()).await
 }
 #[tauri::command]
 pub async fn launcher_login_begin(

@@ -72,6 +72,10 @@ fn profile_dir(profile: &Profile) -> AppResult<PathBuf> {
     Ok(client::directory()?.join("profiles").join(profile.id.to_string()))
 }
 
+pub(super) fn loader_tag(loader: &Loader) -> Option<&'static str> {
+    loader_name(loader)
+}
+
 fn loader_name(loader: &Loader) -> Option<&'static str> {
     match loader {
         Loader::Fabric => Some("fabric"),
@@ -90,6 +94,36 @@ pub struct Installed {
     pub file: String,
     pub size: u64,
     pub enabled: bool,
+    /// The Modrinth project the file came from, when Nebula installed it.
+    pub project_id: Option<String>,
+}
+
+/// Which Modrinth project each installed file came from, so Discover can say
+/// "Installed". Keyed by file name without the `.disabled` suffix.
+fn sources_path(profile: &Profile) -> AppResult<PathBuf> {
+    Ok(profile_dir(profile)?.join(".nebula-content.json"))
+}
+fn read_sources(profile: &Profile) -> std::collections::BTreeMap<String, String> {
+    sources_path(profile)
+        .ok()
+        .and_then(|path| std::fs::read(path).ok())
+        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+        .unwrap_or_default()
+}
+fn record_sources(profile: &Profile, files: &[(String, String)]) -> AppResult<()> {
+    if files.is_empty() {
+        return Ok(());
+    }
+    let mut sources = read_sources(profile);
+    for (file, project) in files {
+        sources.insert(file.clone(), project.clone());
+    }
+    let path = sources_path(profile)?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(path, serde_json::to_vec_pretty(&sources)?)?;
+    Ok(())
 }
 
 const KINDS: [(&str, ContentKind, &str); 3] = [
@@ -100,6 +134,7 @@ const KINDS: [(&str, ContentKind, &str); 3] = [
 
 pub fn list(profile: &Profile) -> AppResult<Vec<Installed>> {
     let root = profile_dir(profile)?;
+    let sources = read_sources(profile);
     let mut out = Vec::new();
     for (kind, _, dir) in KINDS {
         let Ok(entries) = std::fs::read_dir(root.join(dir)) else { continue };
@@ -110,7 +145,8 @@ pub fn list(profile: &Profile) -> AppResult<Vec<Installed>> {
                 continue;
             }
             let enabled = !name.ends_with(".disabled");
-            out.push(Installed { kind, file: name, size: meta.len(), enabled });
+            let project_id = sources.get(name.trim_end_matches(".disabled")).cloned();
+            out.push(Installed { kind, file: name, size: meta.len(), enabled, project_id });
         }
     }
     out.sort_by(|a, b| a.kind.cmp(b.kind).then_with(|| a.file.to_lowercase().cmp(&b.file.to_lowercase())));
@@ -307,6 +343,7 @@ pub async fn install(profile: &Profile, project: &str, kind: ContentKind) -> App
     let root = profile_dir(profile)?;
     let mut added = Vec::new();
     let mut seen = HashSet::new();
+    let mut sources = Vec::new();
     let mut queue = vec![(project.to_string(), kind, 0u8)];
     while let Some((project, kind, depth)) = queue.pop() {
         if !seen.insert(project.clone()) {
@@ -315,7 +352,10 @@ pub async fn install(profile: &Profile, project: &str, kind: ContentKind) -> App
         let version = best_version(profile, &project, kind).await?;
         let file = primary_file(&version)?;
         let target = root.join(folder(kind)?).join(&file.name);
-        if !target.exists() {
+        if let Some(id) = version["project_id"].as_str() {
+            sources.push((file.name.clone(), id.to_string()));
+        }
+        if !target.exists() && !target.with_file_name(format!("{}.disabled", file.name)).exists() {
             download(&file, &target).await?;
             added.push(file.name.clone());
         }
@@ -331,6 +371,7 @@ pub async fn install(profile: &Profile, project: &str, kind: ContentKind) -> App
             }
         }
     }
+    record_sources(profile, &sources)?;
     Ok(added)
 }
 

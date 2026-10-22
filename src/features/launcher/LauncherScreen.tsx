@@ -118,7 +118,12 @@ function Discover({ target, onOpenInstance }: { target: { profile: LauncherProfi
   });
   const done = install.data;
   const [offset, setOffset] = useState(0);
-  const result = useQuery({ queryKey: [...ROOT, "search", query, kind, offset], queryFn: () => launcherApi.search(query, kind, offset), staleTime: 120_000 });
+  // Like the server add-ons: with an instance chosen, only what fits it is
+  // listed, and what it already has says so.
+  const fit = canInstall && kind !== "modpack" ? chosen?.id : undefined;
+  const result = useQuery({ queryKey: [...ROOT, "search", query, kind, offset, fit], queryFn: () => launcherApi.search(query, kind, offset, fit), staleTime: 120_000 });
+  const installed = useQuery({ queryKey: [...ROOT, "content", fit], queryFn: () => launcherApi.contentList(fit!), enabled: !!fit });
+  const installedIds = new Set((installed.data ?? []).map(item => item.project_id).filter(Boolean));
   const [openError, setOpenError] = useState(false);
   return <>
     <div className="servers-toolbar launcher-toolbar">
@@ -136,6 +141,7 @@ function Discover({ target, onOpenInstance }: { target: { profile: LauncherProfi
             {profiles.data?.map(p => <option key={p.id} value={p.id}>{p.name} · {p.game_version} · {p.loader}</option>)}
           </Select>
         </label>) : null}
+    {fit && chosen ? <p className="launcher-muted">{t("launcher.fitsInstance", { version: chosen.game_version, loader: chosen.loader })}</p> : null}
     {canInstall && kind !== "modpack" && profiles.data?.length === 0 ? <p className="launcher-notice">{t("launcher.createInstanceFirst")}</p> : null}
     {canInstall ? null : <p className="launcher-muted">{t("launcher.catalogNote")}</p>}
     {install.error ? <Failure error={install.error} /> : null}
@@ -150,12 +156,14 @@ function Discover({ target, onOpenInstance }: { target: { profile: LauncherProfi
         <span className="launcher-project-icon" aria-hidden="true">{project.icon_url?.startsWith("https://") ? <img src={project.icon_url} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <Icon name={kind === "shader" ? "sun" : kind === "resourcepack" ? "image" : "puzzle"} size={18} />}</span>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <h3 className="launcher-project-title" title={project.title}>{project.title}</h3>
-          <div className="server-card-tags"><span className="tag">{project.author}</span><span className="tag">{new Intl.NumberFormat(undefined, { notation: "compact" }).format(project.downloads)} {t("launcher.downloads")}</span></div>
+          <div className="server-card-tags">{installedIds.has(project.project_id) ? <span className="tag" data-tone="accent"><Icon name="check" size={11} /> {t("launcher.installedTag")}</span> : null}<span className="tag">{project.author}</span><span className="tag">{new Intl.NumberFormat(undefined, { notation: "compact" }).format(project.downloads)} {t("launcher.downloads")}</span></div>
         </div>
       </header>
       <p className="launcher-description">{project.description}</p>
       <div className="launcher-actions">
-        {canInstall ? <Button variant="primary" icon={kind === "modpack" ? "plus" : "download"} disabled={install.isPending || (kind !== "modpack" && !chosen)} onClick={() => install.mutate(project)}>{install.isPending && install.variables?.project_id === project.project_id ? t("launcher.installing") : t(kind === "modpack" ? "launcher.createFromPack" : "launcher.install")}</Button> : null}
+        {canInstall && installedIds.has(project.project_id)
+          ? <Button icon="check" disabled>{t("launcher.installedTag")}</Button>
+          : canInstall ? <Button variant="primary" icon={kind === "modpack" ? "plus" : "download"} disabled={install.isPending || (kind !== "modpack" && !chosen)} onClick={() => install.mutate(project)}>{install.isPending && install.variables?.project_id === project.project_id ? t("launcher.installing") : t(kind === "modpack" ? "launcher.createFromPack" : "launcher.install")}</Button> : null}
         <Button icon="external" iconOnly title={t("launcher.viewProject")} onClick={() => { void openExternal(`https://modrinth.com/project/${encodeURIComponent(project.project_id)}`).then(ok => setOpenError(!ok)); }}>{t("launcher.viewProject")}</Button>
       </div>
     </article>)}</div>

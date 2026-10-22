@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/i18n";
 import { openExternal } from "@/lib/external";
 import { launcherApi, toAppError } from "@/lib/ipc";
-import { Button, ErrorNotice, Icon, Panel, PlayerHead, Segmented, Select } from "@/ui";
+import { Button, ErrorNotice, Icon, Panel, PlayerHead, Segmented } from "@/ui";
 import { SkinViewer } from "skinview3d";
 import type { DeviceLogin, LauncherAccount } from "./types";
 
@@ -167,6 +167,8 @@ function SkinEditor({ account }: { account: LauncherAccount }) {
   const cape = useMutation({
     mutationFn: (capeId: string | null) => launcherApi.setCape(account.id, capeId),
     onSuccess: (data) => client.setQueryData(key, data),
+    // Re-read what Minecraft actually has, so the grid never shows a wrong pick.
+    onError: () => void client.invalidateQueries({ queryKey: key }),
   });
   const capes = skin.data?.capes ?? [];
   const activeCape = capes.find((c) => c.active) ?? null;
@@ -196,21 +198,61 @@ function SkinEditor({ account }: { account: LauncherAccount }) {
           ) : null}
         </div>
         <p className="launcher-muted">{t("launcher.skinHelp")}</p>
-        <label className="launcher-field">
-          <span className="label">{t("launcher.cape")}</span>
-          <Select
-            value={activeCape?.id ?? ""}
-            disabled={cape.isPending || !capes.length}
-            onChange={(e) => cape.mutate(e.target.value || null)}
-          >
-            <option value="">{capes.length ? t("launcher.noCape") : t("launcher.noCapesOwned")}</option>
-            {capes.map((c) => <option key={c.id} value={c.id}>{c.alias}</option>)}
-          </Select>
-        </label>
+        <span className="label">{t("launcher.cape")}</span>
+        {capes.length ? (
+          <div className="launcher-capes" role="radiogroup" aria-label={t("launcher.cape")}>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={!activeCape}
+              className="launcher-cape"
+              disabled={cape.isPending}
+              onClick={() => activeCape && cape.mutate(null)}
+            >
+              <span className="launcher-cape-none"><Icon name="close" size={16} /></span>
+              <span className="launcher-cape-name">{t("launcher.noCape")}</span>
+            </button>
+            {capes.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                role="radio"
+                aria-checked={c.active}
+                className="launcher-cape"
+                disabled={cape.isPending}
+                onClick={() => !c.active && cape.mutate(c.id)}
+              >
+                <CapeFront url={c.url} />
+                <span className="launcher-cape-name">{c.alias}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="launcher-muted">{t("launcher.noCapesOwned")}</p>
+        )}
         <Failure error={skin.error || upload.error || cape.error} />
       </div>
     </div>
   );
+}
+
+/** The front of a cape, cut from its 64x32 texture (10x16 at 1,1). */
+function CapeFront({ url }: { url: string }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const target = canvas.current?.getContext("2d");
+    if (!target) return;
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => {
+      const scale = image.width / 64;
+      target.imageSmoothingEnabled = false;
+      target.clearRect(0, 0, 10, 16);
+      target.drawImage(image, 1 * scale, 1 * scale, 10 * scale, 16 * scale, 0, 0, 10, 16);
+    };
+    image.src = url;
+  }, [url]);
+  return <canvas ref={canvas} className="launcher-cape-art" width={10} height={16} aria-hidden="true" />;
 }
 
 /**

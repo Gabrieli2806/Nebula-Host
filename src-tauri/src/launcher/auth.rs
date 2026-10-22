@@ -335,8 +335,15 @@ impl AuthState {
             None => client.delete(url),
         };
         let response = request.bearer_auth(token).send().await?;
-        if !response.status().is_success() {
-            return Err(rejected("minecraft_cape"));
+        let status = response.status();
+        if !status.is_success() {
+            // Rate limiting is the usual cause; say so instead of a bare error.
+            let reason = if status.as_u16() == 429 {
+                "Minecraft is limiting cape changes. Wait a minute and try again."
+            } else {
+                "Minecraft did not accept this cape."
+            };
+            return Err(rejected("minecraft_cape").with("status", &status.as_u16().to_string()).detail(reason));
         }
         Ok(active_skin(&response.json().await?))
     }

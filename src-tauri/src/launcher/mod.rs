@@ -219,14 +219,25 @@ pub struct SearchResult {
     pub total_hits: u64,
 }
 
-pub async fn search(query: String, kind: ContentKind, offset: u32) -> AppResult<SearchResult> {
+/// Search Modrinth. With an instance, only what fits it is listed: its
+/// Minecraft version and, for mods, its loader (as the server add-ons do).
+pub async fn search(query: String, kind: ContentKind, offset: u32, fit: Option<&Profile>) -> AppResult<SearchResult> {
     if query.len() > 200 || offset > 10000 {
         return Err(AppError::new(ErrorCode::InvalidInput));
     }
-    let facets = serde_json::json!([
-        [format!("project_type:{}", kind.tag())],
-        ["client_side:required", "client_side:optional"]
-    ]);
+    let mut facets = vec![
+        serde_json::json!([format!("project_type:{}", kind.tag())]),
+        serde_json::json!(["client_side:required", "client_side:optional"]),
+    ];
+    if let Some(profile) = fit.filter(|_| !matches!(kind, ContentKind::Modpack)) {
+        facets.push(serde_json::json!([format!("versions:{}", profile.game_version)]));
+        if matches!(kind, ContentKind::Mod) {
+            if let Some(loader) = content::loader_tag(&profile.loader) {
+                facets.push(serde_json::json!([format!("categories:{loader}")]));
+            }
+        }
+    }
+    let facets = serde_json::Value::Array(facets);
     Ok(crate::game::http_client()
         .get("https://api.modrinth.com/v2/search")
         .query(&[
