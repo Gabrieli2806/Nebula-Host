@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Nebula Host",
-  "version": "0.5.1",
+  "version": "1.0.0",
   "identifier": "net.g2806.nebulahost",
   "build": {
     "beforeDevCommand": "npm run dev",

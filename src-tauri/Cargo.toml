@@ -1,7 +1,7 @@
 [package]
 name = "nebula-host"
-version = "0.5.1"
-description = "Self-hosted game server manager"
+version = "1.0.0"
+description = "Nebula Host - Game Server Manager"
 authors = ["Gabrieli2806"]
 edition.workspace = true
 default-run = "nebula-host"

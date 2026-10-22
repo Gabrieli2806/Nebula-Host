@@ -21,6 +21,14 @@
   Path to a PFX to sign with. Store submissions are signed by the Store, so
   this is only for sideloading a test build.
 
+.PARAMETER PackageName
+  Package identity name. Defaults to the one Partner Center assigned to the
+  reserved "Nebula Host" listing; pass another for a sideload-only build.
+
+.PARAMETER Publisher
+  Package identity publisher. Defaults to the Store-assigned value (the Store
+  signs the package, so it must match what Partner Center expects).
+
 .PARAMETER CertThumbprint
   Thumbprint of a certificate already in the local store, as an alternative to
   -Sign. Never hard-code one here.
@@ -32,7 +40,9 @@ param(
     [switch]$SkipFrontend,
     [switch]$Bundle,
     [string]$Sign,
-    [string]$CertThumbprint
+    [string]$CertThumbprint,
+    [string]$PackageName = "44733G2806.NebulaHost",
+    [string]$Publisher = "CN=334A4A5F-C172-4419-93DE-B4E9376FFA14"
 )
 
 $ErrorActionPreference = "Stop"
@@ -51,10 +61,9 @@ $AppVersion = $TauriConf.version
 # MSIX insists on four version parts.
 while (($AppVersion -split '\.').Count -lt 4) { $AppVersion = "$AppVersion.0" }
 
-$PackageName    = "G2806.NebulaHost"
 $AppId          = "NebulaHost"
 $DisplayName    = "Nebula Host"
-$Description    = "Run game servers on your own PC."
+$Description    = "Nebula Host - Game Server Manager"
 $ExecutableName = "Nebula Host.exe"
 $CargoBinName   = "nebula-host"
 
@@ -167,6 +176,7 @@ foreach ($target in $Targets) {
         Replace("{{VERSION}}", $AppVersion).
         Replace("{{ARCH}}", $msixArch).
         Replace("{{PACKAGE_NAME}}", $PackageName).
+        Replace("{{PUBLISHER}}", $Publisher).
         Replace("{{DISPLAY_NAME}}", $DisplayName).
         Replace("{{DESCRIPTION}}", $Description).
         Replace("{{EXECUTABLE_NAME}}", $ExecutableName).
