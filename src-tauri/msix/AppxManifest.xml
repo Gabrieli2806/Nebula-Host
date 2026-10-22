@@ -6,7 +6,7 @@
 
   <Identity Name="{{PACKAGE_NAME}}"
             Version="{{VERSION}}"
-            Publisher="CN=G2806, O=G2806, C=US"
+            Publisher="{{PUBLISHER}}"
             ProcessorArchitecture="{{ARCH}}" />
 
   <Properties>
