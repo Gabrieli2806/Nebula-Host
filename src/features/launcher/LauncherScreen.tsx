@@ -9,7 +9,8 @@ import { IS_WEB } from "@/lib/web";
 import { Button, ErrorNotice, Icon, Segmented, Select, StatusDot } from "@/ui";
 import type { ContentKind, LauncherProfile, LauncherProject } from "./types";
 import { Library } from "./Library";
-import { Accounts } from "./Account";
+import { AccountMenu, SkinTab } from "./Account";
+import { usePrimaryAccount } from "./primaryAccount";
 import "./launcher.css";
 
 const ROOT = ["launcher"];
@@ -27,7 +28,7 @@ function LauncherContent() {
   const [search] = useSearchParams();
   const location = useLocation();
   const shortcutId = search.get("instance");
-  const [tab, setTab] = useState<"library" | "discover" | "accounts">("library");
+  const [tab, setTab] = useState<"library" | "discover" | "skin">("library");
   // The instance (and kind of content) Discover installs into, when the person
   // came from an instance's "Add from Modrinth".
   const [target, setTarget] = useState<{ profile: LauncherProfile; kind: ContentKind } | null>(null);
@@ -35,18 +36,21 @@ function LauncherContent() {
   if (IS_WEB) return <div className="launcher"><h1 className="display servers-node">Launcher</h1><p className="launcher-muted">{t("launcher.localOnly")}</p></div>;
   return <div className="launcher">
     <header className="launcher-head">
-      <div className="launcher-head-title">
-        <h1 className="display servers-node">Launcher</h1>
-        <p className="launcher-muted">{t("launcher.subtitle")}</p>
+      <div className="launcher-head-row">
+        <div className="launcher-head-title">
+          <h1 className="display servers-node">Launcher</h1>
+          <p className="launcher-muted">{t("launcher.subtitle")}</p>
+        </div>
+        <AccountMenu />
       </div>
-      <Segmented<"library" | "discover" | "accounts"> label="Launcher" value={tab} onChange={setTab} options={[
+      <Segmented<"library" | "discover" | "skin"> label="Launcher" value={tab} onChange={setTab} options={[
         { id: "library", label: t("launcher.library"), icon: "servers" },
         { id: "discover", label: t("launcher.discover"), icon: "search" },
-        { id: "accounts", label: t("launcher.accounts"), icon: "users" },
+        { id: "skin", label: t("launcher.skin"), icon: "users" },
       ]} />
     </header>
     <Failure error={location.state?.shortcutError} />
-    {tab === "library" ? <Library key={search.get("request") ?? "library"} focusId={shortcutId ?? lastProfile} renderControls={profile => <ProfileControls profile={profile} />} onBrowse={(profile, kind) => { setTarget({ profile, kind }); setTab("discover"); }} /> : tab === "discover" ? <Discover target={target} onOpenInstance={id => { setLastProfile(id); setTab("library"); }} /> : <Accounts />}
+    {tab === "library" ? <Library key={search.get("request") ?? "library"} focusId={shortcutId ?? lastProfile} renderControls={profile => <ProfileControls profile={profile} />} onBrowse={(profile, kind) => { setTarget({ profile, kind }); setTab("discover"); }} /> : tab === "discover" ? <Discover target={target} onOpenInstance={id => { setLastProfile(id); setTab("library"); }} /> : <SkinTab />}
   </div>;
 }
 
@@ -58,11 +62,9 @@ function ProfileControls({ profile }: { profile: LauncherProfile }) {
   const { t } = useI18n();
   const client = useQueryClient();
   const states = useQuery({ queryKey: [...ROOT, "status"], queryFn: launcherApi.status, refetchInterval: 1000 });
-  const accounts = useQuery({ queryKey: [...ROOT, "accounts"], queryFn: launcherApi.accounts, refetchInterval: 60_000 });
-  const [chosen, setChosen] = useState<string | null>(null);
-  // With an account signed in, play with it; the demo is only offered without one.
-  const signedIn = accounts.data ?? [];
-  const account = signedIn.length ? (signedIn.find(a => a.id === chosen) ?? signedIn[0])!.id : "demo";
+  // The primary account from the top-right menu; the demo only without one.
+  const { primary } = usePrimaryAccount();
+  const account = primary?.id ?? "demo";
   const state = states.data?.[profile.id];
   const installing = state?.phase === "installing";
   const running = state?.phase === "running" || state?.phase === "stopping";
@@ -72,8 +74,6 @@ function ProfileControls({ profile }: { profile: LauncherProfile }) {
   const resume = useMutation({ mutationFn: () => launcherApi.resume(profile.id) });
   const stop = useMutation({ mutationFn: () => launcherApi.stop(profile.id), onSuccess: () => client.invalidateQueries({ queryKey: [...ROOT, "status"] }) });
   return <div className="launcher-client">
-    {signedIn.length > 1 ? <label className="launcher-field"><span className="label">{t("launcher.playAs")}</span><Select value={account} disabled={running || installing} onChange={e => setChosen(e.target.value)}>{signedIn.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</Select></label>
-      : <p className="launcher-play-as"><span className="launcher-muted">{t("launcher.playAs")}</span> <strong>{signedIn[0]?.name ?? t("launcher.officialDemo")}</strong></p>}
     {installing ? <div role="status" className="launcher-progress"><div className="launcher-progress-head"><span>{t(`launcher.stage_${state.stage}`)}</span><span className="readout">{state.total > 0 ? `${state.completed} / ${state.total}` : ""}</span></div><div className="meter" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={state.total ? Math.round(state.completed / state.total * 100) : undefined}><div className="meter-fill" data-indeterminate={state.total ? undefined : ""} style={{ width: state.total ? `${state.completed / state.total * 100}%` : "35%" }} /></div></div> : null}
     {running ? <p role="status" className="launcher-state"><StatusDot status="online" />{t("launcher.running")}</p> : null}
     {state?.phase === "ready" ? <p className="launcher-state"><Icon name="check" size={13} />{t("launcher.ready")}</p> : null}
@@ -83,7 +83,7 @@ function ProfileControls({ profile }: { profile: LauncherProfile }) {
         <Button variant="primary" icon="play" className="launcher-play" disabled={start.isPending || anyInstalling} onClick={() => start.mutate(account === "demo" ? "demo" : "account")}>{t(account === "demo" ? "launcher.playDemo" : "launcher.play")}</Button>
       </>}
     </div>
-    <Failure error={start.error || stop.error || resume.error || state?.error || states.error || accounts.error} />
+    <Failure error={start.error || stop.error || resume.error || state?.error || states.error} />
   </div>;
 }
 

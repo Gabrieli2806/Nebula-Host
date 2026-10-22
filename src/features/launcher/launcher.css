@@ -635,6 +635,95 @@
     margin: 2px 0 0;
   }
 
+  .launcher-head-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .launcher-account-menu {
+    position: relative;
+    flex: none;
+  }
+
+  .launcher-account-button {
+    display: inline-flex;
+    max-width: 220px;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 6px 10px 6px 6px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface-raised);
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .launcher-account-button:hover {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  }
+
+  .launcher-account-name {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: var(--weight-control, 600);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .launcher-account-popover {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 6px);
+    right: 0;
+    display: flex;
+    width: 260px;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md, 10px);
+    background: var(--surface-raised);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  }
+
+  .launcher-account-item {
+    display: flex;
+    align-items: center;
+  }
+
+  .launcher-account-pick {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .launcher-account-pick:hover {
+    background: var(--surface-sunken);
+  }
+
+  .launcher-account-pick[aria-checked="true"] {
+    color: var(--accent);
+  }
+
+  .launcher-account-add {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border: 1px dashed var(--line);
+    border-radius: 4px;
+  }
+
   .launcher-memory {
     display: flex;
     flex-direction: column;

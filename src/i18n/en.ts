@@ -154,6 +154,8 @@ export const en = {
     "repairStarted": "Checking files… progress shows on the instance.",
     "shortcutHelp": "A home-screen icon that starts this instance directly.",
     "logHint": "Latest lines from the game.",
+    "signOutOf": "Sign out of {name}",
+    "skinSignIn": "Sign in to change your skin",
     "viewProject": "View on Modrinth",
     "previous": "Previous",
     "next": "Next",

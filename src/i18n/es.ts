@@ -154,6 +154,8 @@ export const es: Copy = {
     "repairStarted": "Revisando archivos… el progreso se ve en la instancia.",
     "shortcutHelp": "Un icono en la pantalla de inicio que abre esta instancia directamente.",
     "logHint": "Últimas líneas del juego.",
+    "signOutOf": "Cerrar sesión de {name}",
+    "skinSignIn": "Inicia sesión para cambiar tu skin",
     "viewProject": "Ver en Modrinth",
     "previous": "Anterior",
     "next": "Siguiente",

@@ -12,6 +12,7 @@ import { launcherApi, toAppError } from "@/lib/ipc";
 import { Button, Dialog, ErrorNotice, Icon, Panel, PlayerHead, Segmented } from "@/ui";
 import { SkinViewer } from "skinview3d";
 import type { DeviceLogin, LauncherAccount } from "./types";
+import { setPrimaryAccount, usePrimaryAccount } from "./primaryAccount";
 
 const ROOT = ["launcher"];
 
@@ -19,56 +20,123 @@ function Failure({ error }: { error: unknown }) {
   return error ? <ErrorNotice error={toAppError(error)} /> : null;
 }
 
-export function Accounts() {
+/**
+ * Top right of the launcher: the primary account's face and name, and a menu
+ * to switch account, add one, or sign out.
+ */
+export function AccountMenu() {
   const { t } = useI18n();
   const client = useQueryClient();
-  const accounts = useQuery({ queryKey: [...ROOT, "accounts"], queryFn: launcherApi.accounts, refetchInterval: 60_000 });
-  const begin = useMutation({ mutationFn: () => launcherApi.begin() });
+  const { accounts, primary } = usePrimaryAccount();
+  const [open, setOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
   const logout = useMutation({
     mutationFn: launcherApi.logout,
     onSuccess: () => client.invalidateQueries({ queryKey: [...ROOT, "accounts"] }),
   });
-  const list = accounts.data ?? [];
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: PointerEvent) => {
+      if (!box.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
 
   return (
-    <div className="launcher-accounts">
-      {list.map((account) => (
-        <AccountCard key={account.id} account={account} onSignOut={() => logout.mutate(account.id)} busy={logout.isPending} />
-      ))}
-
-      <Panel title={list.length ? t("launcher.addAccount") : t("launcher.accounts")} bodyClassName="launcher-panel-body">
-        {begin.data ? (
-          <DeviceFlow login={begin.data} onClose={() => begin.reset()} />
-        ) : (
-          <div className="launcher-signin-intro">
-            <p className="launcher-muted">{t("launcher.accountsNote")}</p>
-            <Button variant="primary" icon="external" disabled={begin.isPending} onClick={() => begin.mutate()}>
-              {t("launcher.signIn")}
-            </Button>
-          </div>
-        )}
-        <Failure error={begin.error || logout.error || accounts.error} />
-      </Panel>
+    <div className="launcher-account-menu" ref={box}>
+      {primary ? (
+        <button type="button" className="launcher-account-button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <PlayerHead name={primary.name} uuid={primary.id} size={24} />
+          <span className="launcher-account-name">{primary.name}</span>
+          <Icon name="chevron-down" size={12} />
+        </button>
+      ) : (
+        <Button variant="primary" icon="external" onClick={() => setAdding(true)}>{t("launcher.signIn")}</Button>
+      )}
+      {open ? (
+        <div className="launcher-account-popover" role="menu">
+          {accounts.map((account) => (
+            <div key={account.id} className="launcher-account-item">
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={account.id === primary?.id}
+                className="launcher-account-pick"
+                onClick={() => { setPrimaryAccount(account.id); setOpen(false); }}
+              >
+                <PlayerHead name={account.name} uuid={account.id} size={24} />
+                <span className="launcher-account-name">{account.name}</span>
+                {account.id === primary?.id ? <Icon name="check" size={13} /> : null}
+              </button>
+              <Button size="sm" variant="quiet" iconOnly icon="close" disabled={logout.isPending} onClick={() => logout.mutate(account.id)}>
+                {t("launcher.signOutOf", { name: account.name })}
+              </Button>
+            </div>
+          ))}
+          <button type="button" role="menuitem" className="launcher-account-pick" onClick={() => { setOpen(false); setAdding(true); }}>
+            <span className="launcher-account-add"><Icon name="plus" size={14} /></span>
+            <span>{t("launcher.addAccount")}</span>
+          </button>
+          <Failure error={logout.error} />
+        </div>
+      ) : null}
+      {adding ? <SignInDialog onClose={() => setAdding(false)} /> : null}
     </div>
   );
 }
 
-function AccountCard({ account, onSignOut, busy }: { account: LauncherAccount; onSignOut: () => void; busy: boolean }) {
+/** Microsoft sign-in in a dialog; the code is requested as it opens. */
+function SignInDialog({ onClose }: { onClose: () => void }) {
   const { t } = useI18n();
+  const begin = useMutation({ mutationFn: () => launcherApi.begin() });
+  const { mutate } = begin;
+  useEffect(() => { mutate(); }, [mutate]);
   return (
-    <Panel
-      title={account.name}
-      bodyClassName="launcher-panel-body"
-      actions={<Button size="sm" variant="quiet" onClick={onSignOut} disabled={busy}>{t("launcher.signOut")}</Button>}
-    >
+    <Dialog open onClose={onClose} title={t("launcher.signIn")} width={520}>
+      <div className="flex flex-col gap-3">
+        <p className="launcher-muted">{t("launcher.accountsNote")}</p>
+        {begin.data ? <DeviceFlow login={begin.data} onClose={onClose} /> : begin.isPending ? <p role="status" className="launcher-muted">{t("launcher.loading")}</p> : null}
+        <Failure error={begin.error} />
+      </div>
+    </Dialog>
+  );
+}
+
+/** The Skin tab: the primary account's skin and cape. */
+export function SkinTab() {
+  const { t } = useI18n();
+  const { primary, loading } = usePrimaryAccount();
+  const [adding, setAdding] = useState(false);
+  if (loading) return <p role="status" className="launcher-muted">{t("launcher.loading")}</p>;
+  if (!primary) {
+    return (
+      <div className="panel servers-empty"><div className="empty-state">
+        <span className="empty-state-icon"><Icon name="users" size={20} /></span>
+        <p className="empty-state-title">{t("launcher.skinSignIn")}</p>
+        <p className="empty-state-hint">{t("launcher.accountsNote")}</p>
+        <div className="mt-1"><Button variant="primary" icon="external" onClick={() => setAdding(true)}>{t("launcher.signIn")}</Button></div>
+        {adding ? <SignInDialog onClose={() => setAdding(false)} /> : null}
+      </div></div>
+    );
+  }
+  return (
+    <Panel bodyClassName="launcher-panel-body" key={primary.id}>
       <div className="launcher-profile">
-        <PlayerHead name={account.name} uuid={account.id} size={64} />
+        <PlayerHead name={primary.name} uuid={primary.id} size={48} />
         <div className="launcher-profile-text">
-          <strong>{account.name}</strong>
+          <strong>{primary.name}</strong>
           <span className="launcher-muted"><Icon name="check" size={12} /> {t("launcher.verified")}</span>
         </div>
       </div>
-      <SkinEditor account={account} />
+      <SkinEditor account={primary} />
     </Panel>
   );
 }
