@@ -14,6 +14,8 @@
  * the address and the Start/Stop button stay separate controls on top.
  */
 
+import { useEffect, useRef, useState } from "react";
+
 import { useDistribution, useInstanceActions } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { formatDuration, formatMegabytes } from "@/lib/format";
@@ -23,7 +25,6 @@ import { TransferProgressStrip } from "@/features/server/transfer/TransferStrip"
 import { movedTo } from "@/features/server/transfer/machines";
 import {
   Button,
-  CopyAddress,
   DistributionTag,
   ErrorNotice,
   Icon,
@@ -111,25 +112,26 @@ export function ServerCard({ instance, onOpen }: { instance: InstanceView; onOpe
               </span>
             ) : null}
           </div>
+          {movedNode ? null : (
+            <AddressChip
+              address={instance.public_address ?? instance.address}
+              local={instance.public_address ? (instance.address ?? null) : null}
+              emptyText={t("servers.noAddress")}
+            />
+          )}
         </div>
       </header>
 
-      {/* The address sits at the same offset on every card in a row; the
-          state hint (sleeping, starting, crashed) comes after it. */}
-      <div className="server-card-raised flex flex-col gap-2">
-        {/* An older copy has no address worth sharing: the server now
-            answers on the machine it moved to. */}
-        {movedNode ? (
-          <TransferNote instance={instance} />
-        ) : (
-          <CopyAddress
-            value={instance.address}
-            emptyText={t("servers.noAddress")}
-            className="server-card-address"
-          />
-        )}
+      {/* Transfer state and the last failed start/stop; an older copy has no
+          address worth sharing, the server now answers elsewhere. */}
+      {movedNode || failure ? (
+        <div className="server-card-raised flex flex-col gap-2">
+          {movedNode ? <TransferNote instance={instance} /> : null}
+          {failure ? <ErrorNotice error={failure} compact /> : null}
+        </div>
+      ) : null}
+      <div className="server-card-raised">
         <TransferProgressStrip instanceId={instance.id} compact />
-        {failure ? <ErrorNotice error={failure} compact /> : null}
       </div>
 
       {hint && !movedNode ? <p className="server-card-hint">{t(hint)}</p> : null}
@@ -205,6 +207,43 @@ export function ServerCard({ instance, onOpen }: { instance: InstanceView; onOpe
         </div>
       </div>
     </article>
+  );
+}
+
+/**
+ * The address to share, small and quiet under the tags: click to copy. The
+ * internet address when UPnP opened the port, the LAN one otherwise (both in
+ * the tooltip).
+ */
+function AddressChip({ address, local, emptyText }: { address?: string | null; local: string | null; emptyText: string }) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  if (!address) return <span className="server-card-addr" data-empty="">{emptyText}</span>;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(address);
+    } catch {
+      return;
+    }
+    setCopied(true);
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setCopied(false), 1200);
+  };
+  return (
+    <button
+      type="button"
+      className="server-card-addr server-card-raised"
+      data-copied={copied ? "" : undefined}
+      title={local ? `${address} · LAN ${local}` : address}
+      aria-label={`${t("common.copy")}: ${address}`}
+      onClick={() => void copy()}
+    >
+      <Icon name={local ? "globe" : "link"} size={12} />
+      <span className="mono server-card-addr-text">{address}</span>
+      <Icon name={copied ? "check" : "copy"} size={12} />
+    </button>
   );
 }
 

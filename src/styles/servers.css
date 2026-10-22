@@ -230,6 +230,57 @@
     color: var(--text);
   }
 
+  /* The address: a quiet chip under the tags, click to copy. */
+  .server-card-addr {
+    display: inline-flex;
+    max-width: 100%;
+    align-self: flex-start;
+    align-items: center;
+    gap: 6px;
+    margin-left: -8px;
+    padding: 2px 8px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--text-xs, 0.75rem);
+    cursor: pointer;
+    transition: color var(--duration) var(--ease), border-color var(--duration) var(--ease), background var(--duration) var(--ease);
+  }
+
+  .server-card-addr:hover {
+    border-color: var(--line);
+    background: var(--well-fill);
+    color: var(--text);
+  }
+
+  .server-card-addr[data-copied] {
+    color: var(--accent-ink, var(--accent));
+  }
+
+  .server-card-addr[data-empty] {
+    cursor: default;
+    color: var(--text-faint);
+  }
+
+  .server-card-addr-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .server-card-addr > svg:last-child {
+    opacity: 0;
+    transition: opacity var(--duration) var(--ease);
+  }
+
+  .server-card-addr:hover > svg:last-child,
+  .server-card-addr:focus-visible > svg:last-child,
+  .server-card-addr[data-copied] > svg:last-child {
+    opacity: 1;
+  }
+
   /* Controls that must stay clickable above the stretched open target. */
   .server-card-raised {
     position: relative;
