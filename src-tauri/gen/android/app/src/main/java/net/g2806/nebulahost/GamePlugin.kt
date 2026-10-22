@@ -90,6 +90,15 @@ class GamePlugin(private val currentActivity: Activity) : Plugin(currentActivity
         invoke.resolve(response)
     }
 
+    /** Bring Nebula back from the browser once Microsoft sign-in is done. */
+    @Command
+    fun focusApp(invoke: Invoke) {
+        val intent = Intent(currentActivity, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_NEW_TASK)
+        currentActivity.runOnUiThread { currentActivity.startActivity(intent) }
+        invoke.resolve(JSObject())
+    }
+
     /** Bring the running game's window back to the front. */
     @Command
     fun resume(invoke: Invoke) {

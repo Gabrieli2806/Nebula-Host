@@ -74,6 +74,9 @@ macro_rules! ipc_handlers {
             $crate::ipc::launcher::launcher_login_cancel,
             $crate::ipc::launcher::launcher_accounts,
             $crate::ipc::launcher::launcher_logout,
+            $crate::ipc::launcher::launcher_login_wait,
+            $crate::ipc::launcher::launcher_skin,
+            $crate::ipc::launcher::launcher_set_skin,
             // node
             $crate::ipc::node::node_get,
             $crate::ipc::node::node_rename,

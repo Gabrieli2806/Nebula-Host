@@ -55,6 +55,13 @@ pub struct Account {
     pub id: String,
     pub name: String,
 }
+/// The profile's active skin. The texture URL is public (textures.minecraft.net).
+#[derive(Serialize)]
+pub struct Skin {
+    pub url: Option<String>,
+    /// `classic` (4px arms) or `slim` (3px arms).
+    pub variant: String,
+}
 #[derive(Serialize)]
 pub struct DeviceLogin {
     pub id: uuid::Uuid,
@@ -265,6 +272,50 @@ impl AuthState {
         accounts.sort_by(|a, b| a.name.cmp(&b.name));
         accounts
     }
+    pub async fn skin(&self, id: &str) -> AppResult<Skin> {
+        let token = self.credentials(id).await?.token;
+        let response = crate::game::http_client()
+            .get("https://api.minecraftservices.com/minecraft/profile")
+            .bearer_auth(token)
+            .send()
+            .await?;
+        if !response.status().is_success() {
+            return Err(rejected("minecraft_java_profile"));
+        }
+        Ok(active_skin(&response.json().await?))
+    }
+
+    /// Upload a 64x64 (or legacy 64x32) PNG as the profile's skin.
+    pub async fn set_skin(&self, id: &str, png: Vec<u8>, slim: bool) -> AppResult<Skin> {
+        let size_ok = png.len() <= 24 * 1024
+            && png.starts_with(b"\x89PNG\r\n\x1a\n")
+            && png.len() > 24
+            && u32::from_be_bytes([png[16], png[17], png[18], png[19]]) == 64
+            && matches!(u32::from_be_bytes([png[20], png[21], png[22], png[23]]), 32 | 64);
+        if !size_ok {
+            return Err(AppError::new(ErrorCode::InvalidInput).with("field", "skin"));
+        }
+        let token = self.credentials(id).await?.token;
+        let form = reqwest::multipart::Form::new()
+            .text("variant", if slim { "slim" } else { "classic" })
+            .part(
+                "file",
+                reqwest::multipart::Part::bytes(png)
+                    .file_name("skin.png")
+                    .mime_str("image/png")?,
+            );
+        let response = crate::game::http_client()
+            .post("https://api.minecraftservices.com/minecraft/profile/skins")
+            .bearer_auth(token)
+            .multipart(form)
+            .send()
+            .await?;
+        if !response.status().is_success() {
+            return Err(rejected("minecraft_skin_upload"));
+        }
+        Ok(active_skin(&response.json().await?))
+    }
+
     pub async fn logout(&self, id: String) {
         let mut inner = self.inner.lock().await;
         inner.accounts.remove(&id);
@@ -274,6 +325,21 @@ impl AuthState {
     }
     pub async fn cancel(&self, id: uuid::Uuid) {
         self.inner.lock().await.pending.remove(&id);
+    }
+}
+
+fn active_skin(profile: &Value) -> Skin {
+    let skin = profile["skins"]
+        .as_array()
+        .and_then(|skins| skins.iter().find(|s| s["state"] == "ACTIVE"));
+    Skin {
+        url: skin
+            .and_then(|s| s["url"].as_str())
+            .map(|u| u.replacen("http://", "https://", 1)),
+        variant: skin
+            .and_then(|s| s["variant"].as_str())
+            .unwrap_or("CLASSIC")
+            .to_lowercase(),
     }
 }
 

@@ -3,7 +3,7 @@ use crate::{
     error::AppResult,
     launcher::{
         self,
-        auth::{Account, AuthState, DeviceLogin, LoginResult},
+        auth::{Account, AuthState, DeviceLogin, LoginResult, Skin},
         Capabilities, ContentKind, CreateProfile, GameVersion, Profile, SearchResult,
     },
 };
@@ -141,6 +141,44 @@ pub async fn launcher_login_poll(
     id: uuid::Uuid,
 ) -> AppResult<LoginResult> {
     state.poll(id).await
+}
+/// Poll until the device-code sign-in finishes, server-side, so it completes
+/// even while the app is in the background (the person is in the browser).
+/// On Android the app then comes back to the front.
+#[tauri::command]
+pub async fn launcher_login_wait(
+    state: tauri::State<'_, AuthState>,
+    id: uuid::Uuid,
+) -> AppResult<LoginResult> {
+    loop {
+        match state.poll(id).await? {
+            LoginResult::Pending { interval } => {
+                tokio::time::sleep(std::time::Duration::from_secs(interval)).await
+            }
+            done => {
+                #[cfg(all(target_os = "android", feature = "desktop"))]
+                let _ = launcher::android::focus_app();
+                return Ok(done);
+            }
+        }
+    }
+}
+#[tauri::command]
+pub async fn launcher_skin(state: tauri::State<'_, AuthState>, id: String) -> AppResult<Skin> {
+    state.skin(&id).await
+}
+#[tauri::command]
+pub async fn launcher_set_skin(
+    state: tauri::State<'_, AuthState>,
+    id: String,
+    data: String,
+    slim: bool,
+) -> AppResult<Skin> {
+    use base64::Engine;
+    let png = base64::engine::general_purpose::STANDARD
+        .decode(data)
+        .map_err(|_| crate::error::AppError::new(crate::error::ErrorCode::InvalidInput))?;
+    state.set_skin(&id, png, slim).await
 }
 #[tauri::command]
 pub async fn launcher_login_cancel(

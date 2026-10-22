@@ -47,6 +47,9 @@ export const launcherApi = {
   poll: (id: string) => launcherCall<LoginResult>("launcher_login_poll", { id }),
   cancel: (id: string) => launcherCall<void>("launcher_login_cancel", { id }),
   logout: (id: string) => launcherCall<void>("launcher_logout", { id }),
+  wait: (id: string) => launcherCall<LoginResult>("launcher_login_wait", { id }),
+  skin: (id: string) => launcherCall<{ url: string | null; variant: "classic" | "slim" }>("launcher_skin", { id }),
+  setSkin: (id: string, data: string, slim: boolean) => launcherCall<{ url: string | null; variant: "classic" | "slim" }>("launcher_set_skin", { id, data, slim }),
 };
 
 import type {
