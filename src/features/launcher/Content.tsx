@@ -8,7 +8,6 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/i18n";
 import { launcherApi, toAppError } from "@/lib/ipc";
-import { formatBytes } from "@/lib/format";
 import { Button, ErrorNotice, Icon, Segmented, Switch, type IconName } from "@/ui";
 import { type AddonView, useAddonView } from "@/features/server/panels/addons/util";
 import type { ContentKind, InstalledContent, LauncherProfile } from "./types";
@@ -139,7 +138,7 @@ export function InstanceContent({ profile, onBrowse }: { profile: LauncherProfil
           <Switch checked={item.enabled} label={t(item.enabled ? "launcher.disable" : "launcher.enable")} disabled={toggle.isPending} onChange={() => toggle.mutate(item)} />
           <Button size="sm" variant="quiet" iconOnly icon="trash" className="row-action" disabled={remove.isPending} onClick={() => remove.mutate(item)}>{t("launcher.removeContent")}</Button>
         </div>;
-        const meta = <p className="addons-meta">{status?.version ? <span className="mono">{status.version}</span> : null}<span className="mono truncate" title={item.file}>{item.file}</span><span className="mono">{formatBytes(item.size)}</span></p>;
+        const meta = status?.version ? <p className="addons-meta"><span className="mono">{status.version}</span></p> : null;
         return view === "list"
           ? <li key={item.file} className="addons-row" data-disabled={item.enabled ? undefined : ""}>
               <ContentIcon profile={profile} item={item} size={36} fallback={status?.icon_url} />

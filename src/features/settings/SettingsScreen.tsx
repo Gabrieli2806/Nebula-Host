@@ -288,7 +288,7 @@ export function SettingsScreen() {
       </Panel>
 
       <Panel title={t("settings.startupNetwork")}>
-        {!IS_WEB ? (
+        {!IS_WEB && !remote ? (
           <SwitchRow
             label={t("settings.launcherEnabled")}
             help={t("settings.launcherEnabledHelp")}

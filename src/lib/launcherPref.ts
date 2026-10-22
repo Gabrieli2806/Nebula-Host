@@ -7,13 +7,15 @@
 
 import { useSyncExternalStore } from "react";
 
+import { isRemote } from "@/lib/connection";
 import { IS_MOBILE, IS_WEB } from "@/lib/web";
 
 const KEY = "nebula.launcherEnabled";
 const EVENT = "nebula:launcher-pref";
 
 function read(): boolean {
-  if (IS_WEB) return false;
+  // Managing another machine: the launcher is about this device, so it hides.
+  if (IS_WEB || isRemote()) return false;
   try {
     const stored = localStorage.getItem(KEY);
     if (stored !== null) return stored === "1";
