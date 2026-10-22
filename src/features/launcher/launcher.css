@@ -515,14 +515,13 @@
   }
 
   .launcher-skin-preview {
-    width: 96px;
-    height: 192px;
+    width: 180px;
+    height: 260px;
     flex: none;
-    padding: var(--space-3);
-    box-sizing: content-box;
     border-radius: var(--radius-md, 10px);
-    background: var(--surface-sunken);
-    image-rendering: pixelated;
+    background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--accent) 14%, transparent), var(--surface-sunken) 70%);
+    cursor: grab;
+    touch-action: none;
   }
 
   .launcher-skin-side {

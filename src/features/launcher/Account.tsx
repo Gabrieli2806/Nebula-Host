@@ -9,7 +9,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/i18n";
 import { openExternal } from "@/lib/external";
 import { launcherApi, toAppError } from "@/lib/ipc";
-import { Button, ErrorNotice, Icon, Panel, PlayerHead, Segmented } from "@/ui";
+import { Button, ErrorNotice, Icon, Panel, PlayerHead, Segmented, Select } from "@/ui";
+import { SkinViewer } from "skinview3d";
 import type { DeviceLogin, LauncherAccount } from "./types";
 
 const ROOT = ["launcher"];
@@ -163,10 +164,17 @@ function SkinEditor({ account }: { account: LauncherAccount }) {
     reader.readAsDataURL(file);
   };
 
+  const cape = useMutation({
+    mutationFn: (capeId: string | null) => launcherApi.setCape(account.id, capeId),
+    onSuccess: (data) => client.setQueryData(key, data),
+  });
+  const capes = skin.data?.capes ?? [];
+  const activeCape = capes.find((c) => c.active) ?? null;
+
   const src = pending?.preview ?? skin.data?.url ?? null;
   return (
     <div className="launcher-skin">
-      <SkinPreview src={src} slim={variant} />
+      <SkinPreview src={src} slim={variant} cape={activeCape?.url ?? null} />
       <div className="launcher-skin-side">
         <span className="label">{t("launcher.skin")}</span>
         <Segmented
@@ -188,50 +196,58 @@ function SkinEditor({ account }: { account: LauncherAccount }) {
           ) : null}
         </div>
         <p className="launcher-muted">{t("launcher.skinHelp")}</p>
-        <Failure error={skin.error || upload.error} />
+        <label className="launcher-field">
+          <span className="label">{t("launcher.cape")}</span>
+          <Select
+            value={activeCape?.id ?? ""}
+            disabled={cape.isPending || !capes.length}
+            onChange={(e) => cape.mutate(e.target.value || null)}
+          >
+            <option value="">{capes.length ? t("launcher.noCape") : t("launcher.noCapesOwned")}</option>
+            {capes.map((c) => <option key={c.id} value={c.id}>{c.alias}</option>)}
+          </Select>
+        </label>
+        <Failure error={skin.error || upload.error || cape.error} />
       </div>
     </div>
   );
 }
 
 /**
- * Front view of a skin, drawn from the 64x64 texture: head, body, arms and
- * legs with their overlay layers, in hard pixels.
+ * The skin as a 3D model (skinview3d): it turns slowly and can be dragged
+ * around; the cape is worn when one is active.
  */
-function SkinPreview({ src, slim }: { src: string | null; slim: boolean }) {
+function SkinPreview({ src, slim, cape }: { src: string | null; slim: boolean; cape: string | null }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const viewer = useRef<SkinViewer | null>(null);
+
   useEffect(() => {
-    const target = canvas.current?.getContext("2d");
-    if (!target) return;
-    target.clearRect(0, 0, 16, 32);
-    if (!src) return;
-    const image = new Image();
-    image.crossOrigin = "anonymous";
-    image.onload = () => {
-      const legacy = image.height === 32;
-      const arm = slim ? 3 : 4;
-      const part = (sx: number, sy: number, w: number, h: number, dx: number, dy: number) =>
-        target.drawImage(image, sx, sy, w, h, dx, dy, w, h);
-      target.imageSmoothingEnabled = false;
-      target.clearRect(0, 0, 16, 32);
-      // Base layer.
-      part(8, 8, 8, 8, 4, 0); // head
-      part(20, 20, 8, 12, 4, 8); // body
-      part(44, 20, arm, 12, 4 - arm, 8); // right arm
-      if (legacy) part(44, 20, arm, 12, 12, 8); else part(36, 52, arm, 12, 12, 8); // left arm
-      part(4, 20, 4, 12, 4, 20); // right leg
-      if (legacy) part(4, 20, 4, 12, 8, 20); else part(20, 52, 4, 12, 8, 20); // left leg
-      // Overlay layer.
-      part(40, 8, 8, 8, 4, 0);
-      if (!legacy) {
-        part(20, 36, 8, 12, 4, 8);
-        part(44, 36, arm, 12, 4 - arm, 8);
-        part(52, 52, arm, 12, 12, 8);
-        part(4, 36, 4, 12, 4, 20);
-        part(4, 52, 4, 12, 8, 20);
-      }
+    if (!canvas.current) return;
+    const instance = new SkinViewer({ canvas: canvas.current, width: 180, height: 260 });
+    instance.zoom = 0.85;
+    instance.autoRotate = true;
+    instance.autoRotateSpeed = 0.6;
+    instance.controls.enableZoom = false;
+    viewer.current = instance;
+    return () => {
+      instance.dispose();
+      viewer.current = null;
     };
-    image.src = src;
+  }, []);
+
+  useEffect(() => {
+    const instance = viewer.current;
+    if (!instance) return;
+    if (src) void instance.loadSkin(src, { model: slim ? "slim" : "default" });
+    else instance.resetSkin();
   }, [src, slim]);
-  return <canvas ref={canvas} className="launcher-skin-preview" width={16} height={32} aria-hidden="true" />;
+
+  useEffect(() => {
+    const instance = viewer.current;
+    if (!instance) return;
+    if (cape) void instance.loadCape(cape);
+    else instance.resetCape();
+  }, [cape]);
+
+  return <canvas ref={canvas} className="launcher-skin-preview" aria-hidden="true" />;
 }

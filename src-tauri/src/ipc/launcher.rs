@@ -168,6 +168,14 @@ pub async fn launcher_skin(state: tauri::State<'_, AuthState>, id: String) -> Ap
     state.skin(&id).await
 }
 #[tauri::command]
+pub async fn launcher_set_cape(
+    state: tauri::State<'_, AuthState>,
+    id: String,
+    cape: Option<String>,
+) -> AppResult<Skin> {
+    state.set_cape(&id, cape).await
+}
+#[tauri::command]
 pub async fn launcher_set_skin(
     state: tauri::State<'_, AuthState>,
     id: String,

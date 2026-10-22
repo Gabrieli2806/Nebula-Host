@@ -8,6 +8,7 @@ export interface LauncherCapabilities { platform: string; can_launch: boolean }
 export interface ClientStatus { phase: string; stage: string; completed: number; total: number; error: import("@/lib/ipc").AppError | null; exit_code: number | null }
 export interface GameVersion { id: string; type: string; client_supported: boolean }
 export interface LauncherAccount { id: string; name: string }
+export interface SkinInfo { url: string | null; variant: "classic" | "slim"; capes: { id: string; alias: string; url: string; active: boolean }[] }
 export interface DeviceLogin { id: string; user_code: string; verification_uri: string; expires_in: number; interval: number }
 export type LoginResult = { status: "pending"; interval: number } | { status: "complete"; account: LauncherAccount };
 export interface LauncherProject { project_id: string; slug: string; title: string; description: string; author: string; downloads: number; project_type: string; icon_url: string | null }

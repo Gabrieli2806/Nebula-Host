@@ -61,6 +61,15 @@ pub struct Skin {
     pub url: Option<String>,
     /// `classic` (4px arms) or `slim` (3px arms).
     pub variant: String,
+    /// Capes the account owns; at most one is active.
+    pub capes: Vec<Cape>,
+}
+#[derive(Serialize)]
+pub struct Cape {
+    pub id: String,
+    pub alias: String,
+    pub url: String,
+    pub active: bool,
 }
 #[derive(Serialize)]
 pub struct DeviceLogin {
@@ -316,6 +325,22 @@ impl AuthState {
         Ok(active_skin(&response.json().await?))
     }
 
+    /// Show one of the account's capes, or none.
+    pub async fn set_cape(&self, id: &str, cape: Option<String>) -> AppResult<Skin> {
+        let token = self.credentials(id).await?.token;
+        let client = crate::game::http_client();
+        let url = "https://api.minecraftservices.com/minecraft/profile/capes/active";
+        let request = match cape {
+            Some(cape_id) => client.put(url).json(&json!({ "capeId": cape_id })),
+            None => client.delete(url),
+        };
+        let response = request.bearer_auth(token).send().await?;
+        if !response.status().is_success() {
+            return Err(rejected("minecraft_cape"));
+        }
+        Ok(active_skin(&response.json().await?))
+    }
+
     pub async fn logout(&self, id: String) {
         let mut inner = self.inner.lock().await;
         inner.accounts.remove(&id);
@@ -340,6 +365,22 @@ fn active_skin(profile: &Value) -> Skin {
             .and_then(|s| s["variant"].as_str())
             .unwrap_or("CLASSIC")
             .to_lowercase(),
+        capes: profile["capes"]
+            .as_array()
+            .map(|capes| {
+                capes
+                    .iter()
+                    .filter_map(|c| {
+                        Some(Cape {
+                            id: c["id"].as_str()?.into(),
+                            alias: c["alias"].as_str().unwrap_or("Cape").into(),
+                            url: c["url"].as_str()?.replacen("http://", "https://", 1),
+                            active: c["state"] == "ACTIVE",
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
     }
 }
 
