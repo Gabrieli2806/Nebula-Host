@@ -170,6 +170,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "$TAG" "${{ steps.package.outputs.file }}" "${{ steps.package.outputs.file }}.sha256" --clobber
 
+  android:
+    name: Android APK
+    permissions:
+      contents: write
+    needs: create-release
+    uses: ./.github/workflows/android.yml
+    with:
+      tag: ${{ github.event.inputs.tag || github.ref_name }}
+
   publish:
     name: Publish release
     permissions:
