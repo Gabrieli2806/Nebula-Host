@@ -44,6 +44,7 @@ export type IconName =
   | "sun"
   | "monitor"
   | "arrow-down"
+  | "arrow-up"
   | "upload"
   | "download"
   | "activity"
@@ -99,6 +100,7 @@ const PATHS: Record<IconName, string> = {
   sun: "M8 5.4a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 0 0 0-5.2zM8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1",
   monitor: "M2.5 3.5h11v7.5h-11zM6 13.5h4M8 11v2.5",
   "arrow-down": "M8 3v10M4 9l4 4 4-4",
+  "arrow-up": "M8 13V3M4 7l4-4 4 4",
   upload: "M8 10.5V2.8M4.8 6 8 2.8 11.2 6M2.8 10.2v2.3h10.4v-2.3",
   power: "M8 2.4v5M4.8 4.4a4.8 4.8 0 1 0 6.4 0",
   image: "M2.5 3.5h11v9h-11zM2.5 10.5l3-3 2.6 2.6 1.9-1.9 3 3M10.4 6h.01",

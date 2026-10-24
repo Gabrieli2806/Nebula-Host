@@ -14,7 +14,11 @@ import { api } from "@/lib/ipc";
 import type { InstanceView } from "@/types/api";
 import { useContextMenu, type MenuItem } from "@/ui/ContextMenu";
 
-export function useServerMenu(instances: InstanceView[], onCreate: () => void) {
+export function useServerMenu(
+  instances: InstanceView[],
+  onCreate: () => void,
+  moveTo?: (id: string, edge: "start" | "end") => void,
+) {
   const { t } = useI18n();
   const navigate = useNavigate();
   const client = useQueryClient();
@@ -56,6 +60,13 @@ export function useServerMenu(instances: InstanceView[], onCreate: () => void) {
     if (instance.public_address) {
       const publicAddress = instance.public_address;
       items.push({ label: t("menu.copyPublicAddress"), icon: "copy", onSelect: () => void navigator.clipboard.writeText(publicAddress) });
+    }
+    if (moveTo) {
+      items.push(
+        { kind: "separator" },
+        { label: t("menu.moveToStart"), icon: "arrow-up", onSelect: () => moveTo(instance.id, "start") },
+        { label: t("menu.moveToEnd"), icon: "arrow-down", onSelect: () => moveTo(instance.id, "end") },
+      );
     }
     if (!isRemote()) {
       items.push({

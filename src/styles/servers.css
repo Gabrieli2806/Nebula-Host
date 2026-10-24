@@ -281,6 +281,16 @@
     opacity: 1;
   }
 
+  /* Arranging by hand: the dragged card dims, the one it lands on is outlined. */
+  [data-dragging] {
+    opacity: 0.45;
+  }
+
+  [data-drop-target] {
+    outline: 2px dashed var(--accent);
+    outline-offset: 2px;
+  }
+
   /* Controls that must stay clickable above the stretched open target. */
   .server-card-raised {
     position: relative;

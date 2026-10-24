@@ -7,7 +7,7 @@
  * server" means ten to twenty servers as often as it means one.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { CreateServerDialog } from "./CreateServerDialog";
@@ -27,16 +27,18 @@ import type { InstanceStatus, InstanceView } from "@/types/api";
 import { PairDialog } from "@/app/NodeSwitcher";
 import { IS_MOBILE } from "@/lib/web";
 import { isRemote } from "@/lib/connection";
+import { useManualOrder } from "@/lib/manualOrder";
 import { Button, ErrorNotice, Icon, Mark, Skeleton, identityProps } from "@/ui";
 
 type Density = "cards" | "list";
 type Filter = "all" | "running" | "stopped";
-type Sort = "name" | "status" | "created" | "memory";
+type Sort = "name" | "status" | "created" | "memory" | "custom";
 
 const FILTERS: Filter[] = ["all", "running", "stopped"];
-const SORTS: Sort[] = ["name", "status", "created", "memory"];
+const SORTS: Sort[] = ["name", "status", "created", "memory", "custom"];
 const FILTER_KEY = "nebula.serversFilter";
 const SORT_KEY = "nebula.serversSort";
+const ORDER_KEY = "nebula.serversOrder";
 /** The search field earns its place once the list no longer fits at a glance. */
 const SEARCH_FROM = 5;
 
@@ -81,7 +83,9 @@ function useStoredChoice<T extends string>(key: string, allowed: readonly T[], f
   return [value, set] as const;
 }
 
-function applyView(instances: InstanceView[], query: string, filter: Filter, sort: Sort): InstanceView[] {
+type Arrange = (items: InstanceView[], idOf: (item: InstanceView) => string) => InstanceView[];
+
+function applyView(instances: InstanceView[], query: string, filter: Filter, sort: Sort, arrange: Arrange): InstanceView[] {
   const needle = query.trim().toLowerCase();
   const visible = instances.filter((instance) => {
     if (filter === "running" && !isRunning(instance)) return false;
@@ -94,6 +98,7 @@ function applyView(instances: InstanceView[], query: string, filter: Filter, sor
   });
   const byName = (a: InstanceView, b: InstanceView) =>
     a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true });
+  if (sort === "custom") return arrange(visible, (instance) => instance.id);
   return [...visible].sort((a, b) => {
     if (sort === "status") return STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || byName(a, b);
     if (sort === "created") return b.created_at.localeCompare(a.created_at) || byName(a, b);
@@ -125,10 +130,16 @@ export function ServersScreen() {
   // The toolbar only shows from two servers up; a filter saved back then
   // must not hide the last server with no control on screen to explain it.
   const effectiveFilter: Filter = total > 1 ? filter : "all";
-  const visible = useMemo(
-    () => applyView(instances ?? [], query, effectiveFilter, sort),
-    [instances, query, effectiveFilter, sort],
-  );
+  // Dragging a card arranges the servers by hand and switches to that order.
+  const manual = useManualOrder(ORDER_KEY);
+  const visible = applyView(instances ?? [], query, effectiveFilter, sort, manual.arrange);
+  // The whole list as shown now, filters aside, so hidden servers keep their place.
+  const arrangedIds = applyView(instances ?? [], "", "all", sort, manual.arrange).map((instance) => instance.id);
+  const drag = (id: string) => manual.dragProps(arrangedIds, id, () => setSort("custom"));
+  const moveTo = (id: string, edge: "start" | "end") => {
+    manual.moveTo(arrangedIds, id, edge);
+    setSort("custom");
+  };
   const narrowed = Boolean(query.trim()) || effectiveFilter !== "all";
 
   // `?create=1` (first run's "Create my first server") opens the dialog.
@@ -144,7 +155,7 @@ export function ServersScreen() {
   }, [wantsCreate, searchParams, setSearchParams]);
 
   const open = (instance: InstanceView) => navigate(`/servers/${instance.id}/overview`);
-  const serverMenu = useServerMenu(instances ?? [], () => setCreating(true));
+  const serverMenu = useServerMenu(instances ?? [], () => setCreating(true), moveTo);
 
   return (
     <div
@@ -198,7 +209,7 @@ export function ServersScreen() {
         density === "cards" ? (
           <div className="servers-grid">
             {visible.map((instance) => (
-              <ServerCard key={instance.id} instance={instance} onOpen={() => open(instance)} />
+              <ServerCard key={instance.id} instance={instance} onOpen={() => open(instance)} drag={drag(instance.id)} />
             ))}
           </div>
         ) : (
@@ -207,7 +218,7 @@ export function ServersScreen() {
               <TableHead />
               <tbody>
                 {visible.map((instance) => (
-                  <ServerRow key={instance.id} instance={instance} onOpen={() => open(instance)} />
+                  <ServerRow key={instance.id} instance={instance} onOpen={() => open(instance)} drag={drag(instance.id)} />
                 ))}
               </tbody>
             </table>

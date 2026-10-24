@@ -8,6 +8,7 @@
  */
 
 import { useDistribution, useInstanceActions } from "@/hooks/useBackend";
+import type { DragProps } from "@/lib/manualOrder";
 import { useI18n } from "@/i18n";
 import { formatDuration, formatMegabytes } from "@/lib/format";
 import type { InstanceView } from "@/types/api";
@@ -20,7 +21,7 @@ function formatAllocation(mb: number): string {
   return mb >= 1024 && mb % 1024 === 0 ? `${mb / 1024} GB` : formatMegabytes(mb);
 }
 
-export function ServerRow({ instance, onOpen }: { instance: InstanceView; onOpen: () => void }) {
+export function ServerRow({ instance, onOpen, drag }: { instance: InstanceView; onOpen: () => void; drag?: DragProps }) {
   const { t } = useI18n();
   const actions = useInstanceActions();
   const distribution = useDistribution(instance);
@@ -54,6 +55,7 @@ export function ServerRow({ instance, onOpen }: { instance: InstanceView; onOpen
   return (
     <>
       <tr
+        {...drag}
         data-instance-id={instance.id}
         className="server-row"
         {...identityProps(accent)}

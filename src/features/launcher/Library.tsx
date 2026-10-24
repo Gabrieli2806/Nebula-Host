@@ -9,6 +9,7 @@ import { useContextMenu, type MenuItem } from "@/ui/ContextMenu";
 import { usePrimaryAccount } from "./primaryAccount";
 
 import { useI18n } from "@/i18n";
+import { useManualOrder } from "@/lib/manualOrder";
 import { launcherApi, toAppError } from "@/lib/ipc";
 import { Button, ErrorNotice, Icon, LoaderIcon, Select, StatusDot, statusStyle } from "@/ui";
 import { CreateInstanceDialog } from "./CreateInstanceDialog";
@@ -25,7 +26,10 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [loader, setLoader] = useState<Loader | "all">("all");
-  const visible = (profiles.data ?? []).filter(
+  const manual = useManualOrder("nebula.instancesOrder");
+  const arranged = manual.arrange(profiles.data ?? [], (profile) => profile.id);
+  const arrangedIds = arranged.map((profile) => profile.id);
+  const visible = arranged.filter(
     (profile) => (loader === "all" || profile.loader === loader) && `${profile.name} ${profile.game_version}`.toLowerCase().includes(search.toLowerCase()),
   );
   const client = useQueryClient();
@@ -48,6 +52,9 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
         ? { label: t("launcher.stopGame"), icon: "stop", onSelect: () => action.mutate({ profile, what: "stop" }) }
         : { label: t("launcher.play"), icon: "play", disabled: !caps.data?.can_launch, onSelect: () => action.mutate({ profile, what: "play" }) },
       { label: t("launcher.manage"), icon: "sliders", onSelect: () => onOpen(profile) },
+      { kind: "separator" },
+      { label: t("menu.moveToStart"), icon: "arrow-up", onSelect: () => manual.moveTo(arrangedIds, profile.id, "start") },
+      { label: t("menu.moveToEnd"), icon: "arrow-down", onSelect: () => manual.moveTo(arrangedIds, profile.id, "end") },
       { kind: "separator" },
       { label: t("launcher.openInstanceFolder"), icon: "folder", onSelect: () => action.mutate({ profile, what: "folder" }) },
       { label: t(caps.data?.platform === "android" ? "launcher.pinShortcut" : "launcher.desktopShortcut"), icon: "plus", onSelect: () => action.mutate({ profile, what: "shortcut" }) },
@@ -96,7 +103,7 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
             const phase = statuses.data?.[profile.id]?.phase;
             const canLaunch = !!caps.data?.can_launch && profile.loader !== "quilt";
             return (
-              <article key={profile.id} className="panel card-interactive server-card launcher-instance" data-phase={phase} onContextMenu={(event) => open(event, menuFor(profile))}>
+              <article key={profile.id} {...manual.dragProps(arrangedIds, profile.id)} className="panel card-interactive server-card launcher-instance" data-phase={phase} onContextMenu={(event) => open(event, menuFor(profile))}>
                 <header className="flex items-start gap-3.5">
                   <InstanceTile profile={profile} size={44} />
                   <div className="flex min-w-0 flex-1 flex-col gap-2">

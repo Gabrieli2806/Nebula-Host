@@ -16,6 +16,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import type { DragProps } from "@/lib/manualOrder";
+
 import { useDistribution, useInstanceActions } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { formatDuration, formatMegabytes } from "@/lib/format";
@@ -43,7 +45,7 @@ function formatAllocation(mb: number): string {
 /** Above this share a usage bar turns amber. */
 const USAGE_WARN = 90;
 
-export function ServerCard({ instance, onOpen }: { instance: InstanceView; onOpen: () => void }) {
+export function ServerCard({ instance, onOpen, drag }: { instance: InstanceView; onOpen: () => void; drag?: DragProps }) {
   const { t } = useI18n();
   const actions = useInstanceActions();
   const distribution = useDistribution(instance);
@@ -74,6 +76,7 @@ export function ServerCard({ instance, onOpen }: { instance: InstanceView; onOpe
 
   return (
     <article
+      {...drag}
       data-instance-id={instance.id}
       className="panel card-interactive server-card"
       {...identityProps(accent)}
