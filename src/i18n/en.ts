@@ -380,6 +380,8 @@ export const en = {
   java: {
     title: "Java",
     intro: "Each Minecraft version needs its own Java: 26.1+ uses Java 25, 1.20.5+ Java 21, 1.17–1.20.4 Java 17, older versions Java 8. Nebula finds the Java installed on this machine and uses the right one for each server automatically. Pin one here only if you want a specific JVM.",
+    summary: "{ready} of {total} ready",
+    summaryPinned: "{count} pinned",
     detect: "Detect again",
     detecting: "Detecting…",
     notFoundShort: "Not installed",

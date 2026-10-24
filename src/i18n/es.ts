@@ -380,6 +380,8 @@ export const es: Copy = {
   java: {
     title: "Java",
     intro: "Cada versión de Minecraft necesita su Java: 26.1+ usa Java 25, 1.20.5+ Java 21, 1.17–1.20.4 Java 17 y las anteriores Java 8. Nebula detecta los Java instalados en este equipo y usa el adecuado para cada servidor automáticamente. Fija uno aquí solo si quieres una JVM concreta.",
+    summary: "{ready} de {total} listos",
+    summaryPinned: "{count} fijados",
     detect: "Volver a detectar",
     detecting: "Detectando…",
     notFoundShort: "No instalado",

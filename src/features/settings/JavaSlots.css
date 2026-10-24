@@ -1,6 +1,40 @@
 /* Settings › Java: one compact line per slot. */
 
 @layer components {
+  .java-fold {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .java-fold-chevron {
+    color: var(--text-muted);
+    transform: rotate(-90deg);
+    transition: transform var(--duration) var(--ease);
+  }
+
+  .java-fold[aria-expanded="true"] .java-fold-chevron {
+    transform: none;
+  }
+
+  .java-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .java-summary[data-missing] {
+    color: var(--warning, var(--text));
+  }
+
   .java-intro {
     margin: 0;
     padding: 14px 20px 4px;

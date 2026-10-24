@@ -4,6 +4,9 @@
  * automatically or pinned by you — with Detect, Browse, Download and Test.
  * Servers pick their slot from their game version on their own; a server can
  * still pin a specific JVM in its own settings.
+ *
+ * Folded by default: most people never touch it, so it shows one line saying
+ * whether every slot has a Java, and opens on demand.
  */
 
 import { useState } from "react";
@@ -30,7 +33,11 @@ export function JavaSlots({
 }) {
   const { t } = useI18n();
   const client = useQueryClient();
-  const overview = useQuery({ queryKey: OVERVIEW_KEY, queryFn: () => api.java.overview(false) });
+  const [open, setOpen] = useState(false);
+  const overview = useQuery({
+    queryKey: OVERVIEW_KEY,
+    queryFn: () => api.java.overview(false),
+  });
   const rescan = useMutation({
     mutationFn: () => api.java.overview(true),
     onSuccess: (data: JavaOverview) => client.setQueryData(OVERVIEW_KEY, data),
@@ -42,38 +49,74 @@ export function JavaSlots({
     else delete next[String(major)];
     onChange(next);
     // The slot's effective JVM changes with the pin.
-    window.setTimeout(() => void client.invalidateQueries({ queryKey: OVERVIEW_KEY }), 400);
+    window.setTimeout(
+      () => void client.invalidateQueries({ queryKey: OVERVIEW_KEY }),
+      400,
+    );
   };
+
+  const slots = overview.data?.slots ?? [];
+  const ready = slots.filter((slot) => slot.effective).length;
+  const pinned = slots.filter((slot) => !slot.automatic).length;
 
   return (
     <Panel
-      title={t("java.title")}
+      title={
+        <button
+          type="button"
+          className="java-fold"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          <Icon name="chevron-down" size={14} className="java-fold-chevron" />
+          {t("java.title")}
+        </button>
+      }
       actions={
-        <Button size="sm" variant="quiet" icon="search" disabled={rescan.isPending} onClick={() => rescan.mutate()}>
-          {rescan.isPending ? t("java.detecting") : t("java.detect")}
-        </Button>
+        open ? (
+          <Button
+            size="sm"
+            variant="quiet"
+            icon="search"
+            disabled={rescan.isPending}
+            onClick={() => rescan.mutate()}
+          >
+            {rescan.isPending ? t("java.detecting") : t("java.detect")}
+          </Button>
+        ) : overview.data ? (
+          <span
+            className="java-summary"
+            data-missing={ready < slots.length ? "" : undefined}
+          >
+            <Icon name={ready < slots.length ? "warning" : "check"} size={13} />
+            {t("java.summary", { ready, total: slots.length })}
+            {pinned ? ` · ${t("java.summaryPinned", { count: pinned })}` : ""}
+          </span>
+        ) : null
       }
     >
-      <p className="java-intro">{t("java.intro")}</p>
       {overview.error ? <ErrorNotice error={overview.error} compact /> : null}
-      {!overview.data ? (
+      {!open ? null : !overview.data ? (
         <div className="java-slots">
           {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-[72px]" />
           ))}
         </div>
       ) : (
-        <div className="java-slots">
-          {overview.data.slots.map((slot) => (
-            <SlotRow
-              key={slot.major}
-              slot={slot}
-              installations={overview.data.installations}
-              canDownload={overview.data.canDownload}
-              onPin={(path) => pin(slot.major, path)}
-            />
-          ))}
-        </div>
+        <>
+          <p className="java-intro">{t("java.intro")}</p>
+          <div className="java-slots">
+            {overview.data.slots.map((slot) => (
+              <SlotRow
+                key={slot.major}
+                slot={slot}
+                installations={overview.data.installations}
+                canDownload={overview.data.canDownload}
+                onPin={(path) => pin(slot.major, path)}
+              />
+            ))}
+          </div>
+        </>
       )}
     </Panel>
   );
@@ -102,16 +145,24 @@ function SlotRow({
   // Same major first, then newer ones (a newer JVM runs older servers too).
   const choices = installations
     .filter((i) => i.major >= slot.major)
-    .sort((a, b) => Number(a.major !== slot.major) - Number(b.major !== slot.major) || a.major - b.major);
+    .sort(
+      (a, b) =>
+        Number(a.major !== slot.major) - Number(b.major !== slot.major) ||
+        a.major - b.major,
+    );
   const effective = slot.effective;
   const exact = effective?.major === slot.major;
   const downloading = download.isPending && download.variables === slot.major;
   const pct =
-    downloading && progress?.major === slot.major && "received" in progress.progress && progress.progress.total
+    downloading &&
+    progress?.major === slot.major &&
+    "received" in progress.progress &&
+    progress.progress.total
       ? Math.round((progress.progress.received / progress.progress.total) * 100)
       : null;
 
-  const describe = (java: JavaInstallation) => `${java.vendor ?? "Java"} ${java.version}`;
+  const describe = (java: JavaInstallation) =>
+    `${java.vendor ?? "Java"} ${java.version}`;
 
   const onSelect = async (value: string) => {
     setBrowseError(null);
@@ -122,8 +173,12 @@ function SlotRow({
     if (value === BROWSE) {
       try {
         const { open } = await import("@tauri-apps/plugin-dialog");
-        const picked = await open({ multiple: false, filters: [{ name: "java", extensions: ["exe", ""] }] });
-        if (typeof picked === "string") onPin((await api.settings.probeJava(picked)).path);
+        const picked = await open({
+          multiple: false,
+          filters: [{ name: "java", extensions: ["exe", ""] }],
+        });
+        if (typeof picked === "string")
+          onPin((await api.settings.probeJava(picked)).path);
       } catch (error) {
         setBrowseError(error);
       }
@@ -141,7 +196,11 @@ function SlotRow({
 
       <span className="java-slot-state" title={effective?.path}>
         {downloading ? (
-          <>{pct !== null ? `${t("java.downloading")} ${pct}%` : t("java.downloading")}</>
+          <>
+            {pct !== null
+              ? `${t("java.downloading")} ${pct}%`
+              : t("java.downloading")}
+          </>
         ) : effective ? (
           <>
             <Icon name={exact ? "check" : "info"} size={13} />
@@ -173,8 +232,14 @@ function SlotRow({
           </optgroup>
         ) : null}
         <optgroup label={t("java.more")}>
-          {remote || IS_MOBILE ? null : <option value={BROWSE}>{t("java.browse")}…</option>}
-          {canDownload && !exact ? <option value={DOWNLOAD}>{t("java.download", { major: slot.major })}</option> : null}
+          {remote || IS_MOBILE ? null : (
+            <option value={BROWSE}>{t("java.browse")}…</option>
+          )}
+          {canDownload && !exact ? (
+            <option value={DOWNLOAD}>
+              {t("java.download", { major: slot.major })}
+            </option>
+          ) : null}
         </optgroup>
       </Select>
 
