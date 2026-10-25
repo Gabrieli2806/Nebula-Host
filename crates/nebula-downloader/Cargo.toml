@@ -9,7 +9,7 @@ license = "MIT"
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
 futures-util = "0.3"
 tokio = { version = "1", features = ["time", "fs"] }
-sha1 = "0.10"
+sha1 = "0.11"
 sha2 = "0.10"
 hex = "0.4"
 
