@@ -262,6 +262,105 @@ pub fn check(root: &Path, target: &str, sources: &[String]) -> AppResult<ImportC
     })
 }
 
+// -- bundles sent from another machine ---------------------------------------
+//
+// A remote UI cannot hand over paths on its own disk, so its backend zips the
+// dropped items (each under `<index>/<name>`) and streams that to `/upload`.
+// The node unpacks it next to the upload and imports from there.
+
+fn stage_dir(upload_id: &str) -> AppResult<PathBuf> {
+    if uuid::Uuid::parse_str(upload_id).is_err() {
+        return Err(AppError::new(ErrorCode::InvalidInput).with("field", "uploadId"));
+    }
+    Ok(crate::service::world::uploads_dir()?.join(format!("{upload_id}.files")))
+}
+
+/// Unpack an uploaded bundle (once) and list its items, in the order sent.
+pub fn stage_upload(upload_id: &str) -> AppResult<Vec<String>> {
+    let dir = stage_dir(upload_id)?;
+    if !dir.is_dir() {
+        let archive = crate::service::world::upload_path(upload_id)?;
+        let partial = dir.with_extension("partial");
+        let _ = std::fs::remove_dir_all(&partial);
+        // `extract` refuses entries that would land outside the folder.
+        zip::ZipArchive::new(File::open(&archive)?)
+            .and_then(|mut zip| zip.extract(&partial))
+            .map_err(|e| AppError::new(ErrorCode::InvalidInput).with("reason", "bad_bundle").detail(e.to_string()))?;
+        std::fs::rename(&partial, &dir)?;
+        let _ = std::fs::remove_file(&archive);
+    }
+    let mut items = Vec::new();
+    for index in 0.. {
+        let slot = dir.join(index.to_string());
+        if !slot.is_dir() {
+            break;
+        }
+        for entry in std::fs::read_dir(&slot)? {
+            items.push(entry?.path().to_string_lossy().to_string());
+        }
+    }
+    Ok(items)
+}
+
+/// Every source must be an item of this upload, nothing else on the disk.
+pub fn ensure_staged(upload_id: &str, sources: &[String]) -> AppResult<()> {
+    let dir = stage_dir(upload_id)?.canonicalize()?;
+    for source in sources {
+        let path = Path::new(source).canonicalize()?;
+        if !path.starts_with(&dir) || path == dir {
+            return Err(AppError::new(ErrorCode::PathOutsideInstance).with("path", source));
+        }
+    }
+    Ok(())
+}
+
+/// Forget an upload: the bundle and what was unpacked from it.
+pub fn discard_upload(upload_id: &str) -> AppResult<()> {
+    let dir = stage_dir(upload_id)?;
+    let _ = std::fs::remove_dir_all(&dir);
+    let _ = std::fs::remove_file(dir.with_extension("zip"));
+    Ok(())
+}
+
+/// Zip local items for `stage_upload` on another machine: each source under
+/// `<index>/<its name>`, folders recursively, links skipped.
+pub fn bundle(sources: &[String], out: &Path) -> AppResult<()> {
+    if sources.is_empty() || sources.len() > MAX_SOURCES {
+        return Err(AppError::new(ErrorCode::InvalidInput).with("field", "sources"));
+    }
+    let mut zip = zip::ZipWriter::new(File::create(out)?);
+    // Mods and worlds are mostly compressed already: store, don't deflate.
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Stored)
+        .large_file(true);
+    fn add(zip: &mut zip::ZipWriter<File>, options: zip::write::SimpleFileOptions, path: &Path, name: &str) -> AppResult<()> {
+        let metadata = std::fs::symlink_metadata(path)?;
+        if metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
+            return Ok(());
+        }
+        let wrap = |e: zip::result::ZipError| AppError::new(ErrorCode::IoFailed).detail(e.to_string());
+        if metadata.is_dir() {
+            zip.add_directory(format!("{name}/"), options).map_err(wrap)?;
+            for entry in std::fs::read_dir(path)? {
+                let entry = entry?;
+                let child = entry.file_name().to_string_lossy().to_string();
+                add(zip, options, &entry.path(), &format!("{name}/{child}"))?;
+            }
+        } else {
+            zip.start_file(name, options).map_err(wrap)?;
+            std::io::copy(&mut File::open(path)?, zip)?;
+        }
+        Ok(())
+    }
+    for (index, source) in sources.iter().enumerate() {
+        let path = PathBuf::from(source);
+        let name = plain_name(&path).ok_or_else(|| AppError::new(ErrorCode::InvalidInput).with("path", source))?;
+        add(&mut zip, options, &path, &format!("{index}/{name}"))?;
+    }
+    zip.finish().map_err(|e| AppError::new(ErrorCode::IoFailed).detail(e.to_string()))?;
+    Ok(())
+}
+
 /// `name (n).ext` for files, `name (n)` for folders, first free n.
 pub fn free_name(dir: &Path, name: &str, is_dir: bool) -> String {
     let (stem, ext) = match name.rfind('.') {

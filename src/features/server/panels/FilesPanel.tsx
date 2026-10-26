@@ -279,7 +279,7 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
     [blocked, dropTargetAt, startImport],
   );
 
-  useWindowDragDrop(onDrag, editing === null && !isRemote());
+  useWindowDragDrop(onDrag, editing === null);
 
   const pick = async (directory: boolean) => {
     try {
@@ -371,10 +371,10 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
       actions={
         DESKTOP_FEATURES ? (
         <>
-          <Button size="sm" icon="folder" disabled={busy || isRemote()} title={isRemote() ? t("remote.localOnly") : undefined} onClick={() => void pick(true)}>
+          <Button size="sm" icon="folder" disabled={busy} onClick={() => void pick(true)}>
             {t("files.uploadFolder")}
           </Button>
-          <Button size="sm" icon="upload" disabled={busy || isRemote()} title={isRemote() ? t("remote.localOnly") : undefined} onClick={() => void pick(false)}>
+          <Button size="sm" icon="upload" disabled={busy} onClick={() => void pick(false)}>
             {t("files.upload")}
           </Button>
           <Button

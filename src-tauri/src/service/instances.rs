@@ -20,6 +20,7 @@ use crate::model::{
     ConsoleLevel, ConsoleLine, Instance, InstanceState, InstanceStatus, InstanceView, Node,
     RuntimeKind,
 };
+use crate::net::firewall::{self, FirewallStatus};
 use crate::net::{ports, upnp::PortForwarder, wake_proxy};
 use crate::runtime::console::ConsoleParser;
 use crate::runtime::process::{ProcessSupervisor, RuntimeEvent, StartRequest};
@@ -370,6 +371,38 @@ impl InstanceService {
         Ok(summary)
     }
 
+    /// The program players connect to, when the server runs as a process on
+    /// this machine (a container has its own networking).
+    async fn listening_program(&self, instance_id: &str) -> AppResult<Option<PathBuf>> {
+        let instance = self.store.get(instance_id).await?;
+        if !cfg!(windows) || instance.runtime_kind != RuntimeKind::HostProcess {
+            return Ok(None);
+        }
+        let install = instance.install.clone().unwrap_or_default();
+        let plan = self.registry.get(&instance.game)?.launch_plan(LaunchContext {
+            root: &instance.path,
+            build: &instance.build,
+            install: &install,
+            java: instance.resources.runtime_path.as_deref().map(PathBuf::from),
+            memory_mb: instance.resources.memory_mb,
+            extra_args: &instance.resources.extra_args,
+        })?;
+        Ok(Some(PathBuf::from(plan.program)))
+    }
+
+    /// Whether Windows Firewall lets players reach this server's program.
+    pub async fn firewall_status(&self, instance_id: &str) -> AppResult<FirewallStatus> {
+        let Some(program) = self.listening_program(instance_id).await? else { return Ok(FirewallStatus::default()) };
+        tokio::task::spawn_blocking(move || firewall::check(&program)).await.map_err(AppError::unexpected)
+    }
+
+    /// Replace the block rules with allow rules (Windows asks for an
+    /// administrator on this machine's screen).
+    pub async fn firewall_fix(&self, instance_id: &str) -> AppResult<FirewallStatus> {
+        let Some(program) = self.listening_program(instance_id).await? else { return Ok(FirewallStatus::default()) };
+        tokio::task::spawn_blocking(move || firewall::fix(&program)).await.map_err(AppError::unexpected)?
+    }
+
     /// Something outside the addon calls changed the instance folder (the
     /// Files panel, a restore): forget what was measured or identified there.
     pub async fn after_folder_change(&self, instance_id: &str) {
@@ -592,6 +625,31 @@ impl InstanceService {
             memory_mb: instance.resources.memory_mb,
             extra_args: &instance.resources.extra_args,
         })?;
+
+        // A firewall that blocks the JVM makes a running server unreachable
+        // with nothing in its own log; say so in the console (Overview offers
+        // the fix).
+        if cfg!(windows) && instance.runtime_kind == RuntimeKind::HostProcess {
+            let service = self.clone();
+            let id = instance_id.to_string();
+            let program = PathBuf::from(&plan.program);
+            tokio::spawn(async move {
+                let status = tokio::task::spawn_blocking(move || firewall::check(&program)).await.unwrap_or_default();
+                if status.blocked {
+                    let program = status.program.unwrap_or_default();
+                    warn!(instance_id = %id, %program, "Windows Firewall blocks the server's Java");
+                    service
+                        .push_console(
+                            &id,
+                            ConsoleLine::new(
+                                ConsoleLevel::Warn,
+                                format!("Windows Firewall is blocking {program}: players cannot connect. Open Overview to fix it."),
+                            ),
+                        )
+                        .await;
+                }
+            });
+        }
 
         let parser = Arc::new(ConsoleParser::new(&manifest.console)?);
         let (console_tx, console_rx) = mpsc::channel(256);

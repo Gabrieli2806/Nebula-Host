@@ -169,6 +169,12 @@ async function webLocal<T>(command: string, args?: Record<string, unknown>): Pro
 
 const WEB_UPLOAD_EVENT = "nebula:web-upload";
 
+/** What a Windows node's firewall does with a server's Java. */
+export type FirewallStatus = { applies: boolean; program?: string | null; blocked: boolean; allowed: boolean };
+
+/** Drops sent to another machine, per server: the upload and where each item landed there. */
+const sentDrops = new Map<string, { uploadId: string; staged: Map<string, string>; pending: Set<string> }>();
+
 /** Tauri events, or nothing in the web panel (which has no Tauri). */
 function tauriListen<T>(event: string, handler: (payload: T) => void): () => void {
   if (IS_WEB) return () => {};
@@ -290,6 +296,10 @@ export const api = {
       call<Instance>("instance_update", { instanceId, patch }),
     forwardPort: (instanceId: string) => call<void>("instance_forward_port", { instanceId }),
     releasePort: (instanceId: string) => call<void>("instance_release_port", { instanceId }),
+    /** Whether Windows Firewall blocks this server's Java (Windows nodes only). */
+    firewall: (instanceId: string) => call<FirewallStatus>("instance_firewall", { instanceId }),
+    /** Swap the block rules for allow rules; asks for an administrator on that machine. */
+    firewallFix: (instanceId: string) => call<FirewallStatus>("instance_firewall_fix", { instanceId }),
     /**
      * Make a picture the server's icon. `data` is base64 or a `data:` URL; the
      * backend squares it (`cover` crops the centre, `contain` letterboxes)
@@ -343,20 +353,68 @@ export const api = {
     openFolder: (instanceId: string) => local<void>("instance_open_folder", { instanceId }).catch((error) => {
       throw toAppError(error);
     }),
-    /** Dry run of a drop into `target` (instance-relative, "" = root). */
-    importCheck: (instanceId: string, target: string, sources: string[]) =>
-      call<ImportCheck>("files_import_check", { instanceId, target, sources }),
+    /**
+     * Dry run of a drop into `target` (instance-relative, "" = root). When
+     * managing another machine, the items are zipped and sent there first
+     * (by this PC's backend) and checked from that upload.
+     */
+    importCheck: async (instanceId: string, target: string, sources: string[]): Promise<ImportCheck> => {
+      const node = activeRemote();
+      if (!node) return call<ImportCheck>("files_import_check", { instanceId, target, sources });
+      try {
+        const uploadId = await invoke<string>("files_upload_bundle", { address: node.address, token: node.token, sources });
+        const { check, staged } = await remoteCall<{ check: ImportCheck; staged: string[] }>(node, "files_upload_check", {
+          instanceId,
+          uploadId,
+          target,
+        });
+        const previous = sentDrops.get(instanceId);
+        if (previous) void remoteCall(node, "files_upload_discard", { uploadId: previous.uploadId }).catch(() => undefined);
+        sentDrops.set(instanceId, {
+          uploadId,
+          staged: new Map(sources.map((source, index) => [source, staged[index] ?? ""])),
+          pending: new Set(sources),
+        });
+        return check;
+      } catch (error) {
+        throw toAppError(error);
+      }
+    },
     /**
      * Copy dropped OS paths (files and folders, recursive) into `target`.
      * Progress arrives as `{ type: "import" }` events carrying `importId`.
      */
-    import: (
+    import: async (
       instanceId: string,
       target: string,
       sources: string[],
       conflict: ConflictPolicy = "keep_both",
       importId?: string,
-    ) => call<ImportSummary>("files_import", { instanceId, target, sources, conflict, importId }),
+    ): Promise<ImportSummary> => {
+      const node = activeRemote();
+      const drop = sentDrops.get(instanceId);
+      if (!node || !drop) return call<ImportSummary>("files_import", { instanceId, target, sources, conflict, importId });
+      const staged = sources.map((source) => drop.staged.get(source)).filter((path): path is string => !!path);
+      try {
+        return await remoteCall<ImportSummary>(node, "files_upload_import", {
+          instanceId,
+          uploadId: drop.uploadId,
+          target,
+          sources: staged,
+          conflict,
+          importId,
+        });
+      } catch (error) {
+        throw toAppError(error);
+      } finally {
+        // The upload goes once every item in it has been placed.
+        for (const source of sources) drop.pending.delete(source);
+        if (drop.pending.size === 0) {
+          sentDrops.delete(instanceId);
+          void remoteCall(node, "files_upload_discard", { uploadId: drop.uploadId }).catch(() => undefined);
+        }
+      }
+    },
   },
 
   backups: {

@@ -377,6 +377,14 @@ export const en = {
     upnpNote: "Whether port forwarding works depends on your internet provider and router: UPnP must be enabled on the router, and providers using CGNAT block incoming connections entirely.",
   },
 
+  firewall: {
+    title: "Windows Firewall is blocking this server",
+    cause: "Windows blocks connections to the server's Java on this network (its \"allow access?\" prompt was dismissed), so players cannot join, not even on the same network.",
+    action: "Allow it through the firewall. Windows will ask for an administrator.",
+    actionRemote: "Allow it through the firewall. Windows will ask for an administrator on that PC's screen.",
+    fix: "Allow through firewall",
+    fixing: "Waiting for Windows…",
+  },
   java: {
     title: "Java",
     intro: "Each Minecraft version needs its own Java: 26.1+ uses Java 25, 1.20.5+ Java 21, 1.17–1.20.4 Java 17, older versions Java 8. Nebula finds the Java installed on this machine and uses the right one for each server automatically. Pin one here only if you want a specific JVM.",

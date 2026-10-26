@@ -32,6 +32,7 @@ import {
 } from "@/lib/format";
 import type { DiskUsage, InstanceView } from "@/types/api";
 import { TransferBanner } from "@/features/server/transfer/TransferBanner";
+import { FirewallNotice } from "./FirewallNotice";
 import { movedTo } from "@/features/server/transfer/machines";
 import { TransferProgressStrip } from "@/features/server/transfer/TransferStrip";
 import { TransferDialog } from "@/features/server/transfer/TransferDialog";
@@ -116,6 +117,7 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
   return (
     <div className="overview">
       <TransferBanner instance={instance} />
+      <FirewallNotice instance={instance} />
 
       {/* The one header for this server. Nothing else on the screen repeats
           its name, status or build. */}

@@ -377,6 +377,14 @@ export const es: Copy = {
     upnpNote: "Que la redirección de puertos funcione depende de tu proveedor de internet y de tu router: UPnP debe estar activado en el router, y los proveedores con CGNAT bloquean por completo las conexiones entrantes.",
   },
 
+  firewall: {
+    title: "El firewall de Windows está bloqueando este servidor",
+    cause: "Windows bloquea las conexiones al Java del servidor en esta red (se cerró su aviso de \"¿permitir acceso?\"), así que nadie puede entrar, ni siquiera desde la misma red.",
+    action: "Permítelo en el firewall. Windows pedirá permiso de administrador.",
+    actionRemote: "Permítelo en el firewall. Windows pedirá permiso de administrador en la pantalla de esa PC.",
+    fix: "Permitir en el firewall",
+    fixing: "Esperando a Windows…",
+  },
   java: {
     title: "Java",
     intro: "Cada versión de Minecraft necesita su Java: 26.1+ usa Java 25, 1.20.5+ Java 21, 1.17–1.20.4 Java 17 y las anteriores Java 8. Nebula detecta los Java instalados en este equipo y usa el adecuado para cada servidor automáticamente. Fija uno aquí solo si quieres una JVM concreta.",

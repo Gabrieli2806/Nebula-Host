@@ -190,6 +190,23 @@ pub async fn upload_to_node(app: tauri::AppHandle, address: String, token: Strin
         .ok_or_else(|| AppError::new(ErrorCode::Unexpected).detail("no upload id"))
 }
 
+/// Zip dropped items on this PC and stream them to a paired node, for its
+/// `files_upload_check` / `files_upload_import`. Returns the upload id.
+#[tauri::command]
+pub async fn files_upload_bundle(app: tauri::AppHandle, address: String, token: String, sources: Vec<String>) -> AppResult<String> {
+    let out = std::env::temp_dir().join(format!("nebula-bundle-{}.zip", uuid::Uuid::new_v4()));
+    let target = out.clone();
+    let packed = tokio::task::spawn_blocking(move || crate::service::import::bundle(&sources, &target))
+        .await
+        .map_err(crate::error::AppError::unexpected)?;
+    let result = match packed {
+        Ok(()) => upload_to_node(app, address, token, out.to_string_lossy().to_string()).await,
+        Err(error) => Err(error),
+    };
+    let _ = tokio::fs::remove_file(&out).await;
+    result
+}
+
 /// A tokio file as a stream of byte chunks (without pulling in tokio-util).
 fn tokio_util_stream(
     file: tokio::fs::File,

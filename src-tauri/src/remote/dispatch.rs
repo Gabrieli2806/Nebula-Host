@@ -56,6 +56,7 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
     if matches!(
         command,
         "file_write" | "file_delete" | "file_rename" | "folder_create" | "players_write_list" | "instance_settings_set"
+            | "files_upload_import"
     ) {
         service.ensure_not_transferring(&id()?).await?;
     }
@@ -118,6 +119,8 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             let port = instance.primary_port(&manifest);
             ok(service.forwarder.forward(&instance_id, port, &format!("Nebula — {}", instance.name)).await?)
         }
+        "instance_firewall" => ok(service.firewall_status(&id()?).await?),
+        "instance_firewall_fix" => ok(service.firewall_fix(&id()?).await?),
         "instance_release_port" => {
             service.forwarder.release(&id()?).await;
             ok(())
@@ -165,6 +168,33 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             let instance = service.store.get(&id()?).await?;
             ok(files::create_dir(&instance.path, &arg::<String>(args, "path")?)?)
         }
+
+        // Files dropped on another machine arrive as one bundle (`/upload`):
+        // unpack it once, then check and copy from there like a local drop.
+        // Sources must be inside that upload's own folder.
+        "files_upload_check" => {
+            let instance = service.store.get(&id()?).await?;
+            let staged = crate::service::import::stage_upload(&arg::<String>(args, "uploadId")?)?;
+            let check = crate::service::import::check(&instance.path, &arg::<String>(args, "target")?, &staged)?;
+            ok(json!({ "check": check, "staged": staged }))
+        }
+        "files_upload_import" => {
+            let upload_id: String = arg(args, "uploadId")?;
+            let sources: Vec<String> = arg(args, "sources")?;
+            crate::service::import::ensure_staged(&upload_id, &sources)?;
+            let conflict: Option<crate::service::import::ConflictPolicy> = opt(args, "conflict")?;
+            let import_id: Option<String> = opt(args, "importId")?;
+            ok(service
+                .import_files(
+                    &id()?,
+                    arg(args, "target")?,
+                    sources,
+                    conflict.unwrap_or_default(),
+                    import_id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
+                )
+                .await?)
+        }
+        "files_upload_discard" => ok(crate::service::import::discard_upload(&arg::<String>(args, "uploadId")?)?),
 
         // -- worlds --------------------------------------------------------------
         "world_import" => {

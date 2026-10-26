@@ -121,6 +121,18 @@ pub async fn instance_forward_port(state: State<'_>, instance_id: String) -> App
     state.forwarder.forward(&instance_id, port, &format!("Nebula — {}", instance.name)).await
 }
 
+/// Whether Windows Firewall blocks this server's program.
+#[tauri::command]
+pub async fn instance_firewall(state: State<'_>, instance_id: String) -> AppResult<crate::net::firewall::FirewallStatus> {
+    state.firewall_status(&instance_id).await
+}
+
+/// Let this server's program through Windows Firewall (UAC prompt).
+#[tauri::command]
+pub async fn instance_firewall_fix(state: State<'_>, instance_id: String) -> AppResult<crate::net::firewall::FirewallStatus> {
+    state.firewall_fix(&instance_id).await
+}
+
 #[tauri::command]
 pub async fn instance_release_port(state: State<'_>, instance_id: String) -> AppResult<()> {
     state.forwarder.release(&instance_id).await;
