@@ -98,11 +98,22 @@ mod windows {
     }
 
     pub fn fix(program: &Path) -> AppResult<()> {
+        // Only ever let a JVM through: the program comes from the server's
+        // settings, which a paired device can change.
+        let is_java = program
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.eq_ignore_ascii_case("java.exe") || name.eq_ignore_ascii_case("javaw.exe"));
+        if !program.is_absolute() || !is_java || !program.is_file() {
+            return Err(AppError::new(ErrorCode::InvalidInput).with("program", program.display()));
+        }
         // The elevated process starts with a fresh environment, so the path
-        // goes in the script as a single-quoted literal (quotes doubled).
-        let literal = program.display().to_string().replace('\'', "''");
+        // goes in the script — base64, which has no quote of any kind
+        // (PowerShell also treats typographic quotes as quotes).
+        use base64::Engine;
+        let encoded = base64::engine::general_purpose::STANDARD.encode(program.to_string_lossy().as_bytes());
         let script = format!(
-            "$p = '{literal}'\r\n\
+            "$p = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('{encoded}'))\r\n\
              Get-NetFirewallApplicationFilter | Where-Object {{ $_.Program -ieq $p }} | Get-NetFirewallRule |\
              Where-Object {{ $_.Direction -eq 'Inbound' -and ($_.Action -eq 'Block' -or $_.Group -eq 'Nebula Host') }} | Remove-NetFirewallRule\r\n\
              foreach ($proto in 'TCP', 'UDP') {{\r\n\
