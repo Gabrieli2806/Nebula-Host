@@ -400,7 +400,22 @@ impl InstanceService {
     /// administrator on this machine's screen).
     pub async fn firewall_fix(&self, instance_id: &str) -> AppResult<FirewallStatus> {
         let Some(program) = self.listening_program(instance_id).await? else { return Ok(FirewallStatus::default()) };
-        tokio::task::spawn_blocking(move || firewall::fix(&program)).await.map_err(AppError::unexpected)?
+        tokio::task::spawn_blocking(move || {
+            // Only a JVM this machine found itself (installed, or downloaded
+            // by Nebula): a pinned runtime path can come from a paired device.
+            let known = crate::runtime::java::detect_installations(false).iter().any(|java| {
+                match (std::fs::canonicalize(&java.path), std::fs::canonicalize(&program)) {
+                    (Ok(a), Ok(b)) => a == b,
+                    _ => false,
+                }
+            });
+            if !known {
+                return Err(AppError::new(ErrorCode::InvalidInput).with("program", program.display()));
+            }
+            firewall::fix(&program)
+        })
+        .await
+        .map_err(AppError::unexpected)?
     }
 
     /// Something outside the addon calls changed the instance folder (the
