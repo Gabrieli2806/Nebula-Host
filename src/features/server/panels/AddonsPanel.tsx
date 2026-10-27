@@ -11,6 +11,7 @@ import type { InstanceView } from "@/types/api";
 import { EmptyState, ErrorNotice, Panel, Segmented, Skeleton, Tabs } from "@/ui";
 
 import { BrowseTab } from "./addons/BrowseTab";
+import { useAddonDrop } from "./addons/AddonDrop";
 import { InstalledTab } from "./addons/InstalledTab";
 import { ProjectDialog, type ProjectTarget } from "./addons/ProjectDialog";
 import { primaryLoader, useAddonCopy, useAddonView, type AddonView } from "./addons/util";
@@ -24,6 +25,8 @@ export function AddonsPanel({ instance }: { instance: InstanceView }) {
   const [mode, setMode] = useState<Mode>("installed");
   const [view, setView] = useAddonView();
   const [detail, setDetail] = useState<ProjectTarget | null>(null);
+  // Hooks run before the early returns below; the drop waits for the folder.
+  const drop = useAddonDrop(instance, context.data?.supported ? context.data.addon_dir : null, detail !== null);
 
   if (context.error) {
     return <ErrorNotice error={context.error} onRetry={() => void context.refetch()} />;
@@ -51,7 +54,7 @@ export function AddonsPanel({ instance }: { instance: InstanceView }) {
   const kind = ctx.project_type === "plugin" ? "plugin" : "mod";
 
   return (
-    <div className="addons flex flex-col gap-4">
+    <div className="addons relative flex flex-col gap-4">
       <div className="addons-bar">
         <Tabs<Mode>
           label={t("addons.title")}
@@ -81,6 +84,8 @@ export function AddonsPanel({ instance }: { instance: InstanceView }) {
         />
       </div>
 
+      {drop.notice}
+
       <div role="tabpanel" aria-label={mode === "installed" ? t("addons.installed") : t("addons.browse")}>
         {mode === "installed" ? (
           <InstalledTab
@@ -94,6 +99,8 @@ export function AddonsPanel({ instance }: { instance: InstanceView }) {
           <BrowseTab instance={instance} context={ctx} view={view} onOpenProject={setDetail} />
         )}
       </div>
+
+      {drop.overlay}
 
       <ProjectDialog instance={instance} context={ctx} target={detail} onClose={() => setDetail(null)} />
     </div>

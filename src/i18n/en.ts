@@ -919,6 +919,14 @@ export const en = {
   },
 
   addons: {
+    dropInto: "Drop to install in {folder}",
+    dropOne: "1 jar",
+    dropMany: "{count} jars",
+    dropIgnored: "{count} not .jar, skipped",
+    dropInstalling: "Installing…",
+    dropDone: "{count} installed",
+    dropRestart: "restart the server to load them",
+    dropNoJars: "Only .jar files can be installed here. Use Files for anything else.",
     title: "Mods & plugins",
     installed: "Installed",
     browse: "Browse",

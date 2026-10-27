@@ -919,6 +919,14 @@ export const es: Copy = {
   },
 
   addons: {
+    dropInto: "Suelta para instalar en {folder}",
+    dropOne: "1 jar",
+    dropMany: "{count} jars",
+    dropIgnored: "{count} no son .jar, omitidos",
+    dropInstalling: "Instalando…",
+    dropDone: "{count} instalados",
+    dropRestart: "reinicia el server para cargarlos",
+    dropNoJars: "Aquí solo se instalan archivos .jar. Para otros archivos usa Archivos.",
     title: "Mods y plugins",
     installed: "Instalados",
     browse: "Explorar",
