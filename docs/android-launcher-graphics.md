@@ -63,3 +63,30 @@ Only the instance, mode and account ID are saved; authentication tokens remain
 in the existing session storage. A fresh process without an authenticated
 session requires sign-in in the launcher. Authentication failures are shown
 in the selected instance; they never silently switch to demo mode.
+
+## Game process lifecycle
+
+The game runs in its own process (`:game`) and task. Rules that keep a new
+Play working after any failure, without restarting the app:
+
+- A process that ran (or tried to run) a JVM never hosts a second start: a
+  failed start ends its process when the error dialog goes away, and
+  `GamePlugin.start` kills any game process that has no game screen on top
+  before launching a fresh task (`NEW_TASK | CLEAR_TASK`).
+- Play or a home screen shortcut while a game is live brings it to the front
+  instead of refusing; "Return to game" only targets a live task. A Recents
+  entry left from a dead process is removed, and a game screen that Android
+  recreates without this process's launch id closes instead of half-starting.
+- The game writes `.nebula-game-exit` as `<code>` or `<code>\n<reason>`: the
+  engine's exit trap reports error codes, a shutdown hook reports a clean
+  quit (previously every normal quit was shown as a crash), and start
+  failures include their reason, which the instance shows.
+
+## On-screen controls
+
+`nebulaControls` (game-runtime/build.gradle) restyles the engine's default
+layout with Nebula's surface, accent outline and rounded corners, keeping
+every button, key and position. It is installed as `controlmap/nebula.json`
+and becomes the default unless the person chose or edited a layout. Labels
+use sentence case. The console-mode pad and the start screen use the same
+palette (`NebulaStyle`).

@@ -242,10 +242,16 @@ impl ClientEngine {
                 match super::android::running() {
                     Ok(true) => {},
                     Ok(false) => {
-                        let code = directory().ok().and_then(|root| std::fs::read_to_string(root.join("profiles").join(id.to_string()).join(".nebula-game-exit")).ok()).and_then(|value| value.trim().parse::<i32>().ok()).unwrap_or(-1);
+                        // The game writes "<code>" or "<code>\n<reason>" as it ends; no
+                        // marker means the process was killed (out of memory, swiped away).
+                        let marker = directory().ok().and_then(|root| std::fs::read_to_string(root.join("profiles").join(id.to_string()).join(".nebula-game-exit")).ok());
+                        let (code, reason) = parse_exit_marker(marker.as_deref());
                         self.status.write().await.insert(id, ClientStatus {
                             phase: if code == 0 { "ready" } else { "failed" }.into(), exit_code: Some(code),
-                            error: if code == 0 { None } else { Some(AppError::new(ErrorCode::InstanceCrashed).with("code", code)) },
+                            error: if code == 0 { None } else {
+                                let error = AppError::new(ErrorCode::InstanceCrashed).with("code", code);
+                                Some(match reason { Some(reason) => error.detail(reason), None => error })
+                            },
                             ..Default::default()
                         });
                         return;
@@ -577,6 +583,17 @@ impl ClientEngine {
     }
 }
 
+/// The Android game's exit marker: an exit code, then optionally why it ended.
+/// A missing or unreadable marker is an unexplained failure (-1).
+#[cfg_attr(not(target_os = "android"), allow(dead_code))]
+fn parse_exit_marker(marker: Option<&str>) -> (i32, Option<String>) {
+    let Some(text) = marker else { return (-1, None) };
+    let mut lines = text.splitn(2, '\n');
+    let code = lines.next().and_then(|line| line.trim().parse().ok()).unwrap_or(-1);
+    let reason = lines.next().map(|line| redact_line(line.trim()).chars().take(500).collect::<String>()).filter(|line| !line.is_empty());
+    (code, reason)
+}
+
 async fn result_phase(engine: &ClientEngine, id: Uuid) -> String {
     engine
         .status
@@ -804,6 +821,14 @@ fn extract_natives(archive: &Path, root: &Path) -> AppResult<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn exit_marker_carries_code_and_reason() {
+        assert_eq!(super::parse_exit_marker(Some("0")), (0, None));
+        assert_eq!(super::parse_exit_marker(Some("-1\nIllegalStateException: no surface")), (-1, Some("IllegalStateException: no surface".into())));
+        assert_eq!(super::parse_exit_marker(None), (-1, None));
+        assert_eq!(super::parse_exit_marker(Some("garbage")), (-1, None));
+    }
+
     use super::*;
     #[test]
     fn rules_handle_os_arch_features_and_last_match() {

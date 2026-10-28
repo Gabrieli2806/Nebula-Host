@@ -58,6 +58,42 @@ def prepareEngineResources = tasks.register('prepareEngineResources', Sync) {
     into(generatedRes)
     filesMatching('values*/strings.xml') { filter(brand) }
 }
+// On-screen controls in Nebula's look: the upstream default layout (same
+// buttons, keys and positions) with the app's surfaces, accent outline and
+// rounded corners. Installed as nebula.json; a layout the person picked or
+// edited is never replaced.
+def nebulaControls = tasks.register('nebulaControls') {
+    def source = new File(upstream, 'src/main/assets/default.json')
+    def target = layout.buildDirectory.file('generated/engine-assets/nebula-controls.json')
+    inputs.file(source)
+    outputs.file(target)
+    doLast {
+        def controls = new groovy.json.JsonSlurper().parse(source)
+        int surface = (int) 0x8C0B1220L   // the app's ink surface, 55%
+        int outline = (int) 0x8022D3EEL   // the accent (#22d3ee), 50%
+        def style = { Map button ->
+            button.bgColor = surface
+            button.strokeColor = outline
+            button.strokeWidth = 1
+            // Round buttons become the app's rounded squares; a drawer's
+            // items and wide buttons keep their own shape.
+            if ((button.cornerRadius ?: 0) >= 50) button.cornerRadius = 42
+        }
+        controls.mControlDataList.each { style(it) }
+        controls.mDrawerDataList.each { drawer ->
+            style(drawer['properties'])
+            drawer['buttonProperties'].each { style(it) }
+        }
+        controls.mJoystickDataList.each { joystick ->
+            joystick.bgColor = surface
+            joystick.strokeColor = outline
+            joystick.strokeWidth = 1
+        }
+        def file = target.get().asFile
+        file.parentFile.mkdirs()
+        file.text = groovy.json.JsonOutput.toJson(controls)
+    }
+}
 def prepareEngine = tasks.register('prepareEngine', Sync) {
     from(new File(upstream, 'src/main/java'))
     into(generatedJava)
@@ -90,6 +126,13 @@ def prepareEngine = tasks.register('prepareEngine', Sync) {
         // Launch arrays contain the Minecraft access token. Keep them in memory.
         jre.text = jre.text.replace('System.out.println(JVMArgs);', '')
         jre.text = jre.text.replace('Logger.appendToLog("Java Exit code: " + exitCode);', 'net.g2806.nebula.game.GameActivity.reportExit(exitCode); Logger.appendToLog("Java Exit code: " + exitCode);')
+        // A normal quit leaves through the engine's native exit trap, which never
+        // returns to launchJVM: report the real code here (non-zero) and from a
+        // shutdown hook (zero), or Nebula sees every quit as a crash.
+        def exit = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/ExitActivity.java')
+        def exitSignature = 'public static void showExitMessage(Context ctx, int code, boolean isSignal) {'
+        if (!exit.text.contains(exitSignature)) throw new GradleException('Pinned engine exit signature changed')
+        exit.text = exit.text.replace(exitSignature, exitSignature + '\n        net.g2806.nebula.game.GameActivity.reportExit(code);')
         def nativeEntry = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/services/GameService.java')
         nativeEntry.text = nativeEntry.text.replace('new Intent(this, MainActivity.class)', 'new Intent(this, net.g2806.nebula.game.GameActivity.class)')
         def gui = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/JavaGUILauncherActivity.java')
@@ -136,7 +179,7 @@ android {
         resources { excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE*', 'META-INF/NOTICE*'] }
     }
 }
-tasks.named('preBuild').configure { dependsOn(prepareEngine, prepareEngineResources, prepareNotices, graphicsAgent) }
+tasks.named('preBuild').configure { dependsOn(prepareEngine, prepareEngineResources, prepareNotices, graphicsAgent, nebulaControls) }
 
 dependencies {
     implementation 'androidx.window:window-java:1.5.1'

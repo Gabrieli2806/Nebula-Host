@@ -3,6 +3,7 @@ package net.g2806.nebula.game;
 import android.content.Context;
 import net.kdt.pojavlaunch.Tools;
 import net.kdt.pojavlaunch.multirt.MultiRTUtils;
+import net.kdt.pojavlaunch.prefs.LauncherPreferences;
 import org.json.JSONObject;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -36,6 +37,7 @@ final class GameAssets {
             Tools.copyAssetFile(context, "resolv.conf", Tools.DIR_DATA, false);
             try (FileOutputStream output = new FileOutputStream(marker)) { output.write(build.getBytes("UTF-8")); }
         }
+        useNebulaControls();
         int major = request.getJSONObject("metadata").getJSONObject("javaVersion").getInt("majorVersion");
         File runtime = new File(Tools.MULTIRT_HOME, "Nebula-" + major);
         if (!new File(runtime, "release").isFile()) {
@@ -51,6 +53,37 @@ final class GameAssets {
         // native libraries. Done every time: cheap, and it repairs older copies.
         MultiRTUtils.postPrepare("Nebula-" + major);
         request.put("runtime", "Nebula-" + major);
+    }
+
+    /** Install the Nebula-styled on-screen controls and make them the default,
+     *  unless the person already chose or edited a layout of their own. */
+    private void useNebulaControls() throws Exception {
+        File nebula = new File(Tools.CTRLMAP_PATH, "nebula.json");
+        if (!nebula.isFile()) Tools.copyAssetFile(context, "nebula-controls.json", Tools.CTRLMAP_PATH, "nebula.json", false);
+        android.content.SharedPreferences prefs = LauncherPreferences.DEFAULT_PREF;
+        String chosen = prefs.getString("defaultCtrl", null);
+        android.content.SharedPreferences.Editor edit = prefs.edit();
+        // The stock layout counts as "not chosen" only while it is unedited:
+        // someone who saved their own buttons over it keeps them.
+        File stockFile = new File(Tools.CTRLDEF_FILE);
+        boolean stock = (chosen == null || chosen.equals(Tools.CTRLDEF_FILE))
+            && (!stockFile.isFile() || sameAsAsset(stockFile, "default.json"));
+        if (stock) edit.putString("defaultCtrl", nebula.getAbsolutePath());
+        // Labels as the app writes them ("Jump"), not shouted ("JUMP").
+        if (!prefs.contains("buttonAllCaps")) edit.putBoolean("buttonAllCaps", false);
+        edit.apply();
+    }
+
+    private boolean sameAsAsset(File file, String asset) {
+        try (InputStream input = context.getAssets().open(asset)) {
+            long size = 0;
+            byte[] bytes = new byte[8192];
+            int count;
+            while ((count = input.read(bytes)) != -1) size += count;
+            return file.length() == size;
+        } catch (Exception unreadable) {
+            return false;
+        }
     }
 
     private static String read(File file) {

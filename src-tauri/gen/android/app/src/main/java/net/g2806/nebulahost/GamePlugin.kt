@@ -59,38 +59,83 @@ class GamePlugin(private val currentActivity: Activity) : Plugin(currentActivity
     }
 
     private var pendingUntil = 0L
-    private fun gameProcess(): ActivityManager.RunningAppProcessInfo? {
-        val manager = currentActivity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        return manager.runningAppProcesses?.firstOrNull { it.uid == Process.myUid() && it.processName == currentActivity.packageName + ":game" }
+    private var startedAt = 0L
+    private val activities get() = currentActivity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+
+    private fun gameProcess(): ActivityManager.RunningAppProcessInfo? =
+        activities.runningAppProcesses?.firstOrNull { it.uid == Process.myUid() && it.processName == currentActivity.packageName + ":game" }
+
+    /** Every task the game made: its window lives in its own task
+     *  (taskAffinity …game), which Recents keeps even after the process died. */
+    private fun gameTasks(): List<ActivityManager.AppTask> =
+        activities.appTasks.filter { it.taskInfo.baseIntent.component?.className?.startsWith(GAME_PACKAGE) == true }
+
+    /** The task of a game that is really running: the process is alive and one
+     *  of the game's screens is on top of the task. A task alone is only a
+     *  Recents entry; bringing it back would recreate a screen without a game. */
+    private fun liveGameTask(): ActivityManager.AppTask? {
+        if (gameProcess() == null) return null
+        return gameTasks().firstOrNull { it.taskInfo.topActivity?.className?.startsWith(GAME_PACKAGE) == true }
+    }
+
+    /** End a game process that has no game in it (a failed or abandoned
+     *  start) and clear stale game entries from Recents, so a new start never
+     *  lands in a process that already ran a JVM. */
+    private fun clearStaleGame() {
+        gameProcess()?.let { stale ->
+            Process.killProcess(stale.pid)
+            val deadline = System.currentTimeMillis() + 3000
+            while (gameProcess() != null && System.currentTimeMillis() < deadline) Thread.sleep(50)
+        }
+        gameTasks().forEach { task -> runCatching { task.finishAndRemoveTask() } }
     }
 
     @Command
     fun start(invoke: Invoke) {
-        if (gameProcess() != null || System.currentTimeMillis() < pendingUntil) {
-            invoke.reject("A Minecraft game is already running")
+        if (System.currentTimeMillis() < pendingUntil) {
+            invoke.reject("A Minecraft game is already starting")
+            return
+        }
+        // Already playing: Play (or a home screen shortcut) returns to it.
+        liveGameTask()?.let { task ->
+            currentActivity.runOnUiThread { task.moveToFront() }
+            invoke.resolve(JSObject().also { it.put("resumed", true) })
             return
         }
         val request = invoke.getArgs().toString()
-        pendingUntil = System.currentTimeMillis() + 15000
-        currentActivity.runOnUiThread {
+        startedAt = System.currentTimeMillis()
+        pendingUntil = startedAt + 15000
+        Thread({
             try {
-                val intent = Intent(currentActivity, BootstrapActivity::class.java)
-                    .putExtra("nebulaRequest", request)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                currentActivity.startActivity(intent)
-                invoke.resolve(JSObject())
+                clearStaleGame()
             } catch (error: Exception) {
-                pendingUntil = 0
-                invoke.reject("Cannot open Minecraft: " + error.javaClass.simpleName)
+                android.util.Log.w("NebulaGame", "Cannot clear a stale game", error)
             }
-        }
+            currentActivity.runOnUiThread {
+                try {
+                    // A fresh task every time: never stacked on an old game window.
+                    val intent = Intent(currentActivity, BootstrapActivity::class.java)
+                        .putExtra("nebulaRequest", request)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    currentActivity.startActivity(intent)
+                    invoke.resolve(JSObject())
+                } catch (error: Exception) {
+                    pendingUntil = 0
+                    invoke.reject("Cannot open Minecraft: " + error.javaClass.simpleName)
+                }
+            }
+        }, "nebula-game-start").start()
     }
 
     @Command
     fun status(invoke: Invoke) {
-        val response = JSObject()
-        response.put("running", gameProcess() != null || System.currentTimeMillis() < pendingUntil)
-        invoke.resolve(response)
+        val now = System.currentTimeMillis()
+        val live = liveGameTask() != null
+        // Once the game's own screen is up the start is over; from then on
+        // only a live game counts, so a failed start shows within a second.
+        if (live && gameTasks().any { it.taskInfo.topActivity?.className == GAME_ACTIVITY }) pendingUntil = 0
+        val starting = now < pendingUntil && (gameProcess() != null || now - startedAt < 3000)
+        invoke.resolve(JSObject().also { it.put("running", live || starting) })
     }
 
     /** Bring Nebula back from the browser once Microsoft sign-in is done. */
@@ -105,15 +150,12 @@ class GamePlugin(private val currentActivity: Activity) : Plugin(currentActivity
     /** Bring the running game's window back to the front. */
     @Command
     fun resume(invoke: Invoke) {
-        val manager = currentActivity.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        // The game runs in its own task (taskAffinity …game), whichever of the
-        // engine's activities is on top of it.
-        val task = manager.appTasks.firstOrNull { it.taskInfo.baseIntent.component?.className?.startsWith(GAME_PACKAGE) == true }
+        val task = liveGameTask()
         if (task == null) {
             invoke.reject("No Minecraft game is running")
             return
         }
-        task.moveToFront()
+        currentActivity.runOnUiThread { task.moveToFront() }
         invoke.resolve(JSObject())
     }
 
@@ -150,10 +192,12 @@ class GamePlugin(private val currentActivity: Activity) : Plugin(currentActivity
     fun stop(invoke: Invoke) {
         pendingUntil = 0
         gameProcess()?.let { Process.killProcess(it.pid) }
+        gameTasks().forEach { task -> runCatching { task.finishAndRemoveTask() } }
         invoke.resolve(JSObject())
     }
 
     private companion object {
         const val GAME_PACKAGE = "net.g2806.nebula.game."
+        const val GAME_ACTIVITY = "net.g2806.nebula.game.GameActivity"
     }
 }

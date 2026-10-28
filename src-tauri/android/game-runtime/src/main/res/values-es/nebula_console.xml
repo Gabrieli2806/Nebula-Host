@@ -19,4 +19,5 @@
     <string name="nebula_console_keyboard">Teclado</string>
     <string name="nebula_console_menu">Menú del juego</string>
     <string name="nebula_console_slot">Casilla %1$d de la barra rápida</string>
+    <string name="nebula_preparing_game">Preparando Minecraft…</string>
 </resources>

@@ -18,6 +18,8 @@ import java.nio.charset.StandardCharsets;
  * short-lived Minecraft token. The launcher/account screens remain in Nebula. */
 public final class GameActivity extends MainActivity {
     private static File exitFile;
+    private static boolean exitReported;
+    private boolean created;
     private TabletopConsole console;
     JSONObject request;
     String renderer = Graphics.DEFAULT_RENDERER;
@@ -25,10 +27,23 @@ public final class GameActivity extends MainActivity {
     @Override public void onCreate(Bundle state) {
         try {
             String payload = getIntent().getStringExtra("nebulaRequest");
+            String launch = getIntent().getStringExtra(BootstrapActivity.LAUNCH);
             getIntent().removeExtra("nebulaRequest");
-            if (payload == null) { finish(); return; }
+            // Only a launch that the bootstrap made in this very process may
+            // start a JVM. Android recreating this screen after the game's
+            // process died (from Recents, "back to the game") brings back the
+            // old intent; running it would fail half-way and close. Instead,
+            // leave cleanly so Nebula can start a fresh game.
+            if (payload == null || launch == null || !launch.equals(BootstrapActivity.currentLaunch)) {
+                // Ends the process before the engine's onCreate would run.
+                abandon();
+                return;
+            }
             request = new JSONObject(payload);
-            exitFile = new File(request.getString("gameDir"), ".nebula-game-exit");
+            setExitFile(request.getString("gameDir"));
+            // A normal quit goes through System.exit: record it as clean unless
+            // the engine already reported an error code.
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> reportExit(0), "nebula-exit"));
             ContextExecutor.setApplication(getApplication());
             LauncherPreferences.loadPreferences(this);
             JSONObject graphics = request.optJSONObject("graphics");
@@ -61,19 +76,48 @@ public final class GameActivity extends MainActivity {
             Tools.LOCAL_RENDERER = renderer;
             getIntent().putExtra(INTENT_MINECRAFT_VERSION, id);
             super.onCreate(null);
+            created = true;
             console = new TabletopConsole(this);
         } catch (Throwable error) {
-            reportExit(-1);
+            reportExit(-1, error.getClass().getSimpleName() + ": " + error.getMessage());
             android.util.Log.e("NebulaGame", "Cannot initialize game engine", error);
+            // Without the engine's onCreate there is no window to explain in;
+            // Nebula shows the reason from the exit marker instead.
+            if (!created) { abandon(); return; }
+            // The process must not outlive a failed start: a JVM cannot be
+            // created twice in one process, and Nebula would refuse the next
+            // Play while it lingers.
             new android.app.AlertDialog.Builder(this).setTitle("Minecraft")
                 .setMessage(error.getClass().getSimpleName() + ": " + error.getMessage())
-                .setPositiveButton(android.R.string.ok, (dialog, which) -> finish()).show();
+                .setPositiveButton(android.R.string.ok, null)
+                .setOnDismissListener(dialog -> abandon()).show();
         }
     }
 
-    public static void reportExit(int code) {
-        try { if (exitFile != null) write(exitFile, Integer.toString(code)); }
-        catch (Exception ignored) { /* The Rust monitor treats a missing marker as failure. */ }
+    /** Close the game's window and its process, leaving nothing in Recents. */
+    void abandon() {
+        finishAndRemoveTask();
+        android.os.Process.killProcess(android.os.Process.myPid());
+    }
+
+    /** The game's exit code for Nebula's monitor; the first report wins (an
+     *  error code from the engine before the clean-exit shutdown hook). */
+    public static void reportExit(int code) { reportExit(code, null); }
+
+    /** Also records why, on a second line, for Nebula to show in the instance. */
+    static synchronized void reportExit(int code, String reason) {
+        if (exitReported) return;
+        try {
+            if (exitFile != null) {
+                write(exitFile, reason == null ? Integer.toString(code) : code + "\n" + reason.replace('\n', ' '));
+                exitReported = true;
+            }
+        } catch (Exception ignored) { /* The Rust monitor treats a missing marker as failure. */ }
+    }
+
+    /** Where this launch reports how it ended (inside the instance's folder). */
+    static void setExitFile(String gameDir) {
+        exitFile = new File(gameDir, ".nebula-game-exit");
     }
 
     public void showConsoleOptions() { if (console != null) console.showOptions(); }

@@ -18,6 +18,7 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.appcompat.widget.AppCompatButton;
+import net.g2806.nebula.game.NebulaStyle;
 import net.kdt.pojavlaunch.MainActivity;
 import net.kdt.pojavlaunch.R;
 import net.kdt.pojavlaunch.customcontrols.mouse.Touchpad;
@@ -42,7 +43,10 @@ public final class ConsolePad extends LinearLayout {
     }
     // Same look as the stock on-screen controls (default.json): translucent black
     // fill, white text, fully rounded corners, a white wash while held.
-    private static final int INK = 0xffffffff, MUTED = 0x99ffffff, FILL = 0x4d000000, PRESS = 0x3cffffff, PANEL = 0xff000000;
+    // Nebula Host's palette (NebulaStyle): ink surface, raised buttons with an
+    // accent outline, accent wash when pressed.
+    private static final int INK = 0xffffffff, MUTED = NebulaStyle.TEXT_MUTED, FILL = NebulaStyle.RAISED,
+        PRESS = NebulaStyle.PRESSED, PANEL = NebulaStyle.SURFACE, OUTLINE = NebulaStyle.CONTROL_OUTLINE;
     private final ConsoleInput input;
     private final Game game;
     private final Stick stick;
@@ -248,7 +252,8 @@ public final class ConsolePad extends LinearLayout {
     private GradientDrawable shape(int color) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setColor(color);
-        drawable.setCornerRadius(dp(200));
+        drawable.setCornerRadius(dp(12));
+        if (color == FILL) drawable.setStroke(Math.max(1, dp(1)), OUTLINE);
         return drawable;
     }
 
@@ -341,7 +346,7 @@ public final class ConsolePad extends LinearLayout {
             canvas.drawText("S", cx, cy + radius * 0.84f, paint);
             canvas.drawText("A", cx - radius * 0.76f, cy + dp(4), paint);
             canvas.drawText("D", cx + radius * 0.76f, cy + dp(4), paint);
-            paint.setColor(0x80ffffff); canvas.drawCircle(cx + x * radius * 0.5f, cy + y * radius * 0.5f, radius * 0.32f, paint);
+            paint.setColor(NebulaStyle.ACCENT); canvas.drawCircle(cx + x * radius * 0.5f, cy + y * radius * 0.5f, radius * 0.32f, paint);
         }
     }
 
