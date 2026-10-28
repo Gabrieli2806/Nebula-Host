@@ -278,6 +278,12 @@ fn verify_checksum(path: &Path, expected: &Checksum) -> Result<(), String> {
 
 /// Classifies an error message as transient (retry) or permanent (fail fast).
 /// Integrity failures and 4xx are never retried — they will not resolve by retrying.
+/// True when `download_file` failed because the bytes did not match the
+/// expected checksum (as opposed to the network or the disk).
+pub fn is_integrity_error(msg: &str) -> bool {
+    msg.starts_with("integrity check failed")
+}
+
 pub fn is_transient_error(msg: &str) -> bool {
     let lower = msg.to_lowercase();
     if lower.contains("integrity check failed") {

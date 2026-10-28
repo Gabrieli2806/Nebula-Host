@@ -36,6 +36,8 @@ export const launcherApi = {
   updateDetails: (id: string, name: string, icon: string | null) => launcherCall<LauncherProfile>("launcher_update_details", { id, name, icon }),
   shareLog: (id: string) => launcherCall<{ id: string; url: string; raw: string | null; omitted_lines: number }>("launcher_log_share", { id }),
   setMemory: (id: string, memoryMb: number) => launcherCall<LauncherProfile>("launcher_set_memory", { id, memoryMb }),
+  setGraphics: (id: string, graphics: import("@/features/launcher/types").Graphics) => launcherCall<LauncherProfile>("launcher_set_graphics", { id, graphics }),
+  deviceGraphics: () => launcherCall<import("@/features/launcher/types").DeviceGraphics | null>("launcher_device_graphics"),
   versions: () => launcherCall<GameVersion[]>("launcher_versions"),
   contentList: (id: string) => launcherCall<import("@/features/launcher/types").InstalledContent[]>("launcher_content_list", { id }),
   contentIcon: (id: string, kind: ContentKind, file: string) => launcherCall<string | null>("launcher_content_icon", { id, kind, file }),
@@ -69,8 +71,6 @@ import type {
   AddonContext,
   AddonDependency,
   AddonInstallResult,
-  AddonMeta,
-  AddonSearchResult,
   AddonVersion,
   CompletionSet,
   ConflictPolicy,
@@ -99,7 +99,6 @@ import type {
   StorageLocation,
   FileEntry,
   GameManifest,
-  InstalledAddon,
   Instance,
   InstanceView,
   Node,
@@ -465,13 +464,6 @@ export const api = {
     /** Retry the queue now; a no-op while the server runs. */
     applyPending: (instanceId: string) =>
       call<PendingAddonChange[]>("addons_pending_apply", { instanceId }),
-    // -- round 2 (deprecated; kept until AddonsPanel migrates) -------------
-    search: (instanceId: string, query: string, offset = 0, limit = 20) =>
-      call<AddonSearchResult>("addons_search", { instanceId, query, offset, limit }),
-    installed: (instanceId: string) =>
-      call<[InstalledAddon[], AddonMeta[]]>("addons_installed", { instanceId }),
-    install: (instanceId: string, url: string, fileName: string) =>
-      call<void>("addon_install", { instanceId, url, fileName }),
     setEnabled: (instanceId: string, fileName: string, enabled: boolean) =>
       call<string>("addon_set_enabled", { instanceId, fileName, enabled }),
     remove: (instanceId: string, fileName: string) =>

@@ -359,7 +359,7 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
 
         // Commands that act on the local machine's files or desktop.
         "instance_open_folder" | "app_open_log_folder" | "transfer_run" | "transfer_cancel" | "files_import" | "files_import_check" | "mcp_status" | "mcp_configure"
-        | "mcp_regenerate_token" | "addons_search" | "addons_installed" | "addon_install" => {
+        | "mcp_regenerate_token" => {
             Err(local_only(command))
         }
         other => Err(AppError::new(ErrorCode::InvalidInput)

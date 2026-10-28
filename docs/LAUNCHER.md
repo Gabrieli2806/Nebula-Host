@@ -67,8 +67,12 @@ unavailable until their engines are implemented.
 
 ## Reference review
 
-- [Amethyst Android](https://github.com/AngelAuraMC/Amethyst-Android), branch
-  `v3_openjdk`: Android architecture and
+- [Amethyst Android](https://github.com/AngelAuraMC/Amethyst-Android) (LGPL-3.0),
+  pinned as the Android game engine in `src-tauri/android/engine`. Nebula's own
+  integration lives in `net.g2806.nebula.game` (game-runtime); the engine's
+  classes keep their upstream package because its native libraries bind to
+  those names over JNI. Visible product names in its strings are replaced at
+  build time; the license notice keeps the upstream attribution. Also reviewed:
   `app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/authenticator/microsoft/MicrosoftBackgroundLogin.java`
   for the Microsoft/Xbox/Minecraft boundary. Its repository LICENSE is LGPL-3.0;
   check individual native components before future engine integration.

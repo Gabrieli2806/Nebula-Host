@@ -329,10 +329,10 @@ async fn download(file: &RemoteFile, destination: &Path) -> AppResult<()> {
     let temp = destination.with_extension("nebula-part");
     let checksum = nebula_downloader::Checksum::Sha1(file.sha1.clone());
     let options = nebula_downloader::DownloadOptions::new(file.url.as_str(), &temp).with_checksum(&checksum).with_max_size(MAX_FILE);
-    let client = crate::game::http_client();
-    if nebula_downloader::download_file(&client, options).await.is_err() {
+    let client = crate::game::download_client();
+    if let Err(error) = nebula_downloader::download_file(&client, options).await {
         let _ = std::fs::remove_file(&temp);
-        return Err(AppError::new(ErrorCode::DownloadFailed).with("file", &file.name));
+        return Err(crate::error::download_error(&file.name, error));
     }
     Ok(std::fs::rename(temp, destination)?)
 }
@@ -519,6 +519,7 @@ mod tests {
             memory_mb: 2048,
             loader_version: None,
             icon: None,
+            graphics: Default::default(),
         };
         let version = best_version(&profile, "fabric-api", ContentKind::Mod).await.expect("a version");
         let file = primary_file(&version).expect("a safe file");
@@ -569,7 +570,7 @@ mod tests {
 
     fn profile_in(dir: &Path) -> Profile {
         let _ = dir;
-        Profile { id: uuid::Uuid::new_v4(), name: "t".into(), game_version: "1.21.4".into(), loader: Loader::Fabric, memory_mb: 2048, loader_version: None, icon: None }
+        Profile { id: uuid::Uuid::new_v4(), name: "t".into(), game_version: "1.21.4".into(), loader: Loader::Fabric, memory_mb: 2048, loader_version: None, icon: None, graphics: Default::default() }
     }
 
     #[test]
@@ -729,6 +730,17 @@ pub async fn check(profile: &Profile) -> AppResult<Vec<ContentStatus>> {
         let known_file = current.is_object();
         let update = updates.get(hash.as_str()).and_then(|next| {
             if next["id"] == current["id"] {
+                return None;
+            }
+            // Same rule as the server's add-ons (modrinth::is_newer): only
+            // newer builds are updates. An older one is offered only when the
+            // installed file does not fit this Minecraft version or loader
+            // (after moving the instance to an older version, say).
+            let older = matches!(
+                (next["date_published"].as_str(), current["date_published"].as_str()),
+                (Some(next), Some(installed)) if next <= installed
+            );
+            if older && fits_version && fits_loader {
                 return None;
             }
             let file = next["files"].as_array()?.iter().find(|f| f["primary"] == true).or_else(|| next["files"].as_array()?.first())?;

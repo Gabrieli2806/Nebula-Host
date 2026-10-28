@@ -1,4 +1,4 @@
-package net.kdt.pojavlaunch;
+package net.g2806.nebula.game;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -6,13 +6,15 @@ import android.content.Intent;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import net.kdt.pojavlaunch.Architecture;
+import net.kdt.pojavlaunch.Tools;
 import net.kdt.pojavlaunch.lifecycle.ContextExecutor;
 import net.kdt.pojavlaunch.prefs.LauncherPreferences;
 import net.kdt.pojavlaunch.utils.LocaleUtils;
 import org.json.JSONObject;
 
 /** Extract packaged components off the main thread, before creating a Surface. */
-public final class NebulaBootstrapActivity extends Activity {
+public final class BootstrapActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         String payload = getIntent().getStringExtra("nebulaRequest");
@@ -47,9 +49,9 @@ public final class NebulaBootstrapActivity extends Activity {
         new Thread(() -> {
             try {
                 JSONObject request = new JSONObject(payload);
-                new NebulaGameAssets(this).prepare(request);
+                new GameAssets(this).prepare(request);
                 runOnUiThread(() -> {
-                    startActivity(new Intent(this, NebulaGameActivity.class).putExtra("nebulaRequest", request.toString()));
+                    startActivity(new Intent(this, GameActivity.class).putExtra("nebulaRequest", request.toString()));
                     finish();
                 });
             } catch (Throwable error) {

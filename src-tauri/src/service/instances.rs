@@ -365,9 +365,9 @@ impl InstanceService {
         })
         .await
         .map_err(AppError::unexpected)??;
-        self.disk_usage.write().await.remove(instance_id);
-        // Dropping jars into mods/ or plugins/ changes what is installed.
-        self.addon_index.write().await.remove(instance_id);
+        // Dropping jars into mods/ or plugins/ changes what is installed and
+        // which commands the console can complete.
+        self.after_folder_change(instance_id).await;
         Ok(summary)
     }
 

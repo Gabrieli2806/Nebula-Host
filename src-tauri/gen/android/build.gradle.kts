@@ -14,7 +14,7 @@ allprojects {
         google()
         mavenCentral()
         maven { url = uri("https://jitpack.io") }
-        flatDir { dirs(rootProject.file("../../android/amethyst/app_pojavlauncher/libs")) }
+        flatDir { dirs(rootProject.file("../../android/engine/app_pojavlauncher/libs")) }
     }
 }
 

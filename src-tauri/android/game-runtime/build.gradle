@@ -1,8 +1,10 @@
-// The Android game engine is built from the pinned Amethyst submodule.
-// Its launcher/account UI is not exported; Nebula owns profiles and sign-in.
+// The Android game engine is built from the pinned upstream submodule in
+// ../engine (see assets/licenses/nebula-game-engine.txt). Its launcher and
+// account UI are not exported; Nebula owns profiles, sign-in and branding.
 apply plugin: 'com.android.library'
 
-def upstream = file('../amethyst/app_pojavlauncher')
+def engine = file('../engine')
+def upstream = new File(engine, 'app_pojavlauncher')
 def generatedJava = layout.buildDirectory.dir('generated/engine-java')
 def compileGraphicsAgent = tasks.register('compileGraphicsAgent', JavaCompile) {
     source fileTree('src/agent/java') { include '**/*.java' }
@@ -39,8 +41,22 @@ tasks.register('testGraphicsAgent', JavaExec) {
 }
 
 def prepareNotices = tasks.register('prepareEngineNotices', Sync) {
-    from(file('../amethyst')) { include 'LICENSE', 'README.md' }
-    into(layout.buildDirectory.dir('generated/engine-assets/licenses/amethyst'))
+    from(engine) { include 'LICENSE', 'README.md' }
+    into(layout.buildDirectory.dir('generated/engine-assets/licenses/engine'))
+}
+// The engine's own screens (errors, notifications, in-game menu) speak as
+// Nebula Host: rename the upstream product in visible text only, never in
+// resource names or attributes, so lookups and translations still match.
+def generatedRes = layout.buildDirectory.dir('generated/engine-res')
+def brand = { String line ->
+    line.replaceAll(/>([^<]*)</) { whole, text ->
+        '>' + text.replaceAll(/Amethyst[- ]Android|PojavLauncher|Amethyst|Pojav/, 'Nebula Host') + '<'
+    }
+}
+def prepareEngineResources = tasks.register('prepareEngineResources', Sync) {
+    from(new File(upstream, 'src/main/res'))
+    into(generatedRes)
+    filesMatching('values*/strings.xml') { filter(brand) }
 }
 def prepareEngine = tasks.register('prepareEngine', Sync) {
     from(new File(upstream, 'src/main/java'))
@@ -59,13 +75,13 @@ def prepareEngine = tasks.register('prepareEngine', Sync) {
             if (text.charAt(end) == '}') depth--
             end++
         }
-        main.text = text.substring(0, opening + 1) + '\nNebulaGameBridge.run(this);\n}' + text.substring(end)
+        main.text = text.substring(0, opening + 1) + '\nnet.g2806.nebula.game.GameBridge.run(this);\n}' + text.substring(end)
         main.text = main.text.replace('new File(Tools.DIR_GAME_HOME, "latestlog.txt")', 'new File(minecraftProfile.gameDir, "latest-client.log")')
         def jre = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/utils/JREUtils.java')
         // Keep the upstream editor/menu intact; append Nebula's in-game option.
         main.text = main.text.replace('getResources().getStringArray(R.array.menu_ingame));', 'new java.util.ArrayList<>(java.util.Arrays.asList(getResources().getStringArray(R.array.menu_ingame))));\n            gameActionArrayAdapter.add(getString(R.string.nebula_console_mode));')
-        main.text = main.text.replace('case 4: openCustomControls(); break;', 'case 4: if (this instanceof NebulaGameActivity) ((NebulaGameActivity)this).onConsoleEditorStarting(); openCustomControls(); break;\n                    case 5: if (this instanceof NebulaGameActivity) ((NebulaGameActivity)this).showConsoleOptions(); break;')
-        main.text = main.text.replace('mControlLayout.toggleControlVisible();', 'mControlLayout.toggleControlVisible();\n        if (this instanceof NebulaGameActivity) ((NebulaGameActivity)this).onConsoleControlsLoaded();')
+        main.text = main.text.replace('case 4: openCustomControls(); break;', 'case 4: if (this instanceof net.g2806.nebula.game.GameActivity) ((net.g2806.nebula.game.GameActivity)this).onConsoleEditorStarting(); openCustomControls(); break;\n                    case 5: if (this instanceof net.g2806.nebula.game.GameActivity) ((net.g2806.nebula.game.GameActivity)this).showConsoleOptions(); break;')
+        main.text = main.text.replace('mControlLayout.toggleControlVisible();', 'mControlLayout.toggleControlVisible();\n        if (this instanceof net.g2806.nebula.game.GameActivity) ((net.g2806.nebula.game.GameActivity)this).onConsoleControlsLoaded();')
         // SDL needs the game viewport, not the full unfolded display, when split.
         def surface = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/MinecraftGLSurface.java')
         surface.text = surface.text.replace('Tools.currentDisplayMetrics.widthPixels, Tools.currentDisplayMetrics.heightPixels', 'getWidth(), getHeight()')
@@ -73,9 +89,9 @@ def prepareEngine = tasks.register('prepareEngine', Sync) {
         cursor.text = cursor.text.replace('currentDisplayMetrics.widthPixels', 'getWidth()').replace('currentDisplayMetrics.heightPixels', 'getHeight()')
         // Launch arrays contain the Minecraft access token. Keep them in memory.
         jre.text = jre.text.replace('System.out.println(JVMArgs);', '')
-        jre.text = jre.text.replace('Logger.appendToLog("Java Exit code: " + exitCode);', 'net.kdt.pojavlaunch.NebulaGameActivity.reportExit(exitCode); Logger.appendToLog("Java Exit code: " + exitCode);')
+        jre.text = jre.text.replace('Logger.appendToLog("Java Exit code: " + exitCode);', 'net.g2806.nebula.game.GameActivity.reportExit(exitCode); Logger.appendToLog("Java Exit code: " + exitCode);')
         def nativeEntry = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/services/GameService.java')
-        nativeEntry.text = nativeEntry.text.replace('new Intent(this, MainActivity.class)', 'new Intent(this, net.kdt.pojavlaunch.NebulaGameActivity.class)')
+        nativeEntry.text = nativeEntry.text.replace('new Intent(this, MainActivity.class)', 'new Intent(this, net.g2806.nebula.game.GameActivity.class)')
         def gui = new File(generatedJava.get().asFile, 'net/kdt/pojavlaunch/JavaGUILauncherActivity.java')
         // Android library resource IDs are not Java compile-time constants.
         gui.text = gui.text.replaceAll(/switch\s*\(v\.getId\(\)\)\s*\{([^}]+)\}/) { match, body ->
@@ -106,7 +122,7 @@ android {
     sourceSets {
         main {
             java.srcDirs = [generatedJava, 'src/main/java']
-            res.srcDirs = [new File(upstream, 'src/main/res'), 'src/main/res']
+            res.srcDirs = [generatedRes, 'src/main/res']
             assets.srcDirs = [new File(upstream, 'src/main/assets'), 'src/main/assets', layout.buildDirectory.dir('generated/engine-assets')]
             jniLibs.srcDirs = [new File(upstream, 'src/main/jniLibs')]
         }
@@ -120,7 +136,7 @@ android {
         resources { excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE*', 'META-INF/NOTICE*'] }
     }
 }
-tasks.named('preBuild').configure { dependsOn(prepareEngine, prepareNotices, graphicsAgent) }
+tasks.named('preBuild').configure { dependsOn(prepareEngine, prepareEngineResources, prepareNotices, graphicsAgent) }
 
 dependencies {
     implementation 'androidx.window:window-java:1.5.1'

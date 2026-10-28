@@ -2,8 +2,15 @@ export type Loader = "vanilla" | "fabric" | "forge" | "neoforge" | "quilt";
 export type ContentKind = "mod" | "modpack" | "resourcepack" | "shader";
 export interface LauncherProfile {
   id: string; name: string; game_version: string; loader: Loader; memory_mb: number; loader_version?: string | null; icon?: string | null;
+  /** Android engine only; the desktop game uses the computer's drivers. */
+  graphics?: Graphics;
 }
-export type CreateProfile = Omit<LauncherProfile, "id" | "loader_version" | "icon">;
+export type CreateProfile = Omit<LauncherProfile, "id" | "loader_version" | "icon" | "graphics">;
+/** How the Android engine reaches the GPU: MobileGlues (OpenGL ES), Krypton (GL4ES), Zink (OpenGL over Vulkan) or LTW. */
+export type Renderer = "auto" | "mobileglues" | "krypton" | "zink" | "ltw";
+export interface Graphics { renderer: Renderer; resolution: number | null; sustained: boolean | null; big_cores: boolean }
+/** What the phone can render with; null on the desktop. */
+export interface DeviceGraphics { vulkan: boolean; vulkan_version?: string | null; gles_version: string; renderers: Renderer[]; total_memory_mb: number; gpu?: string | null }
 export interface LauncherCapabilities { platform: string; can_launch: boolean }
 export interface ClientStatus { phase: string; stage: string; completed: number; total: number; error: import("@/lib/ipc").AppError | null; exit_code: number | null }
 export interface GameVersion { id: string; type: string; client_supported: boolean }

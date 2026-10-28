@@ -1,4 +1,4 @@
-package net.kdt.pojavlaunch.console;
+package net.g2806.nebula.game.console;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -29,7 +29,7 @@ import java.util.ArrayList;
 import java.util.Map;
 
 /** Separate touch controls: the original game surface remains in its parent. */
-public final class NebulaConsolePad extends LinearLayout {
+public final class ConsolePad extends LinearLayout {
     /** Keeps view/input tests independent of the native JVM and GPU. */
     public interface Game extends ConsoleInput.Sink {
         boolean grabbing();
@@ -49,11 +49,11 @@ public final class NebulaConsolePad extends LinearLayout {
     private final LookPad look;
     private final Map<Integer, Finger> fingers = new HashMap<>();
 
-    public NebulaConsolePad(Context context, Touchpad cursor, Runnable settings) {
+    public ConsolePad(Context context, Touchpad cursor, Runnable settings) {
         this(context, new NativeGame(cursor), settings);
     }
 
-    public NebulaConsolePad(Context context, Game game, Runnable settings) {
+    public ConsolePad(Context context, Game game, Runnable settings) {
         super(context);
         this.game = game;
         this.input = new ConsoleInput(game);

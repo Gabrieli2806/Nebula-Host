@@ -1,7 +1,10 @@
-package net.kdt.pojavlaunch;
+package net.g2806.nebula.game;
 
 import android.os.Bundle;
-import android.system.Os;
+import net.g2806.nebula.game.console.TabletopConsole;
+import net.kdt.pojavlaunch.Architecture;
+import net.kdt.pojavlaunch.MainActivity;
+import net.kdt.pojavlaunch.Tools;
 import net.kdt.pojavlaunch.lifecycle.ContextExecutor;
 import net.kdt.pojavlaunch.prefs.LauncherPreferences;
 import net.kdt.pojavlaunch.value.launcherprofiles.LauncherProfiles;
@@ -9,15 +12,15 @@ import net.kdt.pojavlaunch.value.launcherprofiles.MinecraftProfile;
 import org.json.JSONObject;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 /** Private game process. The request is never written to disk: it contains the
  * short-lived Minecraft token. The launcher/account screens remain in Nebula. */
-public final class NebulaGameActivity extends MainActivity {
+public final class GameActivity extends MainActivity {
     private static File exitFile;
-    private net.kdt.pojavlaunch.console.NebulaTabletopConsole console;
+    private TabletopConsole console;
     JSONObject request;
+    String renderer = Graphics.DEFAULT_RENDERER;
 
     @Override public void onCreate(Bundle state) {
         try {
@@ -27,6 +30,10 @@ public final class NebulaGameActivity extends MainActivity {
             request = new JSONObject(payload);
             exitFile = new File(request.getString("gameDir"), ".nebula-game-exit");
             ContextExecutor.setApplication(getApplication());
+            LauncherPreferences.loadPreferences(this);
+            JSONObject graphics = request.optJSONObject("graphics");
+            // Written before the engine reads them (sustained mode, resolution).
+            Graphics.applyPreferences(graphics);
             LauncherPreferences.loadPreferences(this);
             Tools.DEVICE_ARCHITECTURE = Architecture.getDeviceArchitecture();
             Tools.DIR_GAME_NEW = request.getString("root");
@@ -38,22 +45,23 @@ public final class NebulaGameActivity extends MainActivity {
             File version = new File(Tools.DIR_HOME_VERSION, id + "/" + id + ".json");
             version.getParentFile().mkdirs();
             write(version, request.getJSONObject("metadata").toString());
+            renderer = Graphics.resolveRenderer(this, graphics);
             LauncherProfiles.load();
             MinecraftProfile profile = new MinecraftProfile();
             profile.name = request.getString("name");
             profile.lastVersionId = id;
             profile.gameDir = request.getString("gameDir");
-            profile.pojavRendererName = "opengles_mobileglues";
+            profile.pojavRendererName = renderer;
             LauncherProfiles.mainProfileJson.profiles.put(id, profile);
             // No account data is ever placed in the engine's profile store.
             LauncherProfiles.write();
             LauncherPreferences.DEFAULT_PREF.edit().putString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, id)
                 .putInt("allocation", request.getInt("memory")).commit();
             LauncherPreferences.PREF_RAM_ALLOCATION = request.getInt("memory");
-            Tools.LOCAL_RENDERER = "opengles_mobileglues";
+            Tools.LOCAL_RENDERER = renderer;
             getIntent().putExtra(INTENT_MINECRAFT_VERSION, id);
             super.onCreate(null);
-            console = new net.kdt.pojavlaunch.console.NebulaTabletopConsole(this);
+            console = new TabletopConsole(this);
         } catch (Throwable error) {
             reportExit(-1);
             android.util.Log.e("NebulaGame", "Cannot initialize game engine", error);

@@ -48,12 +48,13 @@ export function statusStyle(status: InstanceStatus): CSSProperties {
   return { "--chip-fg": token.fg, "--chip-bg": token.bg } as CSSProperties;
 }
 
-export function StatusChip({ status, className = "" }: { status: InstanceStatus; className?: string }) {
+/** `label` replaces the status word where a screen has its own (the launcher's "Installing"). */
+export function StatusChip({ status, label, className = "" }: { status: InstanceStatus; label?: string; className?: string }) {
   const { t } = useI18n();
   return (
     <span className={`status-chip ${className}`} data-status={status} style={statusStyle(status)}>
       <StatusDot status={status} />
-      {t(`status.${status}`)}
+      {label ?? t(`status.${status}`)}
     </span>
   );
 }

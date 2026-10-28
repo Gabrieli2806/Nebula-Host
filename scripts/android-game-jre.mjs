@@ -1,5 +1,5 @@
 /* global console, fetch */
-// Bundle full graphical Android OpenJDK runtimes from Amethyst's publisher.
+// Bundle full graphical Android OpenJDK runtimes from the engine's runtime publisher.
 // SHA-256 values pin the release assets used for this build; never run a host JVM.
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';

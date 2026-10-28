@@ -1172,6 +1172,11 @@
     transition: width var(--duration) var(--ease);
   }
 
+  /* Work of unknown length: a short fill sliding back and forth. */
+  .meter-fill[data-indeterminate] {
+    animation: nebula-slide 1.4s var(--ease) infinite alternate;
+  }
+
   /* The ring meter (classic Nebula): a hairline track and a thin accent arc.
      Markup: Ring in src/ui. */
   .meter-ring {
@@ -1424,12 +1429,22 @@
 
   @media (prefers-reduced-motion: reduce) {
     .status-dot[data-status="starting"],
+    .meter-fill[data-indeterminate],
     .skeleton,
     .dialog,
     .dialog-scrim,
     .view-enter {
       animation: none;
     }
+  }
+}
+
+@keyframes nebula-slide {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(185%);
   }
 }
 

@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { launcherApi } from "@/lib/ipc";
 import type { LauncherAccount } from "./types";
+import { launcherKeys } from "./hooks";
 
 const KEY = "nebula.launcherAccount";
 const EVENT = "nebula:launcher-account";
@@ -36,7 +37,7 @@ function subscribe(onChange: () => void) {
 
 export function usePrimaryAccount(): { accounts: LauncherAccount[]; primary: LauncherAccount | null; loading: boolean } {
   const chosen = useSyncExternalStore(subscribe, read, read);
-  const query = useQuery({ queryKey: ["launcher", "accounts"], queryFn: launcherApi.accounts, refetchInterval: 60_000 });
+  const query = useQuery({ queryKey: launcherKeys.accounts, queryFn: launcherApi.accounts, refetchInterval: 60_000 });
   const accounts = query.data ?? [];
   const primary = accounts.find((a) => a.id === chosen) ?? accounts[0] ?? null;
   return { accounts, primary, loading: query.isPending };

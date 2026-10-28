@@ -12,7 +12,7 @@ use serde_json::{json, Value};
 use sha1::{Digest, Sha1};
 use std::{
     collections::{BTreeMap, HashMap},
-    io::{BufRead, Read},
+    io::Read,
     path::{Path, PathBuf},
     process::{Child, Stdio},
     sync::{
@@ -338,7 +338,8 @@ impl ClientEngine {
         .map_err(AppError::unexpected)?;
         let java = match java {
             Ok(found) if found.major == major => found,
-            _ => java::download_temurin(major, |_| {}).await?,
+            // Shares the per-version lock with server Java downloads.
+            _ => crate::service::java::ensure_java(major).await?,
         };
         if java.major != major {
             return Err(AppError::new(ErrorCode::JavaTooOld).with("major", major));
@@ -518,6 +519,10 @@ impl ClientEngine {
                 "id": profile.id.to_string(), "name": profile.name, "memory": profile.memory_mb,
                 "root": directory()?, "gameDir": prepared.game_dir,
                 "metadata": prepared.metadata, "classpath": prepared.classpath, "args": args,
+                "graphics": {
+                    "renderer": profile.graphics.renderer, "resolution": profile.graphics.resolution,
+                    "sustained": profile.graphics.sustained, "bigCores": profile.graphics.big_cores,
+                },
             }))
         }
         #[cfg(not(all(target_os = "android", feature = "desktop")))]
@@ -550,7 +555,11 @@ impl ClientEngine {
             let engine = self.clone();
             let token = credentials.token.clone();
             std::thread::spawn(move || {
-                for line in std::io::BufReader::new(pipe).lines().map_while(Result::ok) {
+                // Lossy like the server console: a CP1252 `§` or a Latin-1 line
+                // must not stop draining the pipe (the game would block on it).
+                let mut reader = std::io::BufReader::new(pipe);
+                let mut buf = Vec::new();
+                while let Some(line) = crate::runtime::console::read_line_lossy(&mut reader, &mut buf) {
                     let line = if token.len() > 8 {
                         line.replace(&token, "[redacted]")
                     } else {
@@ -639,12 +648,12 @@ pub(super) async fn fetch(desc: &Value, destination: &Path, cancel: &AtomicBool)
     )?;
     let temp = destination.with_extension("nebula-part");
     let checksum = nebula_downloader::Checksum::Sha1(hash.into());
-    let client = crate::game::http_client();
+    let client = crate::game::download_client();
     let options = nebula_downloader::DownloadOptions::new(url.as_str(), &temp)
         .with_checksum(&checksum)
         .with_max_size(1024 * 1024 * 1024);
     let result = tokio::select! {
-        result = nebula_downloader::download_file(&client, options) => result.map_err(|_| AppError::new(ErrorCode::DownloadFailed).with("file", destination.file_name().unwrap_or_default().to_string_lossy())),
+        result = nebula_downloader::download_file(&client, options) => result.map_err(|error| crate::error::download_error(destination.file_name().unwrap_or_default().to_string_lossy(), error)),
         _ = async { while !cancel.load(Ordering::Relaxed) { tokio::time::sleep(std::time::Duration::from_millis(200)).await; } } => Err(AppError::new(ErrorCode::Cancelled)),
     };
     if let Err(error) = result {

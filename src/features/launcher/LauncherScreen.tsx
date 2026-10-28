@@ -1,23 +1,32 @@
 /**
  * The Minecraft launcher: your instances (each opens like a server), modpacks
- * to start a new one from, and your skin. The account is in the sidebar, or
- * top right on a phone.
+ * to start a new one from, screenshots and your skin.
+ *
+ * One layout for every screen size, driven by the launcher's own width
+ * (container queries in launcher.css), not the device:
+ * - wide (desktop, an unfolded foldable): the instance list stays beside the
+ *   open instance, so switching is one tap and there is no "back";
+ * - narrow (phones, a foldable's cover screen): one pane at a time, with Play
+ *   pinned to the bottom of the screen within thumb reach;
+ * - a dual-screen device puts the list and the instance on either side of the
+ *   hinge.
  */
 
 import { useEffect, useState } from "react";
 import { Navigate, useLocation, useSearchParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { usePrimaryAccount } from "./primaryAccount";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useI18n } from "@/i18n";
 import { launcherApi, toAppError } from "@/lib/ipc";
 import { useLauncherEnabled } from "@/lib/launcherPref";
 import { IS_WEB } from "@/lib/web";
-import { ErrorNotice, Segmented } from "@/ui";
+import { ErrorNotice, Tabs } from "@/ui";
 import { AccountMenu, SkinTab } from "./Account";
 import { Browse } from "./Browse";
+import { useLauncherProfiles } from "./hooks";
 import { InstancePage } from "./InstancePage";
-import { Library } from "./Library";
+import { InstanceRail, Library } from "./Library";
+import { usePrimaryAccount } from "./primaryAccount";
 import { Screenshots } from "./Screenshots";
 import "./launcher.css";
 
@@ -37,7 +46,7 @@ function LauncherContent() {
   const location = useLocation();
   const [tab, setTab] = useState<Tab>("library");
   const [openId, setOpenId] = useState<string | null>(search.get("instance"));
-  const profiles = useQuery({ queryKey: ["launcher", "profiles"], queryFn: launcherApi.profiles });
+  const profiles = useLauncherProfiles();
   const open = profiles.data?.find((profile) => profile.id === openId) ?? null;
   // Fetch the skin early so the Skin tab opens with it ready.
   const client = useQueryClient();
@@ -49,40 +58,46 @@ function LauncherContent() {
 
   const shortcutError = location.state?.shortcutError;
   return (
-    <div className="launcher">
+    <div className="launcher" data-open={open ? "" : undefined}>
       <header className="launcher-head">
-        <div className="launcher-head-row">
-          <div className="launcher-head-title">
-            <h1 className="display servers-node">Launcher</h1>
-            <p className="launcher-muted">{t("launcher.subtitle")}</p>
-          </div>
-          <div className="launcher-account-top"><AccountMenu /></div>
+        <div className="launcher-head-title">
+          <h1 className="display servers-node">Launcher</h1>
+          <p className="launcher-muted launcher-subtitle">{t("launcher.subtitle")}</p>
         </div>
-        {open ? null : (
-          <Segmented<Tab>
+        <div className="launcher-account-top"><AccountMenu /></div>
+      </header>
+      {shortcutError ? <ErrorNotice error={toAppError(shortcutError)} /> : null}
+      {open ? (
+        <div className="launcher-split">
+          <InstanceRail current={open.id} onOpen={(profile) => setOpenId(profile.id)} />
+          <InstancePage key={open.id} profile={open} onBack={() => setOpenId(null)} onRemoved={() => setOpenId(null)} />
+        </div>
+      ) : (
+        <>
+          <Tabs<Tab>
             label="Launcher"
-            value={tab}
+            className="launcher-tabs"
+            active={tab}
             onChange={setTab}
-            options={[
+            tabs={[
               { id: "library", label: t("launcher.library"), icon: "servers" },
               { id: "discover", label: t("launcher.modpacks"), icon: "search" },
               { id: "screenshots", label: t("launcher.screenshots"), icon: "image" },
               { id: "skin", label: t("launcher.skin"), icon: "users" },
             ]}
           />
-        )}
-      </header>
-      {shortcutError ? <ErrorNotice error={toAppError(shortcutError)} /> : null}
-      {open ? (
-        <InstancePage key={open.id} profile={open} onBack={() => setOpenId(null)} onRemoved={() => setOpenId(null)} />
-      ) : tab === "library" ? (
-        <Library onOpen={(profile) => setOpenId(profile.id)} />
-      ) : tab === "discover" ? (
-        <Browse modpacks onCreated={(profile) => { setTab("library"); setOpenId(profile.id); }} />
-      ) : tab === "screenshots" ? (
-        <Screenshots />
-      ) : (
-        <SkinTab />
+          <div role="tabpanel" className="launcher-panel">
+            {tab === "library" ? (
+              <Library onOpen={(profile) => setOpenId(profile.id)} />
+            ) : tab === "discover" ? (
+              <Browse modpacks onCreated={(profile) => { setTab("library"); setOpenId(profile.id); }} />
+            ) : tab === "screenshots" ? (
+              <Screenshots />
+            ) : (
+              <SkinTab />
+            )}
+          </div>
+        </>
       )}
     </div>
   );

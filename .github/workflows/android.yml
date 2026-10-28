@@ -35,8 +35,8 @@ jobs:
       # needs a mirror URL.
       - name: Game engine sources
         run: |
-          git submodule update --init src-tauri/android/amethyst
-          git -C src-tauri/android/amethyst -c submodule.androidnsbypass.url=https://github.com/alexytomi/androidnsbypass.git submodule update --init androidnsbypass
+          git submodule update --init src-tauri/android/engine
+          git -C src-tauri/android/engine -c submodule.androidnsbypass.url=https://github.com/alexytomi/androidnsbypass.git submodule update --init androidnsbypass
 
       - uses: actions/setup-java@v4
         with:

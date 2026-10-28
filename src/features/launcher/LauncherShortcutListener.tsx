@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { launcherApi, toAppError } from "@/lib/ipc";
 import { IS_WEB } from "@/lib/web";
 import { usePrimaryAccount } from "./primaryAccount";
+import { launcherKeys } from "./hooks";
 
 /** Consume native shortcut requests even when the launcher page isn't open. */
 export function LauncherShortcutListener() {
@@ -26,7 +27,7 @@ export function LauncherShortcutListener() {
     const mode = item.mode ?? (primary ? "account" : "demo");
     const account = item.mode ? item.accountId : primary?.id;
     void launcherApi.start(item.id, mode, account).then(() => {
-      void client.invalidateQueries({ queryKey: ["launcher", "status"] });
+      void client.invalidateQueries({ queryKey: launcherKeys.status });
     }).catch(error => navigate(url, { replace: true, state: { shortcutError: toAppError(error) } }));
   }, [request.data, navigate, client, primary, loading]);
   return null;

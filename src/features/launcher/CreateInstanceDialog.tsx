@@ -5,6 +5,7 @@ import { launcherApi, toAppError } from "@/lib/ipc";
 import { Button, Dialog, ErrorNotice, LoaderIcon, Select, TextInput } from "@/ui";
 import type { Loader, LauncherProfile } from "./types";
 import { LOADERS, loaderInfo } from "./loaderOptions";
+import { launcherKeys, useGameVersions, useLauncherCapabilities } from "./hooks";
 
 export function CreateInstanceDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (profile: LauncherProfile) => void }) {
   const { t } = useI18n();
@@ -14,15 +15,15 @@ export function CreateInstanceDialog({ onClose, onCreated }: { onClose: () => vo
   const [version, setVersion] = useState("");
   const [loader, setLoader] = useState<Loader>("vanilla");
   const [memory, setMemory] = useState(2048);
-  const versions = useQuery({ queryKey: ["launcher", "versions"], queryFn: launcherApi.versions, staleTime: 300_000 });
-  const caps = useQuery({ queryKey: ["launcher", "capabilities"], queryFn: launcherApi.capabilities });
+  const versions = useGameVersions();
+  const caps = useLauncherCapabilities();
   const available = versions.data?.filter(v => caps.data?.can_launch ? v.client_supported : v.type === "release") ?? [];
   const selected = version || available.find(v => v.id === "1.21.4")?.id || available[0]?.id || "";
   const loaderVersions = useQuery({ queryKey: ["launcher", "loaderVersions", loader, selected], queryFn: () => launcherApi.loaderVersions(loader, selected), enabled: loader !== "vanilla" && loader !== "quilt" && !!selected, staleTime: 300_000, retry: false });
   const loaderReady = loader === "vanilla" || (loader !== "quilt" && !!loaderVersions.data?.length && !loaderVersions.isFetching);
   const suggestedName = `${loaderInfo(loader).name} ${selected}`.trim();
   const create = useMutation({ mutationFn: launcherApi.create, onSuccess: async profile => {
-    await client.invalidateQueries({ queryKey: ["launcher", "profiles"] });
+    await client.invalidateQueries({ queryKey: launcherKeys.profiles });
     onCreated(profile);
   }});
   return <Dialog open onClose={onClose} title={t("launcher.newInstance")} width={700} dismissable={!create.isPending}

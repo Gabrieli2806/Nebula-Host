@@ -1,4 +1,4 @@
-package net.kdt.pojavlaunch.console;
+package net.g2806.nebula.game.console;
 
 import android.graphics.Rect;
 import android.view.MotionEvent;
@@ -17,7 +17,7 @@ import androidx.window.layout.WindowInfoTracker;
 import androidx.window.layout.WindowLayoutInfo;
 import net.kdt.pojavlaunch.GrabListener;
 import net.kdt.pojavlaunch.MinecraftGLSurface;
-import net.kdt.pojavlaunch.NebulaGameActivity;
+import net.g2806.nebula.game.GameActivity;
 import net.kdt.pojavlaunch.R;
 import net.kdt.pojavlaunch.Tools;
 import net.kdt.pojavlaunch.customcontrols.ControlLayout;
@@ -30,15 +30,15 @@ import java.util.Map;
 import net.kdt.pojavlaunch.customcontrols.buttons.ControlInterface;
 
 /** Observes the actual window posture; changing mode never reparents the surface. */
-public final class NebulaTabletopConsole implements GrabListener {
+public final class TabletopConsole implements GrabListener {
     private static final String PREFERENCE = "nebula.console.mode";
     private static final int AUTO = 0, ON = 1, OFF = 2;
-    private final NebulaGameActivity activity;
+    private final GameActivity activity;
     private final FrameLayout root;
     private final ControlLayout game;
     private final MinecraftGLSurface surface;
     private final Touchpad cursor;
-    private final NebulaConsolePad pad;
+    private final ConsolePad pad;
     private final FrameLayout.LayoutParams originalGameParams;
     private final WindowInfoTrackerCallbackAdapter tracker;
     private final Map<View, Integer> fixedControls = new IdentityHashMap<>();
@@ -51,7 +51,7 @@ public final class NebulaTabletopConsole implements GrabListener {
     private boolean active, started, closed, controlsWereVisible, cursorWasEnabled;
     private int mode;
 
-    public NebulaTabletopConsole(NebulaGameActivity activity) {
+    public TabletopConsole(GameActivity activity) {
         this.activity = activity;
         root = activity.findViewById(R.id.content_frame);
         game = activity.findViewById(R.id.main_control_layout);
@@ -60,7 +60,7 @@ public final class NebulaTabletopConsole implements GrabListener {
         originalGameParams = new FrameLayout.LayoutParams((FrameLayout.LayoutParams)game.getLayoutParams());
         mode = LauncherPreferences.DEFAULT_PREF.getInt(PREFERENCE, AUTO);
         if (mode < AUTO || mode > OFF) mode = AUTO;
-        pad = new NebulaConsolePad(activity, cursor, activity::onClickedMenu);
+        pad = new ConsolePad(activity, cursor, activity::onClickedMenu);
         pad.setVisibility(View.GONE);
         pad.setElevation(dp(12));
         root.addView(pad, new FrameLayout.LayoutParams(-1, 1));
