@@ -21,6 +21,7 @@ public final class GameActivity extends MainActivity {
     private static boolean exitReported;
     private boolean created;
     private TabletopConsole console;
+    private SdlGrabSync grabSync;
     JSONObject request;
     String renderer = Graphics.DEFAULT_RENDERER;
 
@@ -78,6 +79,7 @@ public final class GameActivity extends MainActivity {
             super.onCreate(null);
             created = true;
             console = new TabletopConsole(this);
+            grabSync = new SdlGrabSync();
         } catch (Throwable error) {
             reportExit(-1, error.getClass().getSimpleName() + ": " + error.getMessage());
             android.util.Log.e("NebulaGame", "Cannot initialize game engine", error);
@@ -132,9 +134,11 @@ public final class GameActivity extends MainActivity {
     @Override protected void onStart() {
         super.onStart();
         if (console != null) console.start();
+        if (grabSync != null) grabSync.start();
     }
 
     @Override protected void onStop() {
+        if (grabSync != null) grabSync.stop();
         if (console != null) console.stop();
         super.onStop();
     }

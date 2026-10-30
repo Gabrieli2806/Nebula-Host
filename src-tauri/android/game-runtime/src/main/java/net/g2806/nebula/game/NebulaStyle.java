@@ -12,9 +12,12 @@ public final class NebulaStyle {
     /** Control buttons: the surface at 55%, the accent outline at 50%. */
     public static final int CONTROL_FILL = 0x8C0B1220;
     public static final int CONTROL_OUTLINE = 0x8022D3EE;
-    /** Console pad keys: a raised well above the surface, brighter while held. */
-    public static final int RAISED = 0xFF16213A;
-    public static final int PRESSED = 0xFF1F3A55;
+    /** The tabletop console pad is true black on neutral greys, for OLED screens. */
+    public static final int CONSOLE_PANEL = 0xFF000000;
+    public static final int CONSOLE_KEY = 0xFF161616;
+    public static final int CONSOLE_KEY_PRESSED = 0xFF2C2C2C;
+    public static final int CONSOLE_OUTLINE = 0x33FFFFFF;
+    public static final int CONSOLE_MUTED = 0xFFA3A3A3;
 
     private NebulaStyle() {}
 }

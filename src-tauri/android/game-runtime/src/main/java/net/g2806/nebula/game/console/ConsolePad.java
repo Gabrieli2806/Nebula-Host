@@ -45,8 +45,8 @@ public final class ConsolePad extends LinearLayout {
     // fill, white text, fully rounded corners, a white wash while held.
     // Nebula Host's palette (NebulaStyle): ink surface, raised buttons with an
     // accent outline, accent wash when pressed.
-    private static final int INK = 0xffffffff, MUTED = NebulaStyle.TEXT_MUTED, FILL = NebulaStyle.RAISED,
-        PRESS = NebulaStyle.PRESSED, PANEL = NebulaStyle.SURFACE, OUTLINE = NebulaStyle.CONTROL_OUTLINE;
+    private static final int INK = 0xffffffff, MUTED = NebulaStyle.CONSOLE_MUTED, FILL = NebulaStyle.CONSOLE_KEY,
+        PRESS = NebulaStyle.CONSOLE_KEY_PRESSED, PANEL = NebulaStyle.CONSOLE_PANEL, OUTLINE = NebulaStyle.CONSOLE_OUTLINE;
     private final ConsoleInput input;
     private final Game game;
     private final Stick stick;
