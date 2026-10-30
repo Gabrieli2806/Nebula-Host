@@ -86,6 +86,26 @@ impl InstanceService {
     }
 }
 
+/// Java `major` for a caller that only needs it to exist (the launcher):
+/// downloads it under the same per-major lock as `java_download`, or waits
+/// for a download already running (a server's, say) and uses its result.
+pub async fn ensure_java(major: u32) -> AppResult<JavaInstallation> {
+    loop {
+        if let Ok(_guard) = DownloadGuard::claim(major) {
+            return java::download_temurin(major, |_| {}).await;
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        let found = tokio::task::spawn_blocking(move || java::resolve_java(None, major).and_then(|path| java::probe(&path)))
+            .await
+            .map_err(AppError::unexpected)?;
+        if let Ok(found) = found {
+            if found.major == major {
+                return Ok(found);
+            }
+        }
+    }
+}
+
 /// The Java majors games are built for, newest first — the slots App
 /// Settings shows (as Modrinth does): Minecraft 26.1+ → 25, 1.20.5+ → 21,
 /// 1.17–1.20.4 → 17, older → 8.

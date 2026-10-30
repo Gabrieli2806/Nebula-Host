@@ -36,6 +36,23 @@ pub fn http_client() -> reqwest::Client {
     CLIENT.get_or_init(build_http_client).clone()
 }
 
+/// For file downloads (server jars, mods, modpacks, game libraries, Java):
+/// no limit on the whole transfer, which a large file on a slow connection
+/// would exceed, but one on silence, so a stalled connection still fails.
+pub fn download_client() -> reqwest::Client {
+    static CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+    CLIENT
+        .get_or_init(|| {
+            reqwest::Client::builder()
+                .user_agent(USER_AGENT)
+                .connect_timeout(std::time::Duration::from_secs(10))
+                .read_timeout(std::time::Duration::from_secs(60))
+                .build()
+                .expect("the default TLS backend always builds")
+        })
+        .clone()
+}
+
 fn build_http_client() -> reqwest::Client {
     reqwest::Client::builder()
         .user_agent(USER_AGENT)

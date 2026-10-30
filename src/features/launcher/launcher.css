@@ -1,28 +1,38 @@
 /*
- * Nebula Host: launcher.css. The Launcher is part of the app, so it speaks the
- * same language as the server list: the same header and segmented switch, the
- * same toolbar, `.panel` cards with tags and status chips, the same empty
- * states and dialog. Only what has no equivalent elsewhere lives here: the
- * loader tile, the instance detail column, installed-content rows.
+ * Nebula Host: launcher.css. The Launcher speaks the same language as the
+ * server list (`.panel` cards, tags, status chips, segmented tabs, dialogs);
+ * this file holds what has no equivalent elsewhere.
+ *
+ * Layout follows the launcher's own width, not the device, through the
+ * `launcher` container:
+ *   < 520px   a phone or a foldable's cover screen: compact rows, icon tabs,
+ *             Play pinned to the bottom of the screen;
+ *   520–899   a large phone, a tablet or an unfolded foldable: card grid, one
+ *             pane at a time;
+ *   ≥ 900px   desktop / wide tablet: the instance list stays beside an open
+ *             instance.
+ * Dual-screen devices (viewport segments) put the list and the instance on
+ * either side of the hinge; a foldable half-open in tabletop posture keeps the
+ * instance's header and Play above the fold.
  *
  * Tokens only; no hard-coded surfaces. Inside @layer components, like the rest.
  */
 
 @layer components {
   .launcher {
+    container: launcher / inline-size;
     display: flex;
     max-width: var(--content-max);
     flex-direction: column;
-    gap: var(--space-6);
+    gap: var(--space-5);
     padding: var(--gutter);
   }
 
   .launcher-head {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: var(--space-4) var(--space-8);
+    gap: var(--space-3) var(--space-6);
   }
 
   .launcher-head-title {
@@ -30,6 +40,43 @@
     min-width: 0;
     flex-direction: column;
     gap: 4px;
+  }
+
+  /* On a phone the account is here; on the desktop it is in the sidebar. */
+  .launcher-account-top {
+    display: none;
+    flex: none;
+  }
+
+  @media (max-width: 760px) {
+    .launcher-account-top {
+      display: block;
+    }
+  }
+
+  .launcher-panel {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  /* Tabs: one row that scrolls sideways when it does not fit, never wraps. */
+  .launcher-tabs {
+    align-self: flex-start;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .launcher-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .launcher-tabs .segment {
+    flex: none !important;
+    white-space: nowrap;
   }
 
   .launcher-muted {
@@ -49,20 +96,40 @@
   /* == toolbar ========================================================= */
 
   .launcher-toolbar {
-    margin-top: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
   }
 
-  .launcher-toolbar .servers-search {
+  .launcher-search {
+    position: relative;
+    display: flex;
+    min-width: 200px;
     max-width: 360px;
+    flex: 1 1 240px;
+    align-items: center;
   }
 
-  .launcher-toolbar-spacer {
-    flex: 1 1 0;
+  .launcher-search > svg {
+    position: absolute;
+    left: 11px;
+    color: var(--text-faint);
+    pointer-events: none;
+  }
+
+  .launcher-search input {
+    width: 100%;
+    padding-left: 32px;
   }
 
   .launcher-filter {
     width: auto;
     min-width: 150px;
+  }
+
+  .launcher-new {
+    margin-left: auto;
   }
 
   .launcher-field {
@@ -72,31 +139,85 @@
     min-width: 0;
   }
 
-  .launcher-install-target {
-    max-width: 520px;
-  }
+  /* == instance cards ================================================== */
 
-  /* == library ========================================================= */
-
-  .launcher-library-layout {
+  .launcher-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 360px;
-    align-items: start;
-    gap: var(--space-5);
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
-  .launcher-instance-grid {
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  .launcher-card {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
   }
 
-  .launcher-instance[data-selected] {
-    border-color: color-mix(in srgb, var(--accent) 60%, var(--line));
-    box-shadow: var(--shadow-card), 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+  .launcher-card[data-phase="running"] {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  }
+
+  /* The whole top of the card opens the instance: a big, honest target. */
+  .launcher-card-open {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .launcher-card-open:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: var(--radius);
+  }
+
+  .launcher-card-body {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .launcher-card-name {
+    overflow: hidden;
+    color: var(--text-heading);
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-display);
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .launcher-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .launcher-card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--line);
   }
 
   /* The loader's colour, as a tile like a server's initial. */
-  .launcher-tile,
-  .launcher-project-icon {
+  .launcher-tile {
     display: inline-flex;
     width: 40px;
     height: 40px;
@@ -110,84 +231,172 @@
     color: var(--tile, var(--accent));
   }
 
-  .launcher-project-icon {
-    color: var(--text-faint);
-    box-shadow: inset 0 0 0 1px var(--line);
+  /* == split view: instance list beside the open instance ================ */
+
+  .launcher-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-5);
+  }
+
+  .launcher-rail {
+    display: none;
+    flex-direction: column;
+    gap: var(--space-2);
+    position: sticky;
+    top: var(--space-4);
+    max-height: calc(100dvh - var(--titlebar-height) - var(--space-7));
+    overflow-y: auto;
+  }
+
+  .launcher-rail ul {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .launcher-rail-title {
+    margin: 0 0 var(--space-1);
+    padding: 0 var(--space-2);
+  }
+
+  .launcher-rail-item {
+    display: flex;
+    width: 100%;
+    min-height: 48px;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 6px var(--space-2);
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    background: none;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease);
+  }
+
+  .launcher-rail-item:hover {
     background: var(--well-fill);
   }
 
-  .launcher-project-icon img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  .launcher-rail-item[aria-current="page"] {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+    background: var(--accent-wash);
   }
 
-  .launcher-instance-detail {
-    position: sticky;
-    top: var(--space-4);
-  }
-
-  .launcher-detail-body {
+  .launcher-rail-text {
     display: flex;
+    min-width: 0;
+    flex: 1;
     flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-4);
-  }
-
-  .launcher-facts {
-    display: flex;
-    flex-direction: column;
-    margin: 0;
-  }
-
-  .launcher-facts > div {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-4);
-    padding: 9px 0;
     font-size: var(--text-sm);
   }
 
-  .launcher-facts > div + div {
-    border-top: 1px solid var(--line);
+  .launcher-rail-text > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .launcher-facts dt {
-    color: var(--text-muted);
+  .launcher-rail-name {
+    font-weight: var(--weight-strong);
   }
 
-  .launcher-facts dd {
-    margin: 0;
+  .launcher-rail-text .launcher-muted {
+    font-size: var(--text-xs);
   }
 
-  .launcher-detail-footer {
-    padding-top: var(--space-3);
-    border-top: 1px solid var(--line);
-  }
+  /* == the open instance =============================================== */
 
-  /* == play controls =================================================== */
-
-  .launcher-client {
+  .launcher-instance-page,
+  .launcher-settings {
     display: flex;
+    min-width: 0;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: var(--space-4);
   }
 
-  .launcher-actions {
+  .launcher-back {
+    align-self: flex-start;
+  }
+
+  .launcher-hero {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-5);
+  }
+
+  .launcher-hero-text {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .launcher-hero-title {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+  }
+
+  .launcher-hero-title h2 {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    color: var(--text-heading);
+    font-family: var(--font-display);
+    font-size: var(--text-xl, 1.25rem);
+    font-weight: var(--weight-display);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .launcher-hero-play {
+    flex: none;
+  }
+
+  .launcher-play-controls {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
   }
 
-  .launcher-state {
-    display: flex;
+  .launcher-hero-play .launcher-play {
+    min-width: 160px;
+  }
+
+  /* Play pinned to the bottom edge on narrow screens (hidden otherwise). */
+  .launcher-actionbar {
+    position: sticky;
+    z-index: 5;
+    bottom: 0;
+    display: none;
     align-items: center;
-    gap: 8px;
-    margin: 0;
-    color: var(--text-muted);
-    font-size: var(--text-sm);
+    gap: var(--space-3);
+    margin: 0 calc(var(--gutter) * -1) calc(var(--gutter) * -1);
+    padding: var(--space-3) var(--gutter) calc(var(--space-3) + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface-raised) 92%, transparent);
+    backdrop-filter: blur(12px);
+  }
+
+  .launcher-actionbar-name {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    font-weight: var(--weight-strong);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .launcher-progress {
@@ -204,19 +413,6 @@
     font-size: var(--text-xs);
   }
 
-  .meter-fill[data-indeterminate] {
-    animation: launcher-slide 1.4s var(--ease) infinite alternate;
-  }
-
-  @keyframes launcher-slide {
-    from {
-      transform: translateX(0);
-    }
-    to {
-      transform: translateX(185%);
-    }
-  }
-
   .launcher-game-log {
     max-height: 220px;
     margin: 0;
@@ -229,8 +425,6 @@
     overflow-wrap: anywhere;
     white-space: pre-wrap;
   }
-
-  /* == notices ========================================================= */
 
   .launcher-notice {
     display: flex;
@@ -250,8 +444,6 @@
     margin-top: 2px;
     color: var(--accent);
   }
-
-  /* == installed content =============================================== */
 
   .launcher-content {
     display: flex;
@@ -279,115 +471,96 @@
     gap: var(--space-2);
   }
 
-  .launcher-content-icon {
-    display: inline-flex;
-    width: 28px;
-    height: 28px;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    border-radius: var(--radius-sm);
-    background: var(--well-fill);
-    box-shadow: inset 0 0 0 1px var(--line);
-    color: var(--text-faint);
-  }
 
-  .launcher-content-icon img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    image-rendering: auto;
-  }
+  /* == renderer choice (Android) ======================================= */
 
-  .launcher-content-list {
-    display: flex;
-    max-height: 280px;
-    flex-direction: column;
+  .launcher-renderers {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--space-2);
     margin: 0;
     padding: 0;
-    overflow: auto;
-    list-style: none;
+    border: 0;
   }
 
-  .launcher-content-list li {
+  .launcher-renderers legend {
+    margin-bottom: var(--space-2);
+  }
+
+  .launcher-renderer {
+    position: relative;
     display: flex;
-    align-items: center;
+    min-height: 64px;
     gap: var(--space-2);
-    padding: 5px 0;
-    font-size: var(--text-sm);
+    padding: var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-sunken);
+    cursor: pointer;
+    transition: border-color var(--duration-fast) var(--ease), background-color var(--duration-fast) var(--ease);
   }
 
-  .launcher-content-list li + li {
-    border-top: 1px solid var(--line);
+  .launcher-renderer:hover {
+    border-color: var(--line-strong);
   }
 
-  .launcher-content-list li[data-disabled] .launcher-content-name {
-    opacity: 0.5;
-    text-decoration: line-through;
+  .launcher-renderer:has(:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
-  .launcher-content-name {
+  .launcher-renderer[data-selected] {
+    border-color: color-mix(in srgb, var(--accent) 60%, var(--line));
+    background: var(--accent-wash);
+  }
+
+  .launcher-renderer[data-unavailable] {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .launcher-renderer input {
+    margin-top: 3px;
+    accent-color: var(--accent);
+  }
+
+  .launcher-renderer-text {
+    display: flex;
     min-width: 0;
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    flex-direction: column;
+    gap: 2px;
   }
 
-  /* == discover ======================================================== */
-
-  .launcher-project {
-    gap: var(--space-3);
-  }
-
-  .launcher-project-title {
-    overflow: hidden;
-    color: var(--text-heading);
-    font-family: var(--font-display);
-    font-size: var(--text-lg);
-    font-weight: var(--weight-display);
-    line-height: 1.35;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .launcher-description {
-    display: -webkit-box;
-    margin: 0;
-    overflow: hidden;
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-    overflow-wrap: anywhere;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-  }
-
-  .launcher-project .launcher-actions {
-    margin-top: auto;
-  }
-
-  .launcher-pager {
+  .launcher-renderer-text strong {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: var(--space-3);
+    gap: 6px;
+    font-size: var(--text-sm);
   }
 
-  /* == accounts ======================================================== */
+  .launcher-renderer-text small {
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+  }
+
+  .launcher-resolution {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+  }
+
+  .launcher-resolution input[type="range"] {
+    min-width: 140px;
+    flex: 1;
+    accent-color: var(--accent);
+  }
 
   .launcher-panel-body {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
     padding: var(--space-4);
-  }
-
-  .launcher-signin {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: var(--space-3);
   }
 
   .launcher-account {
@@ -397,41 +570,6 @@
     gap: var(--space-3);
     padding-top: var(--space-4);
     border-top: 1px solid var(--line);
-  }
-
-  .launcher-accounts {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .launcher-signin-intro {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-  }
-
-  .launcher-signin-intro p {
-    flex: 1 1 260px;
-    margin: 0;
-  }
-
-  .launcher-profile {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
-  .launcher-profile-text {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .launcher-profile-text strong {
-    font-size: var(--text-lg);
   }
 
   .launcher-device {
@@ -493,11 +631,7 @@
     border: 2px solid var(--line);
     border-top-color: var(--accent);
     border-radius: 50%;
-    animation: launcher-spin 0.9s linear infinite;
-  }
-
-  @keyframes launcher-spin {
-    to { transform: rotate(360deg); }
+    animation: nebula-turn 0.9s linear infinite;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -546,6 +680,7 @@
   }
 
   .launcher-cape-current .launcher-cape-art,
+
   .launcher-cape-current .launcher-cape-none {
     width: 30px;
     height: 48px;
@@ -556,51 +691,6 @@
     height: 100%;
     object-fit: cover;
     image-rendering: pixelated;
-  }
-
-  .launcher-detail-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
-  .launcher-detail-title {
-    margin: 0 0 6px;
-    overflow: hidden;
-    font-size: var(--text-xl, 1.25rem);
-    font-weight: 700;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .launcher-settings-general {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .launcher-settings-icon {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
-  .launcher-library-layout[data-single] {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .launcher-back {
-    align-self: flex-start;
-  }
-
-  .launcher-play-as {
-    margin: 0;
-  }
-
-  .launcher-play {
-    min-width: 160px;
   }
 
   .launcher-log {
@@ -617,12 +707,6 @@
     gap: var(--space-2);
   }
 
-  .launcher-settings-tools {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
   .launcher-tool {
     display: flex;
     flex-wrap: wrap;
@@ -633,13 +717,6 @@
 
   .launcher-tool p {
     margin: 2px 0 0;
-  }
-
-  .launcher-head-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-3);
   }
 
   .launcher-account-menu {
@@ -683,7 +760,7 @@
     border: 1px solid var(--line);
     border-radius: var(--radius-md, 10px);
     background: var(--surface-raised);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--shadow-pop);
   }
 
   .launcher-account-item {
@@ -720,16 +797,6 @@
     place-items: center;
     border: 1px dashed var(--line);
     border-radius: 4px;
-  }
-
-  .launcher-account-top {
-    display: none;
-  }
-
-  @media (max-width: 760px) {
-    .launcher-account-top {
-      display: block;
-    }
   }
 
   .rail-account {
@@ -779,38 +846,6 @@
     height: 22px;
   }
 
-  .launcher-instance-page,
-  .launcher-settings {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .launcher-instance-hero {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-4);
-    padding: var(--space-4) var(--space-5);
-  }
-
-  .launcher-play-controls {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .launcher-instance-foot {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    margin-top: var(--space-3);
-    padding-top: var(--space-3);
-    border-top: 1px solid var(--line);
-  }
-
   .launcher-version-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -852,6 +887,7 @@
   }
 
   .launcher-picture:hover .launcher-picture-edit,
+
   .launcher-picture:focus-visible .launcher-picture-edit {
     opacity: 1;
   }
@@ -893,6 +929,7 @@
   }
 
   .launcher-shot-image img,
+
   .launcher-shot-image .skeleton {
     display: block;
     width: 100%;
@@ -918,6 +955,7 @@
   }
 
   /* The whole picture, never cropped: fit the window, keep the ratio. */
+
   .launcher-shot-full {
     display: block;
     max-width: 100%;
@@ -927,12 +965,6 @@
     margin: 0 auto;
     object-fit: contain;
     border-radius: var(--radius-sm);
-  }
-
-  .launcher-memory {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
   }
 
   .launcher-content-bar {
@@ -978,6 +1010,7 @@
   }
 
   .launcher-cape-art,
+
   .launcher-cape-none {
     width: 40px;
     height: 64px;
@@ -1019,6 +1052,7 @@
   }
 
   .launcher-create-section h3,
+
   .launcher-create-section legend {
     display: flex;
     align-items: center;
@@ -1139,46 +1173,209 @@
     font-size: var(--text-xs);
   }
 
-  /* == narrow ========================================================== */
+  /* == responsive layout ================================================ */
 
-  @media (max-width: 1060px) {
-    .launcher-library-layout {
-      grid-template-columns: minmax(0, 1fr);
+  /* Wide: keep the list beside the open instance; no "back" needed. */
+  @container launcher (min-width: 900px) {
+    .launcher-split {
+      grid-template-columns: 240px minmax(0, 1fr);
     }
 
-    .launcher-instance-detail {
-      position: static;
+    .launcher-rail {
+      display: flex;
+    }
+
+    .launcher-back {
+      display: none;
     }
   }
 
-  @media (max-width: 760px) {
-    .launcher-head > .segmented {
-      width: 100%;
+  @container launcher (min-width: 1200px) {
+    .launcher-split {
+      grid-template-columns: 280px minmax(0, 1fr);
+    }
+  }
+
+  /* Phone width: compact rows, icon-led tabs, Play within thumb reach. */
+  @container launcher (max-width: 519px) {
+    .launcher-subtitle {
+      display: none;
     }
 
-    .launcher-head > .segmented .segment {
-      flex: 1;
+    /* Tabs share the width evenly, icon over label, so all four stay
+       visible without scrolling. */
+    .launcher-tabs {
+      display: grid !important;
+      align-self: stretch;
+      grid-auto-columns: minmax(0, 1fr);
+      grid-auto-flow: column;
     }
 
-    .launcher-toolbar .servers-search {
+    .launcher-tabs .segment {
+      min-width: 0;
+      flex-direction: column;
+      gap: 2px;
+      height: auto;
+      min-height: 48px;
+      padding: 6px 2px;
+      font-size: var(--text-xs);
+      white-space: normal;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    .launcher-content-head {
+      flex-wrap: wrap;
+    }
+
+    .launcher-content-add {
+      flex: 1 1 100%;
+      justify-content: stretch;
+    }
+
+    .launcher-content-add .btn {
+      flex: 1 1 0;
+    }
+
+    .launcher-search {
       max-width: none;
       flex-basis: 100%;
     }
 
-    .launcher-toolbar-spacer {
-      display: none;
-    }
-
-    .launcher-toolbar > .btn {
+    .launcher-filter {
       flex: 1;
     }
 
-    .launcher-instance-grid {
+    .launcher-new {
+      flex: 1 1 auto;
+      margin-left: 0;
+    }
+
+    .launcher-grid {
       grid-template-columns: minmax(0, 1fr);
+      gap: var(--space-2);
+    }
+
+    /* A card becomes a row: picture, name and tags, a round Play button. */
+    .launcher-card {
+      position: relative;
+      flex-direction: row;
+      align-items: center;
+      padding: var(--space-3);
+    }
+
+    .launcher-card-open {
+      flex: 1;
+    }
+
+    .launcher-card-name {
+      font-size: var(--text-md, 1rem);
+    }
+
+    .launcher-card-memory,
+    .launcher-card-status {
+      display: none;
+    }
+
+    .launcher-card[data-phase="running"] .launcher-card-status,
+    .launcher-card[data-phase="installing"] .launcher-card-status,
+    .launcher-card[data-phase="failed"] .launcher-card-status {
+      display: inline-flex;
+    }
+
+    .launcher-card-foot {
+      flex-direction: column;
+      align-items: flex-end;
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .launcher-play-controls[data-compact] .btn {
+      min-width: 44px;
+      min-height: 44px;
+      justify-content: center;
+      border-radius: var(--radius-pill);
+      font-size: 0;
+      gap: 0;
+    }
+
+    .launcher-play-controls[data-compact] .btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .launcher-hero {
+      padding: var(--space-3) var(--space-4);
+    }
+
+    .launcher-hero-play {
+      display: none;
+    }
+
+    .launcher-actionbar {
+      display: flex;
+    }
+
+    .launcher-actionbar .launcher-play-controls {
+      flex-wrap: nowrap;
     }
 
     .launcher-loader-options {
       grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  /* A foldable's cover screen (Galaxy Z Fold folded is ~344px): tabs show
+     icons only, the hero stacks. */
+  @container launcher (max-width: 379px) {
+
+    .launcher-hero {
+      flex-wrap: wrap;
+    }
+
+    .launcher-actionbar > .launcher-tile {
+      display: none;
+    }
+  }
+
+  /* Dual-screen / hinge across the width: list on one side, instance on the
+     other, nothing under the hinge. */
+  @media (horizontal-viewport-segments: 2) {
+    .launcher-split {
+      grid-template-columns:
+        calc(env(viewport-segment-width 0 0) - 2 * var(--gutter))
+        minmax(0, 1fr);
+      column-gap: calc(env(viewport-segment-left 1 0) - env(viewport-segment-right 0 0) + 2 * var(--gutter));
+    }
+
+    .launcher-rail {
+      display: flex;
+    }
+
+    .launcher-back {
+      display: none;
+    }
+  }
+
+  /* Half-open in tabletop posture: the top half holds the instance's header
+     and Play; tabs and content start below the fold. */
+  @media (vertical-viewport-segments: 2) {
+    .launcher[data-open] .launcher-hero {
+      min-height: calc(env(viewport-segment-bottom 0 0) - var(--titlebar-height) - var(--space-7) * 2);
+    }
+
+    .launcher-actionbar {
+      display: none;
+    }
+
+    .launcher-hero-play {
+      display: block;
+    }
+  }
+
+  @media (pointer: coarse) {
+    .launcher-rail-item {
+      min-height: 52px;
     }
   }
 }

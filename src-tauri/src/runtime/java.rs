@@ -883,10 +883,7 @@ async fn download_temurin_inner(
     options = options.with_progress(move |received, total| {
         sink(JavaDownloadProgress::Downloading { received, total: (total > 0).then_some(total) });
     });
-    download_file(&client, options).await.map_err(|error| {
-        let code = if error.contains("integrity check failed") { ErrorCode::ChecksumMismatch } else { ErrorCode::DownloadFailed };
-        AppError::new(code).with("file", &name).detail(error)
-    })?;
+    download_file(&client, options).await.map_err(|error| crate::error::download_error(&name, error))?;
 
     progress(JavaDownloadProgress::Extracting);
     let home = managed_home(major)?;

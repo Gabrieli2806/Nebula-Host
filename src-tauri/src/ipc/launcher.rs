@@ -155,6 +155,19 @@ pub async fn launcher_set_memory(id: uuid::Uuid, memory_mb: u32) -> AppResult<Pr
     launcher::set_memory(id, memory_mb).await
 }
 #[tauri::command]
+pub async fn launcher_set_graphics(id: uuid::Uuid, graphics: launcher::Graphics) -> AppResult<Profile> {
+    launcher::set_graphics(id, graphics).await
+}
+/// What the phone's GPU supports (Vulkan, OpenGL ES, renderers in this
+/// build); `null` on platforms whose game does not use the Android engine.
+#[tauri::command]
+pub async fn launcher_device_graphics() -> AppResult<serde_json::Value> {
+    #[cfg(all(target_os = "android", feature = "desktop"))]
+    return launcher::android::device_graphics();
+    #[cfg(not(all(target_os = "android", feature = "desktop")))]
+    Ok(serde_json::Value::Null)
+}
+#[tauri::command]
 pub async fn launcher_create(input: CreateProfile) -> AppResult<Profile> {
     launcher::create(input).await
 }

@@ -7,9 +7,9 @@ if (-not (Test-Path -LiteralPath (Join-Path $JavaHome 'bin\java.exe'))) {
 }
 $env:JAVA_HOME = $JavaHome
 $env:Path = "$JavaHome\bin;$env:Path"
-git submodule update --init src-tauri/android/amethyst
+git submodule update --init src-tauri/android/engine
 if ($LASTEXITCODE -ne 0) { throw 'Cannot prepare the pinned game engine.' }
-git -C src-tauri/android/amethyst -c submodule.androidnsbypass.url=https://github.com/alexytomi/androidnsbypass.git submodule update --init androidnsbypass
+git -C src-tauri/android/engine -c submodule.androidnsbypass.url=https://github.com/alexytomi/androidnsbypass.git submodule update --init androidnsbypass
 if ($LASTEXITCODE -ne 0) { throw 'Cannot prepare the native game dependency.' }
 node scripts/android-game-jre.mjs
 if ($LASTEXITCODE -ne 0) { throw 'Cannot prepare graphical Java.' }

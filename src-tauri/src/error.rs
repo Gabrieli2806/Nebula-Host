@@ -243,3 +243,15 @@ mod tests {
         }
     }
 }
+
+/// A `nebula_downloader` failure as an app error: a checksum mismatch keeps
+/// its own code (the file was corrupt or tampered with), the rest are
+/// download failures. One mapping for every downloader caller.
+pub fn download_error(file: impl ToString, error: String) -> AppError {
+    let code = if nebula_downloader::is_integrity_error(&error) {
+        ErrorCode::ChecksumMismatch
+    } else {
+        ErrorCode::DownloadFailed
+    };
+    AppError::new(code).with("file", file).detail(error)
+}

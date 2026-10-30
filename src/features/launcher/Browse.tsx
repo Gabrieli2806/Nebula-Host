@@ -16,6 +16,7 @@ import { AddonIcon } from "@/features/server/panels/addons/AddonIcon";
 import { type AddonView, PAGE_SIZES, compactCount, relativeDate, useAddonView, usePageSize } from "@/features/server/panels/addons/util";
 import type { ContentKind, InstalledContent, LauncherProfile, LauncherProject } from "./types";
 import { loaderInfo } from "./loaderOptions";
+import { launcherKeys } from "./hooks";
 
 const SORTS = ["relevance", "downloads", "follows", "updated", "newest"] as const;
 type Sort = (typeof SORTS)[number];
@@ -79,7 +80,7 @@ export function Browse({
     },
     onSuccess: (result, hit) => {
       if (result.pack) {
-        void client.invalidateQueries({ queryKey: ["launcher", "profiles"] });
+        void client.invalidateQueries({ queryKey: launcherKeys.profiles });
         onCreated?.(result.pack);
         return;
       }

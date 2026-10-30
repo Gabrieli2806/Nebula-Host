@@ -250,52 +250,6 @@ export interface PlayerEntry {
 
 export type PlayerLists = Record<string, PlayerEntry[]>;
 
-export interface AddonCatalogVersion {
-  id: string;
-  name: string;
-  version_number: string;
-  download_url: string;
-  file_name: string;
-  file_size: number;
-}
-
-export interface AddonCatalogEntry {
-  project_id: string;
-  slug: string;
-  title: string;
-  description: string;
-  icon_url?: string | null;
-  downloads: number;
-  project_type: string;
-  featured_version: AddonCatalogVersion;
-}
-
-export interface AddonSearchResult {
-  entries: AddonCatalogEntry[];
-  total_hits: number;
-}
-
-export interface InstalledAddon {
-  id: string;
-  name: string;
-  version: string;
-  enabled: boolean;
-  file_name: string;
-}
-
-export interface AddonMeta {
-  file_name: string;
-  project_id: string;
-  title: string;
-  description: string;
-  icon_url?: string | null;
-  installed_version_number: string;
-  latest_version_number?: string | null;
-  latest_download_url?: string | null;
-  latest_file_name?: string | null;
-  update_available: boolean;
-}
-
 // -- addons (round 3: Modrinth, hash-identified) ---------------------------
 
 export interface AddonContext {

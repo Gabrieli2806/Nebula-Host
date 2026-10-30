@@ -27,3 +27,4 @@ pub fn resume() -> AppResult<()> { call("resume", serde_json::json!({})).map(|_|
 pub fn running() -> AppResult<bool> { Ok(call("status", serde_json::json!({}))?["running"].as_bool().unwrap_or(false)) }
 pub fn pin_shortcut(payload: Value) -> AppResult<()> { call("pinShortcut", payload).map(|_| ()) }
 pub fn take_shortcut() -> AppResult<Value> { call("takeShortcut", serde_json::json!({})) }
+pub fn device_graphics() -> AppResult<Value> { call("deviceGraphics", serde_json::json!({})) }

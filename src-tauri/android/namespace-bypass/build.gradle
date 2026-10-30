@@ -1,5 +1,5 @@
 apply plugin: 'com.android.library'
-def upstream = file('../amethyst/androidnsbypass/src/main')
+def upstream = file('../engine/androidnsbypass/src/main')
 android {
     namespace 'dev.alexytomi.androidnsbypass'
     compileSdk 36

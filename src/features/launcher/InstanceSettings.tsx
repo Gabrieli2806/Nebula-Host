@@ -9,10 +9,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useI18n } from "@/i18n";
 import { launcherApi, toAppError } from "@/lib/ipc";
-import { Button, Dialog, ErrorNotice, Field, Icon, LoaderIcon, Panel, Select, TextInput } from "@/ui";
+import { Button, Dialog, ErrorNotice, Field, Icon, LoaderIcon, Panel, Select, Switch, TextInput } from "@/ui";
 import { RamSlider } from "@/ui/RamSlider";
+import { launcherKeys, useDeviceGraphics, useGameVersions, useLauncherCapabilities } from "./hooks";
 import { LOADERS, loaderInfo } from "./loaderOptions";
-import type { LauncherProfile, Loader } from "./types";
+import type { Graphics, LauncherProfile, Loader, Renderer } from "./types";
 
 /** The card's colour: the loader's, so each kind of instance reads at a glance. */
 const LOADER_COLOUR: Record<Loader, string> = {
@@ -68,11 +69,13 @@ function drawSquare(url: string): Promise<string> {
 }
 
 export function InstanceSettingsPanel({ profile, busy, onRemoved }: { profile: LauncherProfile; busy: boolean; onRemoved: () => void }) {
+  const caps = useLauncherCapabilities();
   return (
     <div className="launcher-settings">
       <DetailsBlock key={`d-${profile.id}`} profile={profile} />
       <VersionBlock key={`v-${profile.id}-${profile.game_version}-${profile.loader}`} profile={profile} busy={busy} />
       <MemoryBlock key={`m-${profile.id}`} profile={profile} busy={busy} />
+      {caps.data?.platform === "android" ? <GraphicsBlock key={`g-${profile.id}`} profile={profile} busy={busy} /> : null}
       <ToolsBlock profile={profile} busy={busy} />
       <RemoveBlock profile={profile} busy={busy} onRemoved={onRemoved} />
     </div>
@@ -81,7 +84,7 @@ export function InstanceSettingsPanel({ profile, busy, onRemoved }: { profile: L
 
 function useRefreshProfiles() {
   const client = useQueryClient();
-  return () => client.invalidateQueries({ queryKey: ["launcher", "profiles"] });
+  return () => client.invalidateQueries({ queryKey: launcherKeys.profiles });
 }
 
 function DetailsBlock({ profile }: { profile: LauncherProfile }) {
@@ -108,8 +111,8 @@ function DetailsBlock({ profile }: { profile: LauncherProfile }) {
 function VersionBlock({ profile, busy }: { profile: LauncherProfile; busy: boolean }) {
   const { t } = useI18n();
   const refresh = useRefreshProfiles();
-  const caps = useQuery({ queryKey: ["launcher", "capabilities"], queryFn: launcherApi.capabilities });
-  const versions = useQuery({ queryKey: ["launcher", "versions"], queryFn: launcherApi.versions, staleTime: 300_000 });
+  const caps = useLauncherCapabilities();
+  const versions = useGameVersions();
   const [version, setVersion] = useState(profile.game_version);
   const [loader, setLoader] = useState<Loader>(profile.loader);
   const [loaderVersion, setLoaderVersion] = useState(profile.loader_version ?? "");
@@ -187,16 +190,98 @@ function MemoryBlock({ profile, busy }: { profile: LauncherProfile; busy: boolea
   );
 }
 
+const DEFAULT_GRAPHICS: Graphics = { renderer: "auto", resolution: null, sustained: null, big_cores: false };
+const RENDERERS: { id: Renderer; vulkan?: boolean }[] = [
+  { id: "auto" },
+  { id: "mobileglues" },
+  { id: "zink", vulkan: true },
+  { id: "krypton" },
+  { id: "ltw" },
+];
+
+/** Android only: which renderer draws the game and how hard the phone works.
+ *  Saved on each change; applied the next time the game starts. */
+function GraphicsBlock({ profile, busy }: { profile: LauncherProfile; busy: boolean }) {
+  const { t } = useI18n();
+  const refresh = useRefreshProfiles();
+  const device = useDeviceGraphics();
+  const [graphics, setGraphics] = useState<Graphics>({ ...DEFAULT_GRAPHICS, ...profile.graphics });
+  const save = useMutation({ mutationFn: (next: Graphics) => launcherApi.setGraphics(profile.id, next), onSuccess: refresh });
+  const change = (patch: Partial<Graphics>) => {
+    const next = { ...graphics, ...patch };
+    setGraphics(next);
+    save.mutate(next);
+  };
+  const available = (id: Renderer) => id === "auto" || !device.data || device.data.renderers.includes(id);
+  return (
+    <Panel title={t("launcher.graphics")} bodyClassName="launcher-panel-body">
+      <p className="launcher-muted">
+        {device.data
+          ? t(device.data.vulkan ? "launcher.deviceVulkan" : "launcher.deviceNoVulkan", { gles: device.data.gles_version, vulkan: device.data.vulkan_version ?? "" })
+          : t("launcher.graphicsHelp")}
+      </p>
+      <fieldset className="launcher-renderers" disabled={busy}>
+        <legend className="label">{t("launcher.renderer")}</legend>
+        {RENDERERS.map((item) => {
+          const ok = available(item.id);
+          return (
+            <label key={item.id} className="launcher-renderer" data-selected={graphics.renderer === item.id ? "" : undefined} data-unavailable={ok ? undefined : ""}>
+              <input type="radio" name={`renderer-${profile.id}`} value={item.id} checked={graphics.renderer === item.id} disabled={!ok} onChange={() => change({ renderer: item.id })} />
+              <span className="launcher-renderer-text">
+                <strong>{t(`launcher.renderer_${item.id}`)}{item.vulkan ? <span className="tag" data-tone="accent">Vulkan</span> : null}</strong>
+                <small>{ok ? t(`launcher.renderer_${item.id}_hint`) : t("launcher.rendererUnavailable")}</small>
+              </span>
+            </label>
+          );
+        })}
+      </fieldset>
+      <Field label={t("launcher.resolution")} help={t("launcher.resolutionHelp")}>
+        <div className="launcher-resolution">
+          <Switch checked={graphics.resolution === null} label={t("launcher.resolutionAuto")} disabled={busy} onChange={(auto) => change({ resolution: auto ? null : 100 })} />
+          <span>{t("launcher.resolutionAuto")}</span>
+          <input
+            type="range"
+            min={25}
+            max={100}
+            step={5}
+            aria-label={t("launcher.resolution")}
+            disabled={busy || graphics.resolution === null}
+            value={graphics.resolution ?? 100}
+            onChange={(e) => setGraphics({ ...graphics, resolution: e.target.valueAsNumber })}
+            onPointerUp={() => save.mutate(graphics)}
+            onKeyUp={() => save.mutate(graphics)}
+          />
+          <span className="readout">{graphics.resolution === null ? "—" : `${graphics.resolution}%`}</span>
+        </div>
+      </Field>
+      <div className="launcher-tool">
+        <div><strong>{t("launcher.sustained")}</strong><p className="launcher-muted">{t("launcher.sustainedHelp")}</p></div>
+        <Select value={graphics.sustained === null ? "auto" : graphics.sustained ? "on" : "off"} disabled={busy} onChange={(e) => change({ sustained: e.target.value === "auto" ? null : e.target.value === "on" })}>
+          <option value="auto">{t("launcher.auto")}</option>
+          <option value="on">{t("launcher.on")}</option>
+          <option value="off">{t("launcher.off")}</option>
+        </Select>
+      </div>
+      <div className="launcher-tool">
+        <div><strong>{t("launcher.bigCores")}</strong><p className="launcher-muted">{t("launcher.bigCoresHelp")}</p></div>
+        <Switch checked={graphics.big_cores} label={t("launcher.bigCores")} disabled={busy} onChange={(on) => change({ big_cores: on })} />
+      </div>
+      <p className="launcher-muted">{t("launcher.graphicsNextLaunch")}</p>
+      {save.error || device.error ? <ErrorNotice error={toAppError(save.error || device.error)} compact /> : null}
+    </Panel>
+  );
+}
+
 function ToolsBlock({ profile, busy }: { profile: LauncherProfile; busy: boolean }) {
   const { t } = useI18n();
   const client = useQueryClient();
-  const caps = useQuery({ queryKey: ["launcher", "capabilities"], queryFn: launcherApi.capabilities });
-  const accounts = useQuery({ queryKey: ["launcher", "accounts"], queryFn: launcherApi.accounts });
+  const caps = useLauncherCapabilities();
+  const accounts = useQuery({ queryKey: launcherKeys.accounts, queryFn: launcherApi.accounts });
   const account = accounts.data?.[0]?.id;
   const android = caps.data?.platform === "android";
   const repair = useMutation({
     mutationFn: () => launcherApi.start(profile.id, "install"),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["launcher", "status"] }),
+    onSuccess: () => client.invalidateQueries({ queryKey: launcherKeys.status }),
   });
   const shortcut = useMutation({ mutationFn: () => launcherApi.pinShortcut(profile.id, account ? "account" : "demo", account) });
   return (

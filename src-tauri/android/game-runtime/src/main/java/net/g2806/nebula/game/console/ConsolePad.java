@@ -1,4 +1,4 @@
-package net.kdt.pojavlaunch.console;
+package net.g2806.nebula.game.console;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -18,6 +18,7 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.appcompat.widget.AppCompatButton;
+import net.g2806.nebula.game.NebulaStyle;
 import net.kdt.pojavlaunch.MainActivity;
 import net.kdt.pojavlaunch.R;
 import net.kdt.pojavlaunch.customcontrols.mouse.Touchpad;
@@ -29,7 +30,7 @@ import java.util.ArrayList;
 import java.util.Map;
 
 /** Separate touch controls: the original game surface remains in its parent. */
-public final class NebulaConsolePad extends LinearLayout {
+public final class ConsolePad extends LinearLayout {
     /** Keeps view/input tests independent of the native JVM and GPU. */
     public interface Game extends ConsoleInput.Sink {
         boolean grabbing();
@@ -42,18 +43,21 @@ public final class NebulaConsolePad extends LinearLayout {
     }
     // Same look as the stock on-screen controls (default.json): translucent black
     // fill, white text, fully rounded corners, a white wash while held.
-    private static final int INK = 0xffffffff, MUTED = 0x99ffffff, FILL = 0x4d000000, PRESS = 0x3cffffff, PANEL = 0xff000000;
+    // Nebula Host's palette (NebulaStyle): ink surface, raised buttons with an
+    // accent outline, accent wash when pressed.
+    private static final int INK = 0xffffffff, MUTED = NebulaStyle.TEXT_MUTED, FILL = NebulaStyle.RAISED,
+        PRESS = NebulaStyle.PRESSED, PANEL = NebulaStyle.SURFACE, OUTLINE = NebulaStyle.CONTROL_OUTLINE;
     private final ConsoleInput input;
     private final Game game;
     private final Stick stick;
     private final LookPad look;
     private final Map<Integer, Finger> fingers = new HashMap<>();
 
-    public NebulaConsolePad(Context context, Touchpad cursor, Runnable settings) {
+    public ConsolePad(Context context, Touchpad cursor, Runnable settings) {
         this(context, new NativeGame(cursor), settings);
     }
 
-    public NebulaConsolePad(Context context, Game game, Runnable settings) {
+    public ConsolePad(Context context, Game game, Runnable settings) {
         super(context);
         this.game = game;
         this.input = new ConsoleInput(game);
@@ -248,7 +252,8 @@ public final class NebulaConsolePad extends LinearLayout {
     private GradientDrawable shape(int color) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setColor(color);
-        drawable.setCornerRadius(dp(200));
+        drawable.setCornerRadius(dp(12));
+        if (color == FILL) drawable.setStroke(Math.max(1, dp(1)), OUTLINE);
         return drawable;
     }
 
@@ -341,7 +346,7 @@ public final class NebulaConsolePad extends LinearLayout {
             canvas.drawText("S", cx, cy + radius * 0.84f, paint);
             canvas.drawText("A", cx - radius * 0.76f, cy + dp(4), paint);
             canvas.drawText("D", cx + radius * 0.76f, cy + dp(4), paint);
-            paint.setColor(0x80ffffff); canvas.drawCircle(cx + x * radius * 0.5f, cy + y * radius * 0.5f, radius * 0.32f, paint);
+            paint.setColor(NebulaStyle.ACCENT); canvas.drawCircle(cx + x * radius * 0.5f, cy + y * radius * 0.5f, radius * 0.32f, paint);
         }
     }
 

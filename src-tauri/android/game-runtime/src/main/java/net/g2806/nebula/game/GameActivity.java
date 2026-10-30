@@ -1,7 +1,10 @@
-package net.kdt.pojavlaunch;
+package net.g2806.nebula.game;
 
 import android.os.Bundle;
-import android.system.Os;
+import net.g2806.nebula.game.console.TabletopConsole;
+import net.kdt.pojavlaunch.Architecture;
+import net.kdt.pojavlaunch.MainActivity;
+import net.kdt.pojavlaunch.Tools;
 import net.kdt.pojavlaunch.lifecycle.ContextExecutor;
 import net.kdt.pojavlaunch.prefs.LauncherPreferences;
 import net.kdt.pojavlaunch.value.launcherprofiles.LauncherProfiles;
@@ -9,24 +12,43 @@ import net.kdt.pojavlaunch.value.launcherprofiles.MinecraftProfile;
 import org.json.JSONObject;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 /** Private game process. The request is never written to disk: it contains the
  * short-lived Minecraft token. The launcher/account screens remain in Nebula. */
-public final class NebulaGameActivity extends MainActivity {
+public final class GameActivity extends MainActivity {
     private static File exitFile;
-    private net.kdt.pojavlaunch.console.NebulaTabletopConsole console;
+    private static boolean exitReported;
+    private boolean created;
+    private TabletopConsole console;
     JSONObject request;
+    String renderer = Graphics.DEFAULT_RENDERER;
 
     @Override public void onCreate(Bundle state) {
         try {
             String payload = getIntent().getStringExtra("nebulaRequest");
+            String launch = getIntent().getStringExtra(BootstrapActivity.LAUNCH);
             getIntent().removeExtra("nebulaRequest");
-            if (payload == null) { finish(); return; }
+            // Only a launch that the bootstrap made in this very process may
+            // start a JVM. Android recreating this screen after the game's
+            // process died (from Recents, "back to the game") brings back the
+            // old intent; running it would fail half-way and close. Instead,
+            // leave cleanly so Nebula can start a fresh game.
+            if (payload == null || launch == null || !launch.equals(BootstrapActivity.currentLaunch)) {
+                // Ends the process before the engine's onCreate would run.
+                abandon();
+                return;
+            }
             request = new JSONObject(payload);
-            exitFile = new File(request.getString("gameDir"), ".nebula-game-exit");
+            setExitFile(request.getString("gameDir"));
+            // A normal quit goes through System.exit: record it as clean unless
+            // the engine already reported an error code.
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> reportExit(0), "nebula-exit"));
             ContextExecutor.setApplication(getApplication());
+            LauncherPreferences.loadPreferences(this);
+            JSONObject graphics = request.optJSONObject("graphics");
+            // Written before the engine reads them (sustained mode, resolution).
+            Graphics.applyPreferences(graphics);
             LauncherPreferences.loadPreferences(this);
             Tools.DEVICE_ARCHITECTURE = Architecture.getDeviceArchitecture();
             Tools.DIR_GAME_NEW = request.getString("root");
@@ -38,34 +60,64 @@ public final class NebulaGameActivity extends MainActivity {
             File version = new File(Tools.DIR_HOME_VERSION, id + "/" + id + ".json");
             version.getParentFile().mkdirs();
             write(version, request.getJSONObject("metadata").toString());
+            renderer = Graphics.resolveRenderer(this, graphics);
             LauncherProfiles.load();
             MinecraftProfile profile = new MinecraftProfile();
             profile.name = request.getString("name");
             profile.lastVersionId = id;
             profile.gameDir = request.getString("gameDir");
-            profile.pojavRendererName = "opengles_mobileglues";
+            profile.pojavRendererName = renderer;
             LauncherProfiles.mainProfileJson.profiles.put(id, profile);
             // No account data is ever placed in the engine's profile store.
             LauncherProfiles.write();
             LauncherPreferences.DEFAULT_PREF.edit().putString(LauncherPreferences.PREF_KEY_CURRENT_PROFILE, id)
                 .putInt("allocation", request.getInt("memory")).commit();
             LauncherPreferences.PREF_RAM_ALLOCATION = request.getInt("memory");
-            Tools.LOCAL_RENDERER = "opengles_mobileglues";
+            Tools.LOCAL_RENDERER = renderer;
             getIntent().putExtra(INTENT_MINECRAFT_VERSION, id);
             super.onCreate(null);
-            console = new net.kdt.pojavlaunch.console.NebulaTabletopConsole(this);
+            created = true;
+            console = new TabletopConsole(this);
         } catch (Throwable error) {
-            reportExit(-1);
+            reportExit(-1, error.getClass().getSimpleName() + ": " + error.getMessage());
             android.util.Log.e("NebulaGame", "Cannot initialize game engine", error);
+            // Without the engine's onCreate there is no window to explain in;
+            // Nebula shows the reason from the exit marker instead.
+            if (!created) { abandon(); return; }
+            // The process must not outlive a failed start: a JVM cannot be
+            // created twice in one process, and Nebula would refuse the next
+            // Play while it lingers.
             new android.app.AlertDialog.Builder(this).setTitle("Minecraft")
                 .setMessage(error.getClass().getSimpleName() + ": " + error.getMessage())
-                .setPositiveButton(android.R.string.ok, (dialog, which) -> finish()).show();
+                .setPositiveButton(android.R.string.ok, null)
+                .setOnDismissListener(dialog -> abandon()).show();
         }
     }
 
-    public static void reportExit(int code) {
-        try { if (exitFile != null) write(exitFile, Integer.toString(code)); }
-        catch (Exception ignored) { /* The Rust monitor treats a missing marker as failure. */ }
+    /** Close the game's window and its process, leaving nothing in Recents. */
+    void abandon() {
+        finishAndRemoveTask();
+        android.os.Process.killProcess(android.os.Process.myPid());
+    }
+
+    /** The game's exit code for Nebula's monitor; the first report wins (an
+     *  error code from the engine before the clean-exit shutdown hook). */
+    public static void reportExit(int code) { reportExit(code, null); }
+
+    /** Also records why, on a second line, for Nebula to show in the instance. */
+    static synchronized void reportExit(int code, String reason) {
+        if (exitReported) return;
+        try {
+            if (exitFile != null) {
+                write(exitFile, reason == null ? Integer.toString(code) : code + "\n" + reason.replace('\n', ' '));
+                exitReported = true;
+            }
+        } catch (Exception ignored) { /* The Rust monitor treats a missing marker as failure. */ }
+    }
+
+    /** Where this launch reports how it ended (inside the instance's folder). */
+    static void setExitFile(String gameDir) {
+        exitFile = new File(gameDir, ".nebula-game-exit");
     }
 
     public void showConsoleOptions() { if (console != null) console.showOptions(); }

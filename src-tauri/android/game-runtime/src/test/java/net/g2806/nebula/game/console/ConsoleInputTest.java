@@ -1,4 +1,4 @@
-package net.kdt.pojavlaunch.console;
+package net.g2806.nebula.game.console;
 
 import java.util.ArrayList;
 import java.util.List;

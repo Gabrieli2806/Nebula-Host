@@ -79,6 +79,8 @@ macro_rules! ipc_handlers {
             $crate::ipc::launcher::launcher_set_skin,
             $crate::ipc::launcher::launcher_set_cape,
             $crate::ipc::launcher::launcher_set_memory,
+            $crate::ipc::launcher::launcher_set_graphics,
+            $crate::ipc::launcher::launcher_device_graphics,
             $crate::ipc::launcher::launcher_change_version,
             $crate::ipc::launcher::launcher_content_check,
             $crate::ipc::launcher::launcher_screenshots,
@@ -155,9 +157,6 @@ macro_rules! ipc_handlers {
             $crate::ipc::players::players_write_list,
             $crate::ipc::players::players_identities,
             // addons
-            $crate::ipc::addons::addons_search,
-            $crate::ipc::addons::addons_installed,
-            $crate::ipc::addons::addon_install,
             $crate::ipc::addons::addon_set_enabled,
             $crate::ipc::addons::addon_remove,
             $crate::ipc::addons::addons_context,

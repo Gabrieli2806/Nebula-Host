@@ -34,6 +34,53 @@ pub struct Profile {
     /// The instance's picture, a small PNG/JPEG data URL chosen by the person.
     #[serde(default)]
     pub icon: Option<String>,
+    /// How the Android engine draws this instance. Ignored on the desktop,
+    /// where the game uses the computer's own OpenGL/Vulkan drivers.
+    #[serde(default)]
+    pub graphics: Graphics,
+}
+
+/// The Android engine's renderer: how the game's OpenGL reaches the phone's GPU.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Renderer {
+    /// MobileGlues, unless the device cannot; the newest Minecraft versions
+    /// also get the phone's Vulkan driver for their own Vulkan backend.
+    #[default]
+    Auto,
+    /// MobileGlues: OpenGL 4 over OpenGL ES 3. Fast, every version.
+    Mobileglues,
+    /// Krypton Wrapper (NG-GL4ES). Fast; best for older versions.
+    Krypton,
+    /// Kopper Zink: OpenGL over Vulkan. Needs a Vulkan driver.
+    Zink,
+    /// LTW: OpenGL ES 3 translation for 1.17 and newer.
+    Ltw,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Graphics {
+    #[serde(default)]
+    pub renderer: Renderer,
+    /// Render scale in percent (25–100); none lets the engine pick for the screen.
+    #[serde(default)]
+    pub resolution: Option<u8>,
+    /// Ask Android for steady clocks instead of bursts (less throttling on
+    /// long sessions); none keeps the engine's per-device default.
+    #[serde(default)]
+    pub sustained: Option<bool>,
+    /// Keep the game's threads on the fast CPU cores.
+    #[serde(default)]
+    pub big_cores: bool,
+}
+
+impl Graphics {
+    pub fn validate(&self) -> AppResult<()> {
+        if self.resolution.is_some_and(|percent| !(25..=100).contains(&percent)) {
+            return Err(AppError::new(ErrorCode::InvalidInput).with("field", "resolution"));
+        }
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -135,21 +182,27 @@ pub async fn create(input: CreateProfile) -> AppResult<Profile> {
         memory_mb: input.memory_mb,
         icon: None,
         loader_version,
+        graphics: Graphics::default(),
     };
     profiles.push(profile.clone());
     save_profiles(&profiles)?;
     Ok(profile)
 }
 
-/// Pin the loader build an instance uses (a modpack names its own).
-pub async fn set_loader_version(id: uuid::Uuid, version: String) -> AppResult<Profile> {
+/// Change one saved instance under the store lock and return it as saved.
+async fn update_profile(id: uuid::Uuid, change: impl FnOnce(&mut Profile)) -> AppResult<Profile> {
     let _guard = STORE_LOCK.get_or_init(Default::default).lock().await;
     let mut profiles = read_profiles()?;
     let profile = profiles.iter_mut().find(|p| p.id == id).ok_or_else(|| AppError::new(ErrorCode::NotFound))?;
-    profile.loader_version = Some(version);
+    change(profile);
     let updated = profile.clone();
     save_profiles(&profiles)?;
     Ok(updated)
+}
+
+/// Pin the loader build an instance uses (a modpack names its own).
+pub async fn set_loader_version(id: uuid::Uuid, version: String) -> AppResult<Profile> {
+    update_profile(id, |profile| profile.loader_version = Some(version)).await
 }
 
 /// Change how much memory the game gets (same bounds as when creating).
@@ -157,13 +210,13 @@ pub async fn set_memory(id: uuid::Uuid, memory_mb: u32) -> AppResult<Profile> {
     if !(512..=32768).contains(&memory_mb) {
         return Err(AppError::new(ErrorCode::InvalidInput).with("field", "memory_mb"));
     }
-    let _guard = STORE_LOCK.get_or_init(Default::default).lock().await;
-    let mut profiles = read_profiles()?;
-    let profile = profiles.iter_mut().find(|p| p.id == id).ok_or_else(|| AppError::new(ErrorCode::NotFound))?;
-    profile.memory_mb = memory_mb;
-    let updated = profile.clone();
-    save_profiles(&profiles)?;
-    Ok(updated)
+    update_profile(id, |profile| profile.memory_mb = memory_mb).await
+}
+
+/// Renderer and performance choices for the Android engine.
+pub async fn set_graphics(id: uuid::Uuid, graphics: Graphics) -> AppResult<Profile> {
+    graphics.validate()?;
+    update_profile(id, |profile| profile.graphics = graphics).await
 }
 
 /// Name and picture, from the instance settings.
@@ -178,14 +231,11 @@ pub async fn update_details(id: uuid::Uuid, name: String, icon: Option<String>) 
             return Err(AppError::new(ErrorCode::InvalidInput).with("field", "icon"));
         }
     }
-    let _guard = STORE_LOCK.get_or_init(Default::default).lock().await;
-    let mut profiles = read_profiles()?;
-    let profile = profiles.iter_mut().find(|p| p.id == id).ok_or_else(|| AppError::new(ErrorCode::NotFound))?;
-    profile.name = name;
-    profile.icon = icon;
-    let updated = profile.clone();
-    save_profiles(&profiles)?;
-    Ok(updated)
+    update_profile(id, |profile| {
+        profile.name = name;
+        profile.icon = icon;
+    })
+    .await
 }
 
 /// Put the game's log on mclo.gs: the game's own latest.log when there is
@@ -229,15 +279,12 @@ pub async fn change_version(
             ),
         }
     };
-    let _guard = STORE_LOCK.get_or_init(Default::default).lock().await;
-    let mut profiles = read_profiles()?;
-    let profile = profiles.iter_mut().find(|p| p.id == id).ok_or_else(|| AppError::new(ErrorCode::NotFound))?;
-    profile.game_version = game_version;
-    profile.loader = loader;
-    profile.loader_version = loader_version;
-    let updated = profile.clone();
-    save_profiles(&profiles)?;
-    Ok(updated)
+    update_profile(id, |profile| {
+        profile.game_version = game_version;
+        profile.loader = loader;
+        profile.loader_version = loader_version;
+    })
+    .await
 }
 
 pub async fn remove(id: uuid::Uuid) -> AppResult<()> {
