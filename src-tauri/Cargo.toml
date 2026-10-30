@@ -53,7 +53,7 @@ hex = { workspace = true }
 if-addrs = "0.13"
 # Server icons: decode whatever the user picks, write a 64x64 PNG.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "ico"] }
-igd-next = { version = "0.16", features = ["aio_tokio"] }
+igd-next = { version = "0.18", features = ["aio_tokio"] }
 regex = "1"
 reqwest = { workspace = true }
 serde = { workspace = true }
