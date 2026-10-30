@@ -12,6 +12,9 @@ public final class NebulaStyle {
     /** Control buttons: the surface at 55%, the accent outline at 50%. */
     public static final int CONTROL_FILL = 0x8C0B1220;
     public static final int CONTROL_OUTLINE = 0x8022D3EE;
+    /** Console pad keys: a raised well above the surface, brighter while held. */
+    public static final int RAISED = 0xFF16213A;
+    public static final int PRESSED = 0xFF1F3A55;
 
     private NebulaStyle() {}
 }
