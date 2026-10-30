@@ -64,7 +64,7 @@ jobs:
           key: android-arm64
 
       - name: Cache bundled runtimes
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache
           key: android-runtimes-${{ hashFiles('scripts/android-jre.mjs', 'scripts/android-game-jre.mjs') }}
