@@ -14,8 +14,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ACCENTS, DEFAULT_ACCENT, isAccent, type Accent } from "@/app/AccentSync";
 import { useUiDensity, type UiDensity } from "@/app/density";
 import { useThemePreference, type ThemePreference } from "@/app/theme";
-import { keys, useAppSettings, useNode, useSaveSettings } from "@/hooks/useBackend";
+import { keys, useAppSettings, useGames, useNode, useSaveSettings } from "@/hooks/useBackend";
 import { useI18n, type Language } from "@/i18n";
+import { openExternal } from "@/lib/external";
 import { api } from "@/lib/ipc";
 import type { AppSettings, StorageLocation } from "@/types/api";
 import { isRemote } from "@/lib/connection";
@@ -49,6 +50,7 @@ type RowId =
   | "runInTray"
   | "allowUpnp"
   | "listenOnLan"
+  | "acceptAgreements"
   | "java"
   | "name";
 
@@ -79,6 +81,7 @@ export function SettingsScreen() {
   const client = useQueryClient();
   const { data: node } = useNode();
   const { data: settings } = useAppSettings();
+  const { data: games } = useGames();
   const save = useSaveSettings();
   const [theme, setTheme] = useThemePreference();
   const [uiDensity, setUiDensity] = useUiDensity();
@@ -109,6 +112,7 @@ export function SettingsScreen() {
   const failure = (row: RowId) =>
     save.error && lastRow === row ? <ErrorNotice error={save.error} compact /> : null;
 
+  const agreementUrl = games?.find((game) => game.agreement)?.agreement?.url;
   const accent: Accent = isAccent(settings.accent) ? settings.accent : DEFAULT_ACCENT;
   const listView = settings.density === "list" ? "list" : "cards";
   const draftName = nodeName ?? node?.name ?? "";
@@ -338,6 +342,25 @@ export function SettingsScreen() {
           saved={saved === "listenOnLan"}
           error={failure("listenOnLan")}
         />
+        {/* Only from this machine's own window: the node refuses it from afar. */}
+        {agreementUrl && !remote && !IS_WEB ? (
+          <>
+            <SwitchRow
+              label={t("settings.acceptAgreements")}
+              help={t("settings.acceptAgreementsHelp")}
+              checked={settings.acceptAgreements}
+              onChange={(value) => update("acceptAgreements", { acceptAgreements: value })}
+              saved={saved === "acceptAgreements"}
+              error={failure("acceptAgreements")}
+            />
+            <div className="settings-row">
+              <Button variant="quiet" onClick={() => void openExternal(agreementUrl)}>
+                {t("agreement.read")}
+                <Icon name="external" size={12} />
+              </Button>
+            </div>
+          </>
+        ) : null}
       </Panel>
 
       {remote ? null : <RemoteSettings />}

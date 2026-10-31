@@ -477,7 +477,7 @@ export const es: Copy = {
     gateTitle: "Acepta el EULA para ejecutar {name}",
     acceptStart: "Aceptar e iniciar",
     acceptSleep: "Aceptar y activar el arranque al conectarse",
-    savedPerServer: "Tu aceptación se guarda solo para este servidor. Los demás servidores lo vuelven a pedir.",
+    savedPerServer: "Tu aceptación se guarda solo para este servidor. Los demás servidores lo vuelven a pedir, salvo que lo aceptes para todos en Ajustes.",
   },
 
   transfer: {
@@ -946,6 +946,19 @@ export const es: Copy = {
   },
 
   addons: {
+    shareToLauncher: "Copiar mods al launcher",
+    shareToServer: "Copiar mods a un servidor",
+    shareInstance: "Instancia",
+    shareServer: "Servidor",
+    shareNewInstance: "Nueva instancia: {name}",
+    shareStopFirst: "detenlo primero",
+    shareCopy: "Copiar",
+    shareCopying: "Copiando…",
+    shareCopied: "Mods copiados: {count}",
+    shareAlready: "Ya estaban: {count}",
+    shareWrongSide: "No funcionan en ese lado, se quedaron: {count}",
+    shareDisabled: "Desactivados, se quedaron: {count}",
+    shareFailed: "No se pudieron copiar: {files}. Cierra el juego o el servidor y prueba de nuevo.",
     dropInto: "Suelta para instalar en {folder}",
     dropOne: "1 jar",
     dropMany: "{count} jars",
@@ -1229,6 +1242,9 @@ export const es: Copy = {
     launcherEnabledHelp: "Muestra el Launcher, para jugar Minecraft tú mismo en este dispositivo. No afecta a tus servidores.",
     runInTray: "Seguir funcionando al cerrar la ventana",
     allowUpnp: "Dejar que el router abra puertos solo (UPnP)",
+    acceptAgreements: "Aceptar el EULA de Minecraft para todos los servidores",
+    acceptAgreementsHelp:
+      "Al activarlo aceptas el EULA una sola vez, para todos los servidores de este equipo, incluidos los que cree un asistente. Arrancan sin preguntar. Desactívalo para que vuelva a preguntar en los servidores que aún no han arrancado.",
     listenOnLan: "Responder a otros equipos de esta red",
     listenOnLanWarning:
       "Cualquiera en esta red podrá llegar a esta app, no solo este equipo. Déjalo apagado si no lo necesitas.",

@@ -20,7 +20,13 @@ async function launcherCall<T>(command: string, args?: Record<string, unknown>):
   if (IS_WEB) throw { code: "local_only", params: {} };
   return invoke<T>(command, args);
 }
+export interface ModShareReport {
+  copied: string[];
+  already: string[];
+  skipped: { file: string; reason: "disabled" | "wrong_side" | "failed" }[];
+}
 export const launcherApi = {
+  modsShare: (instanceId: string, id: string, direction: "to_instance" | "to_server") => launcherCall<ModShareReport>("launcher_mods_share", { instanceId, id, direction }),
   pinShortcut: (id: string, mode: "demo" | "account", accountId?: string) => launcherCall<void>("launcher_pin_shortcut", { id, mode, accountId }),
   takeShortcut: () => launcherCall<{ id: string; requestId: string; mode?: "demo" | "account"; accountId?: string } | null>("launcher_take_shortcut"),
   loaderVersions: (loader: import("@/features/launcher/types").Loader, gameVersion: string) => launcherCall<string[]>("launcher_loader_versions", { loader, gameVersion }),

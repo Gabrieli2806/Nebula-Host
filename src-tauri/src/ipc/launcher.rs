@@ -320,6 +320,18 @@ pub async fn launcher_modpack_install(project_id: String) -> AppResult<Profile> 
     launcher::content::install_modpack(&project_id).await
 }
 
+/// Copy the mods between a server and an instance on this PC.
+#[tauri::command]
+pub async fn launcher_mods_share(
+    state: crate::ipc::State<'_>,
+    instance_id: String,
+    id: uuid::Uuid,
+    direction: crate::service::mod_share::ModShareDirection,
+) -> AppResult<crate::service::mod_share::ModShareReport> {
+    let profile = profile_by_id(id).await?;
+    state.share_mods(&instance_id, &profile, direction).await
+}
+
 /// The picture an installed mod, resource pack or shader carries (a data URL).
 #[tauri::command]
 pub async fn launcher_content_icon(id: uuid::Uuid, kind: ContentKind, file: String) -> AppResult<Option<String>> {

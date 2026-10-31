@@ -48,8 +48,10 @@ export function useAddonDrop(instance: InstanceView, folder: string | null | und
       setNoJars(jars.length === 0);
       if (jars.length === 0) return;
       setBusy(true);
+      // The check is what sends the files when this is another machine.
       importer
-        .run(folder, jars, "overwrite")
+        .check(folder, jars)
+        .then(() => importer.run(folder, jars, "overwrite"))
         .then((summary) => setResult({ summary, skipped }))
         .catch(setError)
         .finally(() => setBusy(false));

@@ -27,6 +27,14 @@ pub struct FirewallStatus {
     pub allowed: bool,
 }
 
+/// Windows PowerShell by its full path: the app may run with a PATH that
+/// lacks it.
+#[cfg(windows)]
+pub(crate) fn powershell() -> std::path::PathBuf {
+    let root = std::env::var_os("SystemRoot").unwrap_or_else(|| r"C:\Windows".into());
+    Path::new(&root).join(r"System32\WindowsPowerShell\v1.0\powershell.exe")
+}
+
 /// Read the rules for `program` (no elevation needed).
 pub fn check(program: &Path) -> FirewallStatus {
     #[cfg(windows)]
@@ -59,7 +67,7 @@ mod windows {
     use std::path::Path;
     use std::process::Command;
 
-    use super::FirewallStatus;
+    use super::{powershell, FirewallStatus};
     use crate::error::{AppError, AppResult, ErrorCode};
     use crate::runtime::java::configure_no_window_command;
 
@@ -70,13 +78,6 @@ mod windows {
         $r=@(Get-NetFirewallApplicationFilter | Where-Object { $_.Program -ieq $p } | Get-NetFirewallRule |\
         Where-Object { $_.Enabled -eq 'True' -and $_.Direction -eq 'Inbound' });\
         '{0} {1}' -f @($r | Where-Object Action -eq 'Block').Count, @($r | Where-Object Action -eq 'Allow').Count";
-
-    /// Windows PowerShell by its full path: the app may run with a PATH that
-    /// lacks it.
-    fn powershell() -> std::path::PathBuf {
-        let root = std::env::var_os("SystemRoot").unwrap_or_else(|| r"C:\Windows".into());
-        std::path::Path::new(&root).join(r"System32\WindowsPowerShell\v1.0\powershell.exe")
-    }
 
     pub fn check(program: &Path) -> FirewallStatus {
         let output = configure_no_window_command(&mut Command::new(powershell()))

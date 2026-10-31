@@ -250,7 +250,7 @@ fn loader_of(value: Option<&str>) -> AppResult<Loader> {
     }
 }
 
-async fn resolve(args: &Value) -> AppResult<Profile> {
+pub(super) async fn resolve(args: &Value) -> AppResult<Profile> {
     let wanted = str_arg(args, "instance")?;
     let all = launcher::profiles().await?;
     let lower = wanted.to_lowercase();

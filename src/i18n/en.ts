@@ -477,7 +477,7 @@ export const en = {
     gateTitle: "Accept the EULA to run {name}",
     acceptStart: "Accept and start",
     acceptSleep: "Accept and turn on wake on join",
-    savedPerServer: "Your acceptance is saved with this server only. Other servers ask again.",
+    savedPerServer: "Your acceptance is saved with this server only. Other servers ask again, unless you accept it for all of them in Settings.",
   },
 
   transfer: {
@@ -946,6 +946,19 @@ export const en = {
   },
 
   addons: {
+    shareToLauncher: "Copy mods to the launcher",
+    shareToServer: "Copy mods to a server",
+    shareInstance: "Instance",
+    shareServer: "Server",
+    shareNewInstance: "New instance: {name}",
+    shareStopFirst: "stop it first",
+    shareCopy: "Copy",
+    shareCopying: "Copying…",
+    shareCopied: "Mods copied: {count}",
+    shareAlready: "Already there: {count}",
+    shareWrongSide: "Cannot run on that side, left behind: {count}",
+    shareDisabled: "Switched off, left behind: {count}",
+    shareFailed: "Could not copy: {files}. Close the game or server and try again.",
     dropInto: "Drop to install in {folder}",
     dropOne: "1 jar",
     dropMany: "{count} jars",
@@ -1229,6 +1242,9 @@ export const en = {
     launcherEnabledHelp: "Show the Launcher, to play Minecraft yourself on this device. It does not affect your servers.",
     runInTray: "Keep running when the window is closed",
     allowUpnp: "Let the router open ports automatically (UPnP)",
+    acceptAgreements: "Accept the Minecraft EULA for every server",
+    acceptAgreementsHelp:
+      "By turning this on you accept the EULA once, for all servers on this PC, including ones an assistant creates. They start without asking. Turn it off to be asked again for servers that have not started yet.",
     listenOnLan: "Answer other machines on this network",
     listenOnLanWarning:
       "Anyone on this network will be able to reach this app, not just this machine. Leave it off unless you need it.",

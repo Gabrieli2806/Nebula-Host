@@ -585,6 +585,8 @@ export interface AppSettings {
   runInTray: boolean;
   allowUpnp: boolean;
   listenOnLan: boolean;
+  /** The user accepted the game's agreement once, for every server here. */
+  acceptAgreements: boolean;
 }
 
 export type SettingValue = SettingField extends unknown

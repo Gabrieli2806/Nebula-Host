@@ -69,6 +69,7 @@ macro_rules! ipc_handlers {
             $crate::ipc::launcher::launcher_content_remove,
             $crate::ipc::launcher::launcher_content_set_enabled,
             $crate::ipc::launcher::launcher_modpack_install,
+            $crate::ipc::launcher::launcher_mods_share,
             $crate::ipc::launcher::launcher_login_begin,
             $crate::ipc::launcher::launcher_login_poll,
             $crate::ipc::launcher::launcher_login_cancel,

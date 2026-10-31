@@ -12,6 +12,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 
 use super::diagnose;
+use crate::service::mod_share::ModShareDirection;
 use crate::error::{AppError, AppResult, ErrorCode};
 use crate::game::BuildSelector;
 use crate::model::{InstanceStatus, InstanceView};
@@ -187,7 +188,7 @@ fn catalog() -> Vec<Tool> {
         Tool {
             name: "create_server",
             title: "Create server",
-            description: "Create a new server and install it in the background. Use list_versions to pick a version. Poll get_server until it is installed (status offline) before starting. The server cannot start until its owner accepts the Minecraft EULA in the Nebula Host app; tell them to do so.",
+            description: "Create a new server and install it in the background. Use list_versions to pick a version. Poll get_server until it is installed (status offline) before starting. The server cannot start until its owner accepts the Minecraft EULA in the Nebula Host app (for this server, or for all of them in Settings); if start_server says so, tell them.",
             schema: json!({ "type": "object", "properties": {
                 "name": { "type": "string" },
                 "distribution": { "type": "string", "description": "e.g. vanilla, paper, purpur, spigot, fabric, forge, neoforge. Omit for the default (Paper)." },
@@ -235,6 +236,17 @@ fn catalog() -> Vec<Tool> {
                 "server": server_arg(),
                 "project_id": { "type": "string" }
             }, "required": ["server", "project_id"] }),
+            mutates: true,
+        },
+        Tool {
+            name: "share_mods",
+            title: "Copy mods between server and instance",
+            description: "Copy the mods between a server and a launcher instance of the same Minecraft version and loader. Mods that cannot run on the receiving side stay behind and are reported; a jar of the same project there is replaced. Copying to a server requires it to be stopped.",
+            schema: json!({ "type": "object", "properties": {
+                "server": server_arg(),
+                "instance": { "type": "string", "description": "Launcher instance id or name." },
+                "direction": { "type": "string", "enum": ["to_instance", "to_server"] }
+            }, "required": ["server", "instance", "direction"] }),
             mutates: true,
         },
     ]
@@ -544,6 +556,17 @@ pub async fn call(service: &Arc<InstanceService>, read_only: bool, name: &str, a
             text.push_str(" Restart the server to load it.");
             Ok(text)
         }
+        "share_mods" => {
+            let view = resolve(service, args).await?;
+            let profile = super::launcher_tools::resolve(args).await?;
+            let direction = match str_arg(args, "direction")? {
+                "to_instance" => ModShareDirection::ToInstance,
+                "to_server" => ModShareDirection::ToServer,
+                other => return Err(invalid(&format!("unknown direction `{other}`"))),
+            };
+            let report = service.share_mods(&view.instance.id, &profile, direction).await?;
+            Ok(pretty(&report))
+        }
         _ => Err(invalid(&format!("unknown tool `{name}`"))),
     }
 }
@@ -609,7 +632,8 @@ async fn create_server(service: &Arc<InstanceService>, args: &Value) -> AppResul
         runtime_kind: None,
         directory: None,
         // An agent can never accept the Minecraft EULA for the user: the
-        // server waits until they accept it in the app.
+        // server waits until they accept it in the app, unless they already
+        // did for every server in Settings.
         accept_agreement: false,
     };
     let instance = service.create(request).await?;

@@ -177,7 +177,9 @@ impl InstanceService {
             Some(id) => client.version(&profile, id).await?,
             None => client.best_version(&profile, project_id).await?,
         };
-        if version.project_id != project_id {
+        // Only a version the caller named can belong to another project; the
+        // best version is looked up by id or slug, which may not equal its id.
+        if version_id.is_some() && version.project_id != project_id {
             return Err(AppError::new(ErrorCode::InvalidInput).with("version", &version.id));
         }
 
@@ -198,7 +200,7 @@ impl InstanceService {
                 report
                     .addons
                     .iter()
-                    .find(|a| a.modrinth.as_ref().is_some_and(|m| m.project.project_id == project_id))
+                    .find(|a| a.modrinth.as_ref().is_some_and(|m| m.project.project_id == version.project_id))
                     .map(|a| a.file_name.clone())
             }
         };

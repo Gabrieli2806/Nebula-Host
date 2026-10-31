@@ -12,6 +12,7 @@ pub mod instances;
 pub mod java;
 pub mod world;
 pub mod logs;
+pub mod mod_share;
 pub mod pending;
 pub mod players;
 pub mod poller;

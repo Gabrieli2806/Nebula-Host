@@ -7,6 +7,7 @@ import { formatBytes } from "@/lib/format";
 import type { AddonContext, InstalledAddonEntry, InstanceView, PendingAddonChange } from "@/types/api";
 import { Button, Dialog, EmptyState, ErrorNotice, Icon, Panel, Skeleton, Switch, TextInput } from "@/ui";
 
+import { ShareToLauncher } from "@/features/launcher/ModShare";
 import { AddonIcon } from "./AddonIcon";
 import { PendingChanges } from "./PendingChanges";
 import { type AddonView, pendingFor, useAddonCopy } from "./util";
@@ -141,6 +142,7 @@ export function InstalledTab({
             <span>{tc("addons.unknownCount", report.data.unknown_count)}</span>
           ) : null}
         </p>
+        <ShareToLauncher instance={instance} context={context} />
         {updatable.length > 1 ? (
           <Button size="sm" icon="refresh" disabled={bulkRunning || update.isPending} onClick={() => void updateAll()}>
             {bulkRunning

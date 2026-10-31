@@ -72,7 +72,11 @@ fn profile_dir(profile: &Profile) -> AppResult<PathBuf> {
     Ok(client::directory()?.join("profiles").join(profile.id.to_string()))
 }
 
-pub(super) fn loader_tag(loader: &Loader) -> Option<&'static str> {
+pub(crate) fn mods_dir(profile: &Profile) -> AppResult<PathBuf> {
+    Ok(profile_dir(profile)?.join("mods"))
+}
+
+pub(crate) fn loader_tag(loader: &Loader) -> Option<&'static str> {
     loader_name(loader)
 }
 
@@ -110,7 +114,7 @@ fn read_sources(profile: &Profile) -> std::collections::BTreeMap<String, String>
         .and_then(|bytes| serde_json::from_slice(&bytes).ok())
         .unwrap_or_default()
 }
-fn record_sources(profile: &Profile, files: &[(String, String)]) -> AppResult<()> {
+pub(crate) fn record_sources(profile: &Profile, files: &[(String, String)]) -> AppResult<()> {
     if files.is_empty() {
         return Ok(());
     }

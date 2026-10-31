@@ -139,7 +139,7 @@ pub fn create_shortcut(profile: &Profile) -> AppResult<PathBuf> {
         let script = "$s=(New-Object -ComObject WScript.Shell).CreateShortcut($env:NB_LINK);\
             $s.TargetPath=$env:NB_EXE;$s.Arguments=$env:NB_ARGS;$s.IconLocation=$env:NB_ICON;\
             $s.Description=$env:NB_DESC;$s.Save()";
-        let status = std::process::Command::new("powershell")
+        let status = crate::runtime::java::configure_no_window_command(&mut std::process::Command::new(crate::net::firewall::powershell()))
             .args(["-NoProfile", "-NonInteractive", "-Command", script])
             .env("NB_LINK", &link)
             .env("NB_EXE", &exe)

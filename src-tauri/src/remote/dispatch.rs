@@ -323,6 +323,9 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             next.mcp_port = current.mcp_port;
             next.mcp_token = current.mcp_token;
             next.mcp_read_only = current.mcp_read_only;
+            next.mcp_launcher_play = current.mcp_launcher_play;
+            // So is accepting the EULA for every server.
+            next.accept_agreements = current.accept_agreements;
             next.remote_enabled = current.remote_enabled;
             next.remote_port = current.remote_port;
             next.web_panel = current.web_panel;
