@@ -16,6 +16,7 @@ pub mod players;
 pub mod remote;
 pub mod settings;
 pub mod transfer;
+pub mod tray;
 
 use std::sync::Arc;
 
@@ -48,6 +49,11 @@ pub fn open_folder(app: &tauri::AppHandle, folder: &std::path::Path) -> crate::e
 macro_rules! ipc_handlers {
     () => {
         tauri::generate_handler![
+            $crate::ipc::tray::tray_panel_fit,
+            $crate::ipc::tray::tray_panel_hide,
+            $crate::ipc::tray::tray_open,
+            $crate::ipc::tray::tray_server_action,
+            $crate::ipc::tray::tray_quit,
             $crate::ipc::launcher::launcher_capabilities,
             $crate::ipc::launcher::launcher_pin_shortcut,
             $crate::ipc::launcher::launcher_take_shortcut,

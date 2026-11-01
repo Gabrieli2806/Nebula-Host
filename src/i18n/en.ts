@@ -647,6 +647,18 @@ export const en = {
     running: "{count} running",
   },
 
+  tray: {
+    summaryNone: "No servers running",
+    summary: "{online} of {total} online",
+    none: "No servers yet",
+    stopAll: "Stop all servers",
+    settings: "Settings",
+    open: "Open Nebula Host",
+    quit: "Quit Nebula Host",
+    openServer: "Open {name}",
+    seeAll: "See all {count} servers",
+  },
+
   status: {
     offline: "Offline",
     sleeping: "Sleeping",

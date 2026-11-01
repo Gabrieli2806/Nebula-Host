@@ -1,21 +1,32 @@
 //! The system tray: the app keeps hosting when its window is closed, and the
 //! tray is how you get back to it, start or stop a server, or really quit.
 //!
-//! The menu is rebuilt whenever a server's status changes, so each server's
-//! entry always shows its current state and offers the action that fits it.
+//! On Windows the icon opens a small panel, a webview by the notification area
+//! (src/features/tray): the classic menu can only list strings and looks
+//! nothing like the app. Elsewhere it stays a native menu, because many Linux
+//! desktops never tell an app its tray icon was clicked. The menu is rebuilt
+//! whenever a server's status changes, so each server's entry always shows its
+//! current state and offers the action that fits it.
 
 use std::sync::Arc;
 
+#[cfg(not(windows))]
 use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager, Wry};
+#[cfg(not(windows))]
+use tauri::Wry;
+use tauri::{AppHandle, Manager};
 
 use crate::model::InstanceStatus;
-use crate::service::{AppEvent, InstanceService};
+use crate::service::InstanceService;
+#[cfg(not(windows))]
+use crate::service::AppEvent;
+#[cfg(not(windows))]
 use crate::store::settings;
 
 const TRAY_ID: &str = "nebula-tray";
 
+#[cfg(not(windows))]
 struct Copy {
     open: &'static str,
     servers: &'static str,
@@ -27,6 +38,7 @@ struct Copy {
     quit: &'static str,
 }
 
+#[cfg(not(windows))]
 const EN: Copy = Copy {
     open: "Open Nebula Host",
     servers: "Servers",
@@ -38,6 +50,7 @@ const EN: Copy = Copy {
     quit: "Quit Nebula Host",
 };
 
+#[cfg(not(windows))]
 const ES: Copy = Copy {
     open: "Abrir Nebula Host",
     servers: "Servidores",
@@ -49,6 +62,7 @@ const ES: Copy = Copy {
     quit: "Salir de Nebula Host",
 };
 
+#[cfg(not(windows))]
 fn copy() -> &'static Copy {
     let language = settings::load().map(|s| s.language).unwrap_or_default();
     let spanish = match language.as_str() {
@@ -63,6 +77,7 @@ fn copy() -> &'static Copy {
     }
 }
 
+#[cfg(not(windows))]
 fn status_label(status: InstanceStatus, spanish: bool) -> &'static str {
     match (status, spanish) {
         (InstanceStatus::Online, false) => "online",
@@ -80,6 +95,7 @@ fn status_label(status: InstanceStatus, spanish: bool) -> &'static str {
     }
 }
 
+#[cfg(not(windows))]
 async fn build_menu(app: &AppHandle, service: &InstanceService) -> tauri::Result<Menu<Wry>> {
     let copy = copy();
     let spanish = std::ptr::eq(copy, &ES);
@@ -159,6 +175,51 @@ pub fn quit(app: &AppHandle) {
     app.exit(0);
 }
 
+/// Start, stop or restart a server, or stop them all, from the tray.
+pub fn server_action(app: &AppHandle, action: &str, instance_id: &str) {
+    let Some(service) = app.try_state::<Arc<InstanceService>>() else { return };
+    let service = service.inner().clone();
+    let app = app.clone();
+    let (action, instance_id) = (action.to_string(), instance_id.to_string());
+    tauri::async_runtime::spawn(async move {
+        if action == "stop_all" {
+            for view in service.list().await.unwrap_or_default() {
+                if matches!(view.state.status, InstanceStatus::Online | InstanceStatus::Starting) {
+                    let _ = service.stop(&view.instance.id).await;
+                }
+            }
+            return;
+        }
+        let result = match action.as_str() {
+            "start" => service.start(&instance_id).await,
+            "stop" => service.stop(&instance_id).await,
+            "restart" => service.restart(&instance_id).await,
+            _ => Ok(()),
+        };
+        if let Err(error) = result {
+            tracing::warn!(%instance_id, %error, "tray action failed");
+            refused_in_window(&app, &instance_id, &error);
+        }
+    });
+}
+
+#[cfg(windows)]
+pub fn install(app: &AppHandle, _service: Arc<InstanceService>) -> tauri::Result<()> {
+    let mut builder = TrayIconBuilder::with_id(TRAY_ID)
+        .tooltip("Nebula Host")
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click { button: MouseButton::Left | MouseButton::Right, button_state: MouseButtonState::Up, position, .. } = event {
+                panel::toggle(tray.app_handle(), position.x, position.y);
+            }
+        });
+    if let Some(icon) = app.default_window_icon() {
+        builder = builder.icon(icon.clone());
+    }
+    builder.build(app)?;
+    Ok(())
+}
+
+#[cfg(not(windows))]
 pub fn install(app: &AppHandle, service: Arc<InstanceService>) -> tauri::Result<()> {
     let menu = tauri::async_runtime::block_on(build_menu(app, &service))?;
     let mut builder = TrayIconBuilder::with_id(TRAY_ID)
@@ -167,40 +228,13 @@ pub fn install(app: &AppHandle, service: Arc<InstanceService>) -> tauri::Result<
         .show_menu_on_left_click(false)
         .on_menu_event(move |app, event| {
             let id = event.id().as_ref().to_string();
-            let app = app.clone();
             match id.as_str() {
-                "open" => show_main(&app),
-                "quit" => quit(&app),
-                "stop_all" => {
-                    if let Some(service) = app.try_state::<Arc<InstanceService>>() {
-                        let service = service.inner().clone();
-                        tauri::async_runtime::spawn(async move {
-                            for view in service.list().await.unwrap_or_default() {
-                                if matches!(view.state.status, InstanceStatus::Online | InstanceStatus::Starting) {
-                                    let _ = service.stop(&view.instance.id).await;
-                                }
-                            }
-                        });
-                    }
-                }
+                "open" => show_main(app),
+                "quit" => quit(app),
+                "stop_all" => server_action(app, "stop_all", ""),
                 other => {
-                    let Some((action, instance_id)) = other.split_once(':') else { return };
-                    let (action, instance_id) = (action.to_string(), instance_id.to_string());
-                    if let Some(service) = app.try_state::<Arc<InstanceService>>() {
-                        let service = service.inner().clone();
-                        let app = app.clone();
-                        tauri::async_runtime::spawn(async move {
-                            let result = match action.as_str() {
-                                "start" => service.start(&instance_id).await,
-                                "stop" => service.stop(&instance_id).await,
-                                "restart" => service.restart(&instance_id).await,
-                                _ => Ok(()),
-                            };
-                            if let Err(error) = result {
-                                tracing::warn!(%instance_id, %error, "tray action failed");
-                                refused_in_window(&app, &instance_id, &error);
-                            }
-                        });
+                    if let Some((action, instance_id)) = other.split_once(':') {
+                        server_action(app, action, instance_id);
                     }
                 }
             }
@@ -233,4 +267,95 @@ pub fn install(app: &AppHandle, service: Arc<InstanceService>) -> tauri::Result<
         }
     });
     Ok(())
+}
+
+/// The panel by the notification area: a borderless window kept hidden between
+/// uses, so it opens at once. It closes when it loses focus, as a menu does.
+#[cfg(windows)]
+pub mod panel {
+    use std::sync::Mutex;
+    use std::time::{Duration, Instant};
+
+    use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+
+    pub const LABEL: &str = "tray";
+    const WIDTH: f64 = 340.0;
+    /// Gap between the panel and the screen edge it opens against.
+    const EDGE_GAP: i32 = 8;
+
+    static ANCHOR: Mutex<(f64, f64)> = Mutex::new((0.0, 0.0));
+    static LAST_HIDDEN: Mutex<Option<Instant>> = Mutex::new(None);
+    /// The content's height when last measured, in CSS pixels.
+    static LAST_HEIGHT: Mutex<f64> = Mutex::new(200.0);
+
+    /// The click that dismisses an open panel arrives after it lost focus; it
+    /// must not open it again.
+    const REOPEN_AFTER: Duration = Duration::from_millis(300);
+
+    pub fn toggle(app: &AppHandle, x: f64, y: f64) {
+        if let Ok(mut anchor) = ANCHOR.lock() {
+            *anchor = (x, y);
+        }
+        if let Some(window) = app.get_webview_window(LABEL) {
+            if window.is_visible().unwrap_or(false) {
+                hide(&window);
+            } else if !LAST_HIDDEN.lock().ok().and_then(|hidden| *hidden).is_some_and(|at| at.elapsed() < REOPEN_AFTER) {
+                // Open at once with what it last showed; the page then
+                // brings it up to date and refits.
+                let height = LAST_HEIGHT.lock().map(|height| *height).unwrap_or(200.0);
+                fit(app, height, true);
+                let _ = app.emit_to(LABEL, "nebula:tray-open", ());
+            }
+            return;
+        }
+        // The page shows itself once it has measured its content.
+        let built = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("index.html#/tray-panel".into()))
+            .title("Nebula Host")
+            .inner_size(WIDTH, 200.0)
+            .decorations(false)
+            .resizable(false)
+            .skip_taskbar(true)
+            .always_on_top(true)
+            .shadow(true)
+            .visible(false)
+            .build();
+        if let Err(error) = built {
+            tracing::warn!(%error, "tray panel unavailable");
+            super::show_main(app);
+        }
+    }
+
+    pub fn hide(window: &WebviewWindow) {
+        if let Ok(mut hidden) = LAST_HIDDEN.lock() {
+            *hidden = Some(Instant::now());
+        }
+        let _ = window.hide();
+    }
+
+    /// Size the panel to its content against the corner the icon is in: up and
+    /// to the left of it, inside the work area wherever the taskbar is.
+    pub fn fit(app: &AppHandle, height: f64, show: bool) {
+        let Some(window) = app.get_webview_window(LABEL) else { return };
+        if let Ok(mut last) = LAST_HEIGHT.lock() {
+            *last = height;
+        }
+        let (x, y) = ANCHOR.lock().map(|anchor| *anchor).unwrap_or_default();
+        let Ok(Some(monitor)) = app.monitor_from_point(x, y) else { return };
+        let scale = monitor.scale_factor();
+        let (width, height) = ((WIDTH * scale).ceil() as i32, (height * scale).ceil() as i32);
+        let work = monitor.work_area();
+        let (left, top) = (work.position.x, work.position.y);
+        let (right, bottom) = (left + work.size.width as i32, top + work.size.height as i32);
+        let px = (x as i32 - width / 2).clamp(left + EDGE_GAP, (right - width - EDGE_GAP).max(left + EDGE_GAP));
+        let mut py = y as i32 - height - EDGE_GAP;
+        if py < top + EDGE_GAP {
+            py = (y as i32 + EDGE_GAP).min(bottom - height - EDGE_GAP).max(top + EDGE_GAP);
+        }
+        let _ = window.set_size(PhysicalSize::new(width as u32, height as u32));
+        let _ = window.set_position(PhysicalPosition::new(px, py));
+        if show {
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+    }
 }

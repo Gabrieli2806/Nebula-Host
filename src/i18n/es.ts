@@ -647,6 +647,18 @@ export const es: Copy = {
     running: "{count} en marcha",
   },
 
+  tray: {
+    summaryNone: "Ningún servidor en marcha",
+    summary: "{online} de {total} en línea",
+    none: "Todavía no hay servidores",
+    stopAll: "Detener todos los servidores",
+    settings: "Ajustes",
+    open: "Abrir Nebula Host",
+    quit: "Salir de Nebula Host",
+    openServer: "Abrir {name}",
+    seeAll: "Ver los {count} servidores",
+  },
+
   status: {
     offline: "Apagado",
     sleeping: "Durmiendo",
