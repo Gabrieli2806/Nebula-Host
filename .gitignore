@@ -16,6 +16,8 @@ src-tauri/msix/staging/
 *.pfx
 *.cer
 *.p12
+# Build and tool logs (a Gradle run once got committed by mistake)
+*.log
 # Editors / OS
 .vscode/*
 !.vscode/extensions.json
