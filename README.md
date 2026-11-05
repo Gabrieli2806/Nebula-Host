@@ -109,6 +109,7 @@ commit and builds every artifact above (`.github/workflows/release.yml`).
 
 ## Docs
 
+- [PENDIENTE.md](PENDIENTE.md): what the last audit fixed and what is still to do (Spanish)
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md): layers, games as data, nodes, transfers, security
 - [LAUNCHER.md](docs/LAUNCHER.md): the launcher's design, status and references
 - [android-launcher-graphics.md](docs/android-launcher-graphics.md), [android-console-mode.md](docs/android-console-mode.md): Android game engine notes
