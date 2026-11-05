@@ -1,5 +1,5 @@
 /*
- * RamSlider. Owner: RAM agent (round 3).
+ * RamSlider.
  * A 4px rail in a well, the recommended band drawn as a faint accent
  * region behind it, a solid accent fill, a round knob. The rail and the tick
  * row are inset by half the knob so tick labels sit under the knob's centre.
@@ -22,6 +22,25 @@
   .ram-scale {
     flex: 1;
     min-width: 0;
+    container-type: inline-size;
+  }
+
+  @container (max-width: 360px) {
+    .ram-tick[data-near-end] {
+      display: none;
+    }
+  }
+
+  /* Phone width: the scale takes the whole row, the exact amount goes under. */
+  @media (max-width: 760px) {
+    .ram-main {
+      flex-wrap: wrap;
+      row-gap: var(--space-3);
+    }
+
+    .ram-scale {
+      flex-basis: 100%;
+    }
   }
 
   /* -- track ---------------------------------------------------------- */

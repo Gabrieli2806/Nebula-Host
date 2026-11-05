@@ -1,6 +1,5 @@
 /*
  * Nebula Host: servers.css. Area styles for the server list: heading, machine summary, memory budget bar, cards, list rows, create dialog.
- * Owner: Server-list agent (Build phase). Only that agent edits this file.
  *
  * Imported by global.css AFTER the shared primitives, so a rule here at the
  * same specificity wins over the primitive it extends. Keep every rule inside

@@ -167,6 +167,9 @@ export interface RamSliderProps {
   labelledBy?: string;
   disabled?: boolean;
   className?: string;
+  /** What the memory is for: a server (default) or a game client on this
+   *  device (the launcher). Only the wording changes. */
+  subject?: "server" | "game";
 }
 
 export function RamSlider({
@@ -181,6 +184,7 @@ export function RamSlider({
   labelledBy,
   disabled,
   className = "",
+  subject = "server",
 }: RamSliderProps) {
   const { t: copy } = useI18n();
   const format = useGbFormat();
@@ -265,8 +269,10 @@ export function RamSlider({
   const under = value < plan.zone[0];
   const freeMb = plan.totalMb !== null ? plan.totalMb - value : 0;
 
-  const kind =
-    profile === "mods"
+  const game = subject === "game";
+  const kind = game
+    ? copy(profile === "mods" ? "ram.gameMods" : "ram.gameVanilla")
+    : profile === "mods"
       ? addonCount > 0
         ? copy("ram.kindModsCount", { count: addonCount })
         : copy("ram.kindMods")
@@ -337,6 +343,9 @@ export function RamSlider({
                 key={mb}
                 className="ram-tick"
                 data-edge={index === 0 ? "start" : index === ticks.length - 1 ? "end" : undefined}
+                // The end label is the widest ("25.5 GB"): on a short scale a
+                // tick this close to it would print on top of it.
+                data-near-end={index > 0 && index < ticks.length - 1 && (max - mb) / (max - min) < 0.25 ? "" : undefined}
                 style={{ left: pct(mb) }}
               >
                 {index === ticks.length - 1 ? format.withUnit(mb) : format.gb(mb)}
@@ -405,7 +414,7 @@ export function RamSlider({
       {over ? (
         <p id={warnId} className="ram-warn" role="status">
           <Icon name="warning" size={14} />
-          {copy("ram.tooHigh", { free: format.withUnit(Math.max(0, freeMb)) })}
+          {copy(game ? "ram.tooHighGame" : "ram.tooHigh", { free: format.withUnit(Math.max(0, freeMb)) })}
         </p>
       ) : caution && plan.totalMb !== null ? (
         <p id={warnId} className="ram-note" data-tone="caution" role="status">
@@ -419,7 +428,7 @@ export function RamSlider({
             : copy("ram.cautionAlone")}
         </p>
       ) : under ? (
-        <p className="ram-note">{copy("ram.belowRecommended")}</p>
+        <p className="ram-note">{copy(game ? "ram.belowRecommendedGame" : "ram.belowRecommended")}</p>
       ) : null}
     </div>
   );

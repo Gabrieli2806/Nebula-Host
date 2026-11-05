@@ -178,6 +178,7 @@ function MemoryBlock({ profile, busy }: { profile: LauncherProfile; busy: boolea
         onChange={setMemory}
         onCommit={(mb) => { if (mb !== profile.memory_mb) save.mutate(mb); }}
         projectType={profile.loader === "vanilla" ? null : "mod"}
+        subject="game"
         labelledBy={`memory-${profile.id}`}
         disabled={busy || save.isPending}
       />

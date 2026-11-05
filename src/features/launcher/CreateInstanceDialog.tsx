@@ -49,7 +49,7 @@ export function CreateInstanceDialog({ onClose, onCreated }: { onClose: () => vo
       <section className="launcher-create-section">
         <h3><span className="launcher-step">3</span>{t("launcher.instanceDetails")}</h3>
         <label className="launcher-field"><span className="label">{t("launcher.instanceName")}</span><TextInput maxLength={64} value={name} onChange={e => setName(e.target.value)} placeholder={suggestedName} disabled={create.isPending} /></label>
-        <details className="launcher-advanced"><summary>{t("launcher.advancedSettings")}</summary><label><span className="label">{t("launcher.memory")}</span><TextInput type="number" required min={512} max={32768} step={256} value={memory} onChange={e => setMemory(e.target.valueAsNumber)} /></label></details>
+        <details className="launcher-advanced"><summary>{t("launcher.advancedSettings")}</summary><label><span className="label">{t("launcher.memoryMib")}</span><TextInput type="number" required min={512} max={32768} step={256} value={memory} onChange={e => setMemory(e.target.valueAsNumber)} /></label></details>
         <div className="launcher-create-summary"><LoaderIcon glyph={loaderInfo(loader).glyph} size={22} /><div><strong>{name.trim() || suggestedName}</strong><p>{selected} · {loaderInfo(loader).name} · {memory / 1024} GB RAM</p></div></div>
         <p className="launcher-muted">{t("launcher.creationNote")}</p>
       </section>

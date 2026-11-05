@@ -1,5 +1,5 @@
 /*
- * PlayerHead primitive. Owner: Backend/contract agent (round 3).
+ * PlayerHead primitive.
  * Sizes via data-size (16 | 24 | 32 | 48 | 64). Hard pixels, no smoothing.
  */
 @layer components {
