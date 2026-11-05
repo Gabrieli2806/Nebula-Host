@@ -10,6 +10,12 @@
 export const en = {
   launcher: {
     yourInstances: "Your instances",
+    instance: "Instance",
+    instancesShort: "Instances",
+    tabAdd: "Add",
+    tabLog: "Log",
+    instanceMissing: "This instance is no longer here",
+    instanceMissingHint: "It may have been removed from the library on this device. Your other instances are still there.",
     libraryIntro: "A separate space for each way you play.",
     newInstance: "New instance",
     createInstance: "Create instance",
@@ -73,7 +79,8 @@ export const en = {
     "namePlaceholder": "My survival world",
     "version": "Minecraft version",
     "loader": "Loader",
-    "memory": "Memory (MiB)",
+    "memory": "Memory",
+    "memoryMib": "Memory (MiB)",
     "snapshots": "Include snapshots and historical versions",
     "saving": "Saving…",
     "create": "Create profile",
@@ -738,6 +745,7 @@ export const en = {
     title: "Overview",
     address: "Address for players",
     copyHint: "Click to copy",
+    tapToCopy: "Tap to copy",
     sleepIn: "Sleeps in {minutes} min if nobody joins",
     noAddress: "This machine is not on a network right now",
     tickRate: "Tick rate",
@@ -1120,6 +1128,10 @@ export const en = {
     cautionShared: "With the servers already running ({others}), {sum} of {total} would be in use. The machine may slow down.",
     cautionAlone: "That is over three quarters of this machine's memory. Other programs may slow down.",
     belowRecommended: "Below the recommended amount. The server may lag or run out of memory.",
+    gameVanilla: "the game",
+    gameMods: "a modded game",
+    tooHighGame: "Leaves {free} for the system and other programs. The device may slow down or the game may fail to start.",
+    belowRecommendedGame: "Below the recommended amount. The game may stutter or run out of memory.",
   },
 
   settings: {

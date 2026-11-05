@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { launcherApi, toAppError } from "@/lib/ipc";
 import { IS_WEB } from "@/lib/web";
+import { instancePath } from "./panels";
 import { usePrimaryAccount } from "./primaryAccount";
 
 /** Consume native shortcut requests even when the launcher page isn't open. */
@@ -20,7 +21,7 @@ export function LauncherShortcutListener() {
     const item = request.data;
     if (!item || handled.current === item.requestId || loading) return;
     handled.current = item.requestId;
-    const url = `/launcher?instance=${encodeURIComponent(item.id)}&request=${item.requestId}`;
+    const url = instancePath(item.id);
     navigate(url);
     // Android shortcuts carry their account; desktop ones use the primary.
     const mode = item.mode ?? (primary ? "account" : "demo");

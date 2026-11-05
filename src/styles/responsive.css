@@ -5,8 +5,8 @@
  *
  * Nothing here changes the look: the layout reflows (columns stack, rows
  * wrap, dialogs become sheets) and controls get room for a thumb. The
- * sidebar becomes a drawer (shell.css) rather than a tab bar, so the app
- * reads the same everywhere.
+ * sidebar gives way to a tab bar along the bottom (app/MobileTabs), with the
+ * same destinations, so the app reads the same everywhere.
  *
  * `--ad-slot` reserves space for a future banner at the foot of the page; it
  * is 0 today and nothing renders there.

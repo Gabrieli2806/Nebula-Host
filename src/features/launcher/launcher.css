@@ -72,19 +72,6 @@
     min-width: 0;
   }
 
-  .launcher-install-target {
-    max-width: 520px;
-  }
-
-  /* == library ========================================================= */
-
-  .launcher-library-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 360px;
-    align-items: start;
-    gap: var(--space-5);
-  }
-
   .launcher-instance-grid {
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   }
@@ -95,8 +82,7 @@
   }
 
   /* The loader's colour, as a tile like a server's initial. */
-  .launcher-tile,
-  .launcher-project-icon {
+  .launcher-tile {
     display: inline-flex;
     width: 40px;
     height: 40px;
@@ -110,84 +96,11 @@
     color: var(--tile, var(--accent));
   }
 
-  .launcher-project-icon {
-    color: var(--text-faint);
-    box-shadow: inset 0 0 0 1px var(--line);
-    background: var(--well-fill);
-  }
-
-  .launcher-project-icon img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .launcher-instance-detail {
-    position: sticky;
-    top: var(--space-4);
-  }
-
-  .launcher-detail-body {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    padding: var(--space-4);
-  }
-
-  .launcher-facts {
-    display: flex;
-    flex-direction: column;
-    margin: 0;
-  }
-
-  .launcher-facts > div {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--space-4);
-    padding: 9px 0;
-    font-size: var(--text-sm);
-  }
-
-  .launcher-facts > div + div {
-    border-top: 1px solid var(--line);
-  }
-
-  .launcher-facts dt {
-    color: var(--text-muted);
-  }
-
-  .launcher-facts dd {
-    margin: 0;
-  }
-
-  .launcher-detail-footer {
-    padding-top: var(--space-3);
-    border-top: 1px solid var(--line);
-  }
-
-  /* == play controls =================================================== */
-
-  .launcher-client {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
   .launcher-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
-  }
-
-  .launcher-state {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0;
-    color: var(--text-muted);
-    font-size: var(--text-sm);
   }
 
   .launcher-progress {
@@ -279,101 +192,6 @@
     gap: var(--space-2);
   }
 
-  .launcher-content-icon {
-    display: inline-flex;
-    width: 28px;
-    height: 28px;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    border-radius: var(--radius-sm);
-    background: var(--well-fill);
-    box-shadow: inset 0 0 0 1px var(--line);
-    color: var(--text-faint);
-  }
-
-  .launcher-content-icon img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    image-rendering: auto;
-  }
-
-  .launcher-content-list {
-    display: flex;
-    max-height: 280px;
-    flex-direction: column;
-    margin: 0;
-    padding: 0;
-    overflow: auto;
-    list-style: none;
-  }
-
-  .launcher-content-list li {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: 5px 0;
-    font-size: var(--text-sm);
-  }
-
-  .launcher-content-list li + li {
-    border-top: 1px solid var(--line);
-  }
-
-  .launcher-content-list li[data-disabled] .launcher-content-name {
-    opacity: 0.5;
-    text-decoration: line-through;
-  }
-
-  .launcher-content-name {
-    min-width: 0;
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* == discover ======================================================== */
-
-  .launcher-project {
-    gap: var(--space-3);
-  }
-
-  .launcher-project-title {
-    overflow: hidden;
-    color: var(--text-heading);
-    font-family: var(--font-display);
-    font-size: var(--text-lg);
-    font-weight: var(--weight-display);
-    line-height: 1.35;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .launcher-description {
-    display: -webkit-box;
-    margin: 0;
-    overflow: hidden;
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-    overflow-wrap: anywhere;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-  }
-
-  .launcher-project .launcher-actions {
-    margin-top: auto;
-  }
-
-  .launcher-pager {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-3);
-  }
-
   /* == accounts ======================================================== */
 
   .launcher-panel-body {
@@ -383,13 +201,6 @@
     padding: var(--space-4);
   }
 
-  .launcher-signin {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: var(--space-3);
-  }
-
   .launcher-account {
     display: flex;
     align-items: center;
@@ -397,41 +208,6 @@
     gap: var(--space-3);
     padding-top: var(--space-4);
     border-top: 1px solid var(--line);
-  }
-
-  .launcher-accounts {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .launcher-signin-intro {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-  }
-
-  .launcher-signin-intro p {
-    flex: 1 1 260px;
-    margin: 0;
-  }
-
-  .launcher-profile {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
-  .launcher-profile-text {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .launcher-profile-text strong {
-    font-size: var(--text-lg);
   }
 
   .launcher-device {
@@ -558,13 +334,6 @@
     image-rendering: pixelated;
   }
 
-  .launcher-detail-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
   .launcher-detail-title {
     margin: 0 0 6px;
     overflow: hidden;
@@ -572,31 +341,6 @@
     font-weight: 700;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .launcher-settings-general {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .launcher-settings-icon {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
-  .launcher-library-layout[data-single] {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .launcher-back {
-    align-self: flex-start;
-  }
-
-  .launcher-play-as {
-    margin: 0;
   }
 
   .launcher-play {
@@ -615,12 +359,6 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-2);
-  }
-
-  .launcher-settings-tools {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
   }
 
   .launcher-tool {
@@ -794,6 +532,15 @@
     padding: var(--space-4) var(--space-5);
   }
 
+  /* Name, state and tags: they take the room the picture and Play leave,
+     and never less than a readable width (Play wraps under them instead). */
+  .launcher-instance-hero-text {
+    display: flex;
+    min-width: min(100%, 200px);
+    flex: 1 1 0;
+    flex-direction: column;
+  }
+
   .launcher-play-controls {
     display: flex;
     flex-wrap: wrap;
@@ -803,12 +550,18 @@
 
   .launcher-instance-foot {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-2);
     margin-top: var(--space-3);
     padding-top: var(--space-3);
     border-top: 1px solid var(--line);
+  }
+
+  /* A failed Play on a card says why on its own line, under the keys. */
+  .launcher-play-controls > .notice {
+    flex-basis: 100%;
   }
 
   .launcher-version-grid {
@@ -927,12 +680,6 @@
     margin: 0 auto;
     object-fit: contain;
     border-radius: var(--radius-sm);
-  }
-
-  .launcher-memory {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
   }
 
   .launcher-content-bar {
@@ -1141,23 +888,39 @@
 
   /* == narrow ========================================================== */
 
-  @media (max-width: 1060px) {
-    .launcher-library-layout {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .launcher-instance-detail {
-      position: static;
-    }
-  }
-
   @media (max-width: 760px) {
-    .launcher-head > .segmented {
+    /* The four sections share one row in equal parts, like the tab bar,
+       instead of wrapping one of them onto a second line. */
+    .launcher-sections {
+      display: grid;
       width: 100%;
+      grid-auto-columns: minmax(0, 1fr);
+      grid-auto-flow: column;
     }
 
-    .launcher-head > .segmented .segment {
-      flex: 1;
+    .launcher-sections .segment {
+      min-width: 0;
+      padding: 0 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .launcher-sections .segment > svg {
+      display: none;
+    }
+
+    /* The instance header: picture and name on top, Play full width under. */
+    .launcher-instance-hero {
+      padding: var(--space-4);
+    }
+
+    .launcher-instance-hero > .launcher-play-controls {
+      flex: 1 1 100%;
+    }
+
+    .launcher-instance-hero .launcher-play-controls > .btn {
+      flex: 1 1 0;
     }
 
     .launcher-toolbar .servers-search {

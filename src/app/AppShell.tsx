@@ -6,6 +6,10 @@
  * list, and once a server is open: a way back, that server's Start / Stop /
  * Restart control and its panels. Everything that describes the server (name,
  * state, numbers) lives in the page, never here, so nothing is said twice.
+ * An open launcher instance gets the same treatment (LauncherInstanceNav).
+ *
+ * At phone width there is no sidebar: MobileTabs puts the same destinations
+ * in a tab bar along the bottom.
  *
  * The sidebar collapses to an icon rail (title bar toggle or Ctrl+B). The
  * choice persists in localStorage; collapsed items keep their names for
@@ -22,7 +26,7 @@ import {
   type PointerEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import { NavLink, Outlet, useLocation, useMatch, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useMatch, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
 import {
@@ -40,34 +44,21 @@ import { formatMegabytes } from "@/lib/format";
 import { toAppError } from "@/lib/ipc";
 import { useLauncherEnabled } from "@/lib/launcherPref";
 import type { InstanceView } from "@/types/api";
-import { Button, ErrorNotice, Icon, Ring, StatusDot, type IconName } from "@/ui";
+import { Button, ErrorNotice, Icon, Ring, StatusDot } from "@/ui";
 import { useTransferTracking } from "@/features/server/transfer/active";
 import { Tour } from "@/features/onboarding/Tour";
 import { AccountMenu } from "@/features/launcher/Account";
+import { LauncherInstanceNav } from "@/features/launcher/LauncherRail";
 import { MobileTabs } from "./MobileTabs";
+import { NavItem, RailAlert, RailBack, RailKey } from "./RailItems";
+import { SERVER_PANELS } from "./panels";
 import { TitleBar } from "./TitleBar";
-
-/** The panels a server has, in the order they are worked through. */
-export const SERVER_PANELS: {
-  id: string;
-  icon: IconName;
-  labelKey: string;
-  group: "operate" | "manage";
-}[] = [
-  { id: "overview", icon: "servers", labelKey: "overview.title", group: "operate" },
-  { id: "console", icon: "terminal", labelKey: "console.title", group: "operate" },
-  { id: "files", icon: "folder", labelKey: "files.title", group: "operate" },
-  { id: "players", icon: "users", labelKey: "players.title", group: "manage" },
-  { id: "addons", icon: "puzzle", labelKey: "addons.title", group: "manage" },
-  { id: "backups", icon: "archive", labelKey: "backups.title", group: "manage" },
-  { id: "settings", icon: "sliders", labelKey: "settings.title", group: "manage" },
-];
 
 const COLLAPSED_KEY = "nebula.sidebarCollapsed";
 const RAIL_ID = "app-sidebar";
 
-/** Phone-width windows (the web panel on a phone): the sidebar becomes a
- *  drawer over the content instead of a column beside it. */
+/** Phone-width windows (the Android app, the web panel on a phone): the tab
+ *  bar along the bottom replaces the sidebar. */
 const NARROW_QUERY = "(max-width: 760px)";
 
 function useNarrow(): boolean {
@@ -96,6 +87,8 @@ export function AppShell() {
   const { data: instances } = useInstances();
   const match = useMatch("/servers/:instanceId/:panel");
   const instanceId = match?.params.instanceId ?? null;
+  const launcherMatch = useMatch("/launcher/instances/:profileId/:panel");
+  const profileId = launcherMatch?.params.profileId ?? null;
 
   useBackendEvents();
   useTransferTracking();
@@ -107,27 +100,22 @@ export function AppShell() {
     else delete document.documentElement.dataset.tabs;
   }, [narrow]);
   const { pathname } = useLocation();
-  // The drawer belongs to the page it was opened on: picking a destination
-  // in it closes it.
-  const [drawerFor, setDrawerFor] = useState<string | null>(null);
-  const drawerOpen = drawerFor === pathname;
-  const setDrawerOpen = (open: boolean) => setDrawerFor(open ? pathname : null);
-  const [storedCollapsed, setCollapsed] = useState(readCollapsed);
-  // In a drawer the sidebar is always full width; "collapsed" means closed.
-  const collapsed = narrow ? false : storedCollapsed;
+  const inLauncher = pathname.startsWith("/launcher");
+  const [collapsed, setCollapsed] = useState(readCollapsed);
+  // At phone width the tab bar replaces the sidebar, so there is nothing to
+  // toggle (the shortcut does nothing rather than open an empty overlay).
   const toggleSidebar = useCallback(() => {
-    if (window.matchMedia(NARROW_QUERY).matches) setDrawerFor((open) => (open === pathname ? null : pathname));
-    else setCollapsed((value) => !value);
-  }, [pathname]);
+    if (!window.matchMedia(NARROW_QUERY).matches) setCollapsed((value) => !value);
+  }, []);
   const expandSidebar = useCallback(() => setCollapsed(false), []);
 
   useEffect(() => {
     try {
-      localStorage.setItem(COLLAPSED_KEY, storedCollapsed ? "1" : "0");
+      localStorage.setItem(COLLAPSED_KEY, collapsed ? "1" : "0");
     } catch {
       // Storage blocked: the choice simply lasts for this session.
     }
-  }, [storedCollapsed]);
+  }, [collapsed]);
 
   // Ctrl+B (Cmd+B), the common sidebar shortcut. Nothing in the app binds it.
   useEffect(() => {
@@ -146,7 +134,7 @@ export function AppShell() {
     return () => window.removeEventListener("keydown", onKey);
   }, [toggleSidebar]);
 
-  const tooltip = useRailTooltip(collapsed);
+  const tooltip = useRailTooltip(collapsed && !narrow);
 
   // One scroller (main) serves every route, so a new page must not inherit
   // the last page's offset.
@@ -157,54 +145,53 @@ export function AppShell() {
 
   useEffect(() => {
     // A node that has never been named and has no servers is a first run.
-    if (pathname !== "/launcher" && isSuccess && node && instances?.length === 0 && !node.paired_devices.length) {
+    // The launcher (a home-screen shortcut to an instance, say) is not.
+    if (!inLauncher && isSuccess && node && instances?.length === 0 && !node.paired_devices.length) {
       const seen = localStorage.getItem("nebula.firstRunDone");
       if (!seen) navigate("/welcome", { replace: true });
     }
-  }, [isSuccess, node, instances, navigate, pathname]);
+  }, [isSuccess, node, instances, navigate, inLauncher]);
 
   return (
     <div className="flex h-full flex-col">
       {/* Phone width: the tab bar along the bottom replaces the sidebar. */}
       <TitleBar sidebar={narrow ? undefined : { collapsed, onToggle: toggleSidebar, controls: RAIL_ID }} />
       <div className="relative flex min-h-0 flex-1">
-        {narrow && drawerOpen ? (
-          <button
-            type="button"
-            className="rail-scrim"
-            aria-label={t("nav.collapseSidebar")}
-            onClick={() => setDrawerOpen(false)}
-          />
-        ) : null}
         {narrow ? null : (
-        <nav
-          id={RAIL_ID}
-          className="rail"
-          data-collapsed={collapsed ? "" : undefined}
-          data-drawer={narrow ? "" : undefined}
-          data-open={narrow && drawerOpen ? "" : undefined}
-          inert={narrow && !drawerOpen ? true : undefined}
-          aria-label={t("nav.sidebar")}
-          {...tooltip.handlers}
-        >
-          {/* The machine block scrolls with the nav: it sits at the foot when
-              there is room (margin-top: auto) and never covers a panel link on
-              a short window. */}
-          <div className="rail-body" onScroll={tooltip.hide}>
-            {instanceId ? (
-              <ServerNav
-                key={instanceId}
-                instanceId={instanceId}
-                collapsed={collapsed} onExpand={expandSidebar} />
-            ) : (
-              <>
-                <AppNav />
-                {/* In the launcher the foot of the rail is the account, not the machine. */}
-                {pathname.startsWith("/launcher") ? <div className="rail-account" data-collapsed={collapsed ? "" : undefined}><AccountMenu placement="up" compact={collapsed} /></div> : collapsed ? <NodeMini /> : <NodeBlock />}
-              </>
-            )}
-          </div>
-        </nav>
+          <nav
+            id={RAIL_ID}
+            className="rail"
+            data-collapsed={collapsed ? "" : undefined}
+            aria-label={t("nav.sidebar")}
+            {...tooltip.handlers}
+          >
+            {/* The machine block scrolls with the nav: it sits at the foot when
+                there is room (margin-top: auto) and never covers a panel link on
+                a short window. */}
+            <div className="rail-body" onScroll={tooltip.hide}>
+              {instanceId ? (
+                <ServerNav key={instanceId} instanceId={instanceId} collapsed={collapsed} onExpand={expandSidebar} />
+              ) : (
+                <>
+                  {profileId ? (
+                    <LauncherInstanceNav key={profileId} profileId={profileId} collapsed={collapsed} onExpand={expandSidebar} />
+                  ) : (
+                    <AppNav />
+                  )}
+                  {/* In the launcher the foot of the rail is the account, not the machine. */}
+                  {inLauncher ? (
+                    <div className="rail-account" data-collapsed={collapsed ? "" : undefined}>
+                      <AccountMenu placement="up" compact={collapsed} />
+                    </div>
+                  ) : collapsed ? (
+                    <NodeMini />
+                  ) : (
+                    <NodeBlock />
+                  )}
+                </>
+              )}
+            </div>
+          </nav>
         )}
 
         <main ref={mainRef} className="app-main min-w-0 flex-1 overflow-auto">
@@ -212,7 +199,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
-      {narrow ? <MobileTabs instanceId={instanceId} /> : null}
+      {narrow ? <MobileTabs instanceId={instanceId} profileId={profileId} /> : null}
       <Tour />
       {tooltip.element}
     </div>
@@ -315,10 +302,7 @@ function ServerNav({
 
   return (
     <div className="flex flex-col gap-3">
-      <NavLink to="/servers" className="rail-back" data-tip={back}>
-        <Icon name="chevron-left" size={14} />
-        <span className="rail-label">{back}</span>
-      </NavLink>
+      <RailBack to="/servers" label={back} />
 
       <ServerControl instance={instance} collapsed={collapsed} onExpand={onExpand} />
 
@@ -402,17 +386,7 @@ function ServerControl({
             onClick={start}
           />
         )}
-        {failure ? (
-          <button
-            type="button"
-            className="rail-key rail-key-alert"
-            data-tip={failureTitle}
-            aria-label={failureTitle}
-            onClick={onExpand}
-          >
-            <Icon name="warning" />
-          </button>
-        ) : null}
+        {failure ? <RailAlert label={failureTitle} onClick={onExpand} /> : null}
       </section>
     );
   }
@@ -450,51 +424,6 @@ function ServerControl({
 
       {failure ? <ErrorNotice error={failure} compact /> : null}
     </section>
-  );
-}
-
-/** An icon-only key for the collapsed rail; its name shows as the tooltip. */
-function RailKey({
-  icon,
-  label,
-  primary = false,
-  disabled,
-  onClick,
-}: {
-  icon: IconName;
-  label: string;
-  primary?: boolean;
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      className={`btn btn-sm rail-key ${primary ? "btn-primary" : ""}`}
-      data-tip={label}
-      aria-label={label}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      <Icon name={icon} />
-    </button>
-  );
-}
-
-function NavItem({ to, icon, label }: { to: string; icon: IconName; label: string }) {
-  // Same rule NavLink uses (prefix match), surfaced as an attribute so the
-  // active look is a CSS concern.
-  const active = useMatch({ path: to, end: false }) !== null;
-  return (
-    <NavLink
-      to={to}
-      data-active={active ? "" : undefined}
-      data-tip={label}
-      className={({ isActive }) => `rail-item ${isActive ? "active" : ""}`}
-    >
-      <Icon name={icon} />
-      <span className="rail-label">{label}</span>
-    </NavLink>
   );
 }
 

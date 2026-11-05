@@ -10,6 +10,12 @@ import type { Copy } from "./en";
 export const es: Copy = {
   launcher: {
     yourInstances: "Tus instancias",
+    instance: "Instancia",
+    instancesShort: "Instancias",
+    tabAdd: "Añadir",
+    tabLog: "Registro",
+    instanceMissing: "Esta instancia ya no está aquí",
+    instanceMissingHint: "Puede que se haya quitado de la biblioteca de este dispositivo. Tus otras instancias siguen ahí.",
     libraryIntro: "Un espacio independiente para cada forma de jugar.",
     newInstance: "Nueva instancia",
     createInstance: "Crear instancia",
@@ -73,7 +79,8 @@ export const es: Copy = {
     "namePlaceholder": "Mi mundo de supervivencia",
     "version": "Versión de Minecraft",
     "loader": "Cargador",
-    "memory": "Memoria (MiB)",
+    "memory": "Memoria",
+    "memoryMib": "Memoria (MiB)",
     "snapshots": "Incluir snapshots y versiones históricas",
     "saving": "Guardando…",
     "create": "Crear perfil",
@@ -738,6 +745,7 @@ export const es: Copy = {
     title: "Resumen",
     address: "Dirección para los jugadores",
     copyHint: "Clic para copiar",
+    tapToCopy: "Toca para copiar",
     sleepIn: "Se duerme en {minutes} min si no entra nadie",
     noAddress: "Este equipo no está en una red ahora mismo",
     tickRate: "Ritmo del mundo",
@@ -1120,6 +1128,10 @@ export const es: Copy = {
     cautionShared: "Con los servidores que ya están en marcha ({others}), se usarían {sum} de {total}. El equipo puede ir lento.",
     cautionAlone: "Supera las tres cuartas partes de la memoria de este equipo. Otros programas pueden ir lentos.",
     belowRecommended: "Por debajo de lo recomendado. El servidor puede ir lento o quedarse sin memoria.",
+    gameVanilla: "el juego",
+    gameMods: "un juego con mods",
+    tooHighGame: "Deja {free} para el sistema y otros programas. El dispositivo puede ir lento o el juego puede no arrancar.",
+    belowRecommendedGame: "Por debajo de lo recomendado. El juego puede tener tirones o quedarse sin memoria.",
   },
 
   settings: {

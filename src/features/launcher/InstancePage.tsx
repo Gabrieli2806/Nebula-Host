@@ -1,84 +1,106 @@
 /**
- * One instance, laid out like a server: a header with its picture, tags,
- * state and the Play button, then tabs for what it has, adding more, its
- * log and its settings.
+ * One instance, laid out like a server. Its panels are in the sidebar (or the
+ * phone tab bar), and the page says what the instance is once:
+ *
+ * - Content (its "overview"): the full header, with its picture, tags, state
+ *   and the Play key, then what it has installed.
+ * - Every other panel: a light title row, the panel's name with the
+ *   instance's name and state small beside it, as on a server's panels.
  */
 
 import { useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useContextMenu } from "@/ui/ContextMenu";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useI18n } from "@/i18n";
 import { launcherApi, toAppError } from "@/lib/ipc";
-import { Button, ErrorNotice, Icon, StatusDot, Tabs, statusStyle } from "@/ui";
+import { Button, ErrorNotice, Icon, StatusDot, statusStyle } from "@/ui";
 import { Browse } from "./Browse";
 import { InstanceContent } from "./Content";
 import { InstanceLog } from "./InstanceLog";
 import { InstanceSettingsPanel, InstanceTile, squareIcon } from "./InstanceSettings";
 import { loaderInfo } from "./loaderOptions";
-import { usePrimaryAccount } from "./primaryAccount";
+import { INSTANCE_PANELS, instancePath, type InstancePanel } from "./panels";
+import { phaseDot, phaseLabel, useLauncherStatus, usePlayState } from "./play";
 import type { ContentKind, LauncherProfile } from "./types";
 
-type Tab = "content" | "add" | "log" | "settings";
+type AddKind = Exclude<ContentKind, "modpack">;
+const ADD_KINDS: readonly AddKind[] = ["mod", "resourcepack", "shader"];
 
-export function phaseDot(phase?: string): "online" | "starting" | "crashed" | "offline" {
-  return phase === "running" ? "online" : phase === "installing" || phase === "stopping" ? "starting" : phase === "failed" ? "crashed" : "offline";
-}
-export function phaseLabel(phase?: string): string {
-  return phase === "running" ? "launcher.runningShort" : phase === "installing" ? "launcher.installingShort" : phase === "failed" ? "launcher.failedShort" : "status.offline";
-}
-
-export function InstancePage({ profile, onBack, onRemoved }: { profile: LauncherProfile; onBack: () => void; onRemoved: () => void }) {
+export function InstancePage({ profile, panel }: { profile: LauncherProfile; panel: InstancePanel }) {
   const { t } = useI18n();
-  const [tab, setTab] = useState<Tab>("content");
-  const [addKind, setAddKind] = useState<Exclude<ContentKind, "modpack">>("mod");
-  const caps = useQuery({ queryKey: ["launcher", "capabilities"], queryFn: launcherApi.capabilities });
-  const states = useQuery({ queryKey: ["launcher", "status"], queryFn: launcherApi.status, refetchInterval: 1000 });
-  const phase = states.data?.[profile.id]?.phase;
-  const busy = phase === "running" || phase === "installing" || phase === "stopping";
-  const canLaunch = !!caps.data?.can_launch && profile.loader !== "quilt";
+  const navigate = useNavigate();
+  const [search] = useSearchParams();
+  const play = usePlayState(profile);
+  const busy = play.running || play.installing;
+  const requested = search.get("kind");
+  const addKind = ADD_KINDS.find((kind) => kind === requested) ?? "mod";
+  const current = INSTANCE_PANELS.find((candidate) => candidate.id === panel) ?? INSTANCE_PANELS[0]!;
 
   return (
     <div className="launcher-instance-page">
-      <button type="button" className="rail-back launcher-back" onClick={onBack}>
-        <Icon name="chevron-left" size={14} />{t("launcher.yourInstances")}
-      </button>
+      {panel === "content" ? (
+        <>
+          <section className="panel launcher-instance-hero">
+            <PictureButton profile={profile} />
+            <div className="launcher-instance-hero-text">
+              <div className="server-card-title">
+                <h1 className="launcher-detail-title" title={profile.name}>{profile.name}</h1>
+                <StateChip phase={play.phase} />
+              </div>
+              <div className="server-card-tags">
+                <span className="tag">{loaderInfo(profile.loader).name}{profile.loader_version ? ` ${profile.loader_version}` : ""}</span>
+                <span className="tag">{profile.game_version}</span>
+                <span className="tag">{profile.memory_mb / 1024} GB</span>
+              </div>
+            </div>
+            {play.canLaunch ? <PlayControls profile={profile} /> : null}
+          </section>
+          {!play.canLaunch ? (
+            <p className="launcher-notice">
+              <Icon name="info" size={14} />
+              {t(profile.loader === "quilt" ? "launcher.loaderPending" : "launcher.androidRuntime")}
+            </p>
+          ) : null}
+          {play.canLaunch ? <Progress profile={profile} /> : null}
+        </>
+      ) : (
+        <header className="server-pagehead">
+          <h1 className="server-pagehead-title">{t(current.labelKey)}</h1>
+          <p className="server-pagehead-server" title={profile.name}>
+            <span className="server-pagehead-name">{profile.name}</span>
+            <span className="server-pagehead-status">
+              <StatusDot status={phaseDot(play.phase)} size={7} />
+              {t(phaseLabel(play.phase))}
+            </span>
+          </p>
+        </header>
+      )}
 
-      <section className="panel launcher-instance-hero">
-        <PictureButton profile={profile} />
-        <div className="min-w-0 flex-1">
-          <div className="server-card-title">
-            <h2 className="launcher-detail-title" title={profile.name}>{profile.name}</h2>
-            <span className="status-chip flex-none" style={statusStyle(phaseDot(phase))}><StatusDot status={phaseDot(phase)} />{t(phaseLabel(phase))}</span>
-          </div>
-          <div className="server-card-tags">
-            <span className="tag">{loaderInfo(profile.loader).name}{profile.loader_version ? ` ${profile.loader_version}` : ""}</span>
-            <span className="tag">{profile.game_version}</span>
-            <span className="tag">{profile.memory_mb / 1024} GB</span>
-          </div>
-        </div>
-        {canLaunch ? <PlayControls profile={profile} /> : null}
-      </section>
-      {!canLaunch ? <p className="launcher-notice"><Icon name="info" size={14} />{t(profile.loader === "quilt" ? "launcher.loaderPending" : "launcher.androidRuntime")}</p> : null}
-      {canLaunch ? <Progress profile={profile} /> : null}
-
-      <Tabs<Tab>
-        label={profile.name}
-        active={tab}
-        onChange={setTab}
-        tabs={[
-          { id: "content", label: t("launcher.content"), icon: "puzzle" },
-          { id: "add", label: t("launcher.addContent"), icon: "plus" },
-          { id: "log", label: t("launcher.gameLogs"), icon: "terminal" },
-          { id: "settings", label: t("launcher.instanceSettings"), icon: "sliders" },
-        ]}
-      />
-
-      {tab === "content" ? <InstanceContent profile={profile} onBrowse={(kind) => { if (kind !== "modpack") setAddKind(kind); setTab("add"); }} /> : null}
-      {tab === "add" ? <Browse key={addKind} profile={profile} initialKind={addKind} /> : null}
-      {tab === "log" ? <InstanceLog profile={profile} /> : null}
-      {tab === "settings" ? <InstanceSettingsPanel profile={profile} busy={busy} onRemoved={onRemoved} /> : null}
+      {panel === "content" ? (
+        <InstanceContent
+          profile={profile}
+          onBrowse={(kind) => navigate(`${instancePath(profile.id, "add")}${kind === "modpack" ? "" : `?kind=${kind}`}`)}
+        />
+      ) : null}
+      {panel === "add" ? <Browse key={addKind} profile={profile} initialKind={addKind} /> : null}
+      {panel === "log" ? <InstanceLog profile={profile} /> : null}
+      {panel === "settings" ? (
+        <InstanceSettingsPanel profile={profile} busy={busy} onRemoved={() => navigate("/launcher", { replace: true })} />
+      ) : null}
     </div>
+  );
+}
+
+/** The instance's state, as the chip a server card wears. */
+export function StateChip({ phase }: { phase?: string }) {
+  const { t } = useI18n();
+  return (
+    <span className="status-chip flex-none" style={statusStyle(phaseDot(phase))}>
+      <StatusDot status={phaseDot(phase)} />
+      {t(phaseLabel(phase))}
+    </span>
   );
 }
 
@@ -133,42 +155,29 @@ function PictureButton({ profile }: { profile: LauncherProfile }) {
 /** Play with the primary account (the demo without one), or stop / return. */
 export function PlayControls({ profile, compact = false }: { profile: LauncherProfile; compact?: boolean }) {
   const { t } = useI18n();
-  const client = useQueryClient();
-  const { primary } = usePrimaryAccount();
-  const states = useQuery({ queryKey: ["launcher", "status"], queryFn: launcherApi.status, refetchInterval: 1000 });
-  const caps = useQuery({ queryKey: ["launcher", "capabilities"], queryFn: launcherApi.capabilities });
-  const state = states.data?.[profile.id];
-  const installing = state?.phase === "installing";
-  const running = state?.phase === "running" || state?.phase === "stopping";
-  const anyInstalling = Object.values(states.data ?? {}).some((s) => s.phase === "installing");
-  const refresh = () => client.invalidateQueries({ queryKey: ["launcher", "status"] });
-  const start = useMutation({ mutationFn: () => launcherApi.start(profile.id, primary ? "account" : "demo", primary?.id), onSuccess: refresh });
-  const stop = useMutation({ mutationFn: () => launcherApi.stop(profile.id), onSuccess: refresh });
-  const resume = useMutation({ mutationFn: () => launcherApi.resume(profile.id) });
+  const play = usePlayState(profile);
   const size = compact ? "sm" : undefined;
-  const error = start.error || stop.error || resume.error;
 
   return (
     <div className="launcher-play-controls">
-      {running && state?.phase === "running" && caps.data?.platform === "android" ? (
-        <Button size={size} variant="primary" icon="play" disabled={resume.isPending} onClick={() => resume.mutate()}>{t("launcher.returnToGame")}</Button>
+      {play.canReturn ? (
+        <Button size={size} variant="primary" icon="play" disabled={play.resume.isPending} onClick={() => play.resume.mutate()}>{t("launcher.returnToGame")}</Button>
       ) : null}
-      {running || installing ? (
-        <Button size={size} icon="stop" disabled={stop.isPending} onClick={() => stop.mutate()}>{t(installing ? "launcher.cancel" : "launcher.stopGame")}</Button>
+      {play.running || play.installing ? (
+        <Button size={size} icon="stop" disabled={play.stop.isPending} onClick={() => play.stop.mutate()}>{t(play.installing ? "launcher.cancel" : "launcher.stopGame")}</Button>
       ) : (
-        <Button size={size} variant="primary" icon="play" className={compact ? undefined : "launcher-play"} disabled={start.isPending || anyInstalling} onClick={() => start.mutate()}>
-          {t(primary ? "launcher.play" : "launcher.playDemo")}
+        <Button size={size} variant="primary" icon="play" className={compact ? undefined : "launcher-play"} disabled={play.start.isPending || play.anyInstalling} onClick={() => play.start.mutate()}>
+          {t(play.withAccount ? "launcher.play" : "launcher.playDemo")}
         </Button>
       )}
-      {error && !compact ? <ErrorNotice error={toAppError(error)} compact /> : null}
+      {play.error ? <ErrorNotice error={toAppError(play.error)} compact /> : null}
     </div>
   );
 }
 
 function Progress({ profile }: { profile: LauncherProfile }) {
   const { t } = useI18n();
-  const states = useQuery({ queryKey: ["launcher", "status"], queryFn: launcherApi.status, refetchInterval: 1000 });
-  const state = states.data?.[profile.id];
+  const state = useLauncherStatus().data?.[profile.id];
   if (state?.phase === "installing") {
     const percent = state.total ? (state.completed / state.total) * 100 : null;
     return (

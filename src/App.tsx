@@ -59,7 +59,15 @@ function Shell() {
             <Route path="/welcome" element={<FirstRun />} />
             <Route element={<AppShell />}>
               <Route path="/servers" element={<ServersScreen />} />
+              {/* The launcher keeps its place in the URL the same way: a
+                  section, or an open instance and its panel. */}
               <Route path="/launcher" element={<LauncherScreen />} />
+              <Route path="/launcher/:section" element={<LauncherScreen />} />
+              <Route
+                path="/launcher/instances/:profileId"
+                element={<Navigate to="content" replace />}
+              />
+              <Route path="/launcher/instances/:profileId/:panel" element={<LauncherScreen />} />
               {/* The open panel lives in the URL, so the sidebar can be plain
                   links and the back button walks through panels. */}
               <Route

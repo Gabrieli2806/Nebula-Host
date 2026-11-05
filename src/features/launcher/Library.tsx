@@ -11,18 +11,19 @@ import { usePrimaryAccount } from "./primaryAccount";
 import { useI18n } from "@/i18n";
 import { useManualOrder } from "@/lib/manualOrder";
 import { launcherApi, toAppError } from "@/lib/ipc";
-import { Button, ErrorNotice, Icon, LoaderIcon, Select, StatusDot, statusStyle } from "@/ui";
+import { Button, ErrorNotice, Icon, LoaderIcon, Select } from "@/ui";
 import { CreateInstanceDialog } from "./CreateInstanceDialog";
 import { InstanceTile } from "./InstanceSettings";
-import { PlayControls, phaseDot, phaseLabel } from "./InstancePage";
+import { PlayControls, StateChip } from "./InstancePage";
+import { useLauncherCapabilities, useLauncherStatus } from "./play";
 import { LOADERS, loaderInfo } from "./loaderOptions";
 import type { LauncherProfile, Loader } from "./types";
 
 export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void }) {
   const { t } = useI18n();
   const profiles = useQuery({ queryKey: ["launcher", "profiles"], queryFn: launcherApi.profiles });
-  const caps = useQuery({ queryKey: ["launcher", "capabilities"], queryFn: launcherApi.capabilities });
-  const statuses = useQuery({ queryKey: ["launcher", "status"], queryFn: launcherApi.status, refetchInterval: 1000 });
+  const caps = useLauncherCapabilities();
+  const statuses = useLauncherStatus();
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
   const [loader, setLoader] = useState<Loader | "all">("all");
@@ -111,7 +112,7 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
                       <h3 className="pt-[1px]">
                         <button type="button" className="server-card-open" title={profile.name} onClick={() => onOpen(profile)}>{profile.name}</button>
                       </h3>
-                      <span className="status-chip flex-none" style={statusStyle(phaseDot(phase))}><StatusDot status={phaseDot(phase)} />{t(phaseLabel(phase))}</span>
+                      <StateChip phase={phase} />
                     </div>
                     <div className="server-card-tags">
                       <span className="tag">{loaderInfo(profile.loader).name}</span>
@@ -120,7 +121,9 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
                     </div>
                   </div>
                 </header>
-                <footer className="launcher-instance-foot">
+                {/* Raised above the card's stretched open target, or a tap on
+                    Play would open the instance instead. */}
+                <footer className="launcher-instance-foot server-card-raised">
                   <Button size="sm" variant="quiet" icon="sliders" onClick={() => onOpen(profile)}>{t("launcher.manage")}</Button>
                   {canLaunch ? <PlayControls profile={profile} compact /> : null}
                 </footer>
