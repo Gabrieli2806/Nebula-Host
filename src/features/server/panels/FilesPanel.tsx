@@ -1,7 +1,8 @@
 /**
  * Browsing and editing the server's own files, plus copying files and
  * folders in from this computer: native drag and drop onto the list (or onto
- * a folder row / breadcrumb), or the upload pickers in the header.
+ * a folder row / breadcrumb), or the upload pickers in the header. The
+ * search box looks through every folder of the server by part of a name.
  *
  * Paths from the OS never travel as bytes through IPC: the backend copies
  * them (`files_import`) and reports progress as `import` events.
@@ -23,7 +24,7 @@ import type {
   InstanceView,
   WindowDragDrop,
 } from "@/types/api";
-import { Button, Dialog, EmptyState, ErrorNotice, Icon, Meter, Panel, Skeleton } from "@/ui";
+import { Button, Dialog, EmptyState, ErrorNotice, Icon, Meter, Panel, Skeleton, TextInput } from "@/ui";
 
 import "./FilesPanel.css";
 import { DESKTOP_FEATURES } from "@/lib/web";
@@ -112,6 +113,25 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
   });
 
   const openFolder = useMutation({ mutationFn: () => api.files.openFolder(instance.id) });
+
+  // Search waits for a pause in typing, so each key is not a walk of the disk.
+  const [query, setQuery] = useState("");
+  const [needle, setNeedle] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setNeedle(query.trim()), 250);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+  const searching = needle.length >= 2;
+  const results = useQuery({
+    queryKey: ["files-search", instance.id, needle],
+    queryFn: () => api.files.search(instance.id, needle),
+    enabled: searching,
+  });
+  const goTo = (target: string) => {
+    setQuery("");
+    setNeedle("");
+    setPath(target);
+  };
 
   const remove = useMutation({
     mutationFn: (target: string) => api.files.remove(instance.id, target),
@@ -339,7 +359,7 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
             aria-current={segments.length === 0 ? "location" : undefined}
             data-drop-dir=""
             data-drop-target={drag?.onFolder && drag.target === "" ? "" : undefined}
-            onClick={() => setPath("")}
+            onClick={() => goTo("")}
             aria-label={t("overview.diskFolder")}
             title={t("overview.diskFolder")}
           >
@@ -359,7 +379,7 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
                   aria-current={index === segments.length - 1 ? "location" : undefined}
                   data-drop-dir={crumbPath}
                   data-drop-target={drag?.onFolder && drag.target === crumbPath ? "" : undefined}
-                  onClick={() => setPath(crumbPath)}
+                  onClick={() => goTo(crumbPath)}
                 >
                   {segment}
                 </button>
@@ -371,27 +391,45 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
       actions={
         DESKTOP_FEATURES ? (
         <>
-          <Button size="sm" icon="folder" disabled={busy} onClick={() => void pick(true)}>
-            {t("files.uploadFolder")}
+          {/* Labels give way to icons when the card gets narrow (FilesPanel.css). */}
+          <Button size="sm" icon="folder" disabled={busy} aria-label={t("files.uploadFolder")} title={t("files.uploadFolder")} onClick={() => void pick(true)}>
+            <span className="files-action-label">{t("files.uploadFolder")}</span>
           </Button>
-          <Button size="sm" icon="upload" disabled={busy} onClick={() => void pick(false)}>
-            {t("files.upload")}
+          <Button size="sm" icon="upload" disabled={busy} aria-label={t("files.upload")} title={t("files.upload")} onClick={() => void pick(false)}>
+            <span className="files-action-label">{t("files.upload")}</span>
           </Button>
           <Button
             size="sm"
             variant="quiet"
             icon="external"
             disabled={isRemote() || openFolder.isPending}
-            title={isRemote() ? t("remote.localOnly") : undefined}
+            aria-label={t("actions.openFolder")}
+            title={isRemote() ? t("remote.localOnly") : t("actions.openFolder")}
             onClick={() => openFolder.mutate()}
           >
-            {t("actions.openFolder")}
+            <span className="files-action-label">{t("actions.openFolder")}</span>
           </Button>
         </>
         ) : null
       }
       bodyClassName="files-body"
     >
+      <div className="files-searchbar">
+        <span className="files-search">
+          <Icon name="search" />
+          <TextInput
+            type="search"
+            value={query}
+            aria-label={t("files.search")}
+            placeholder={t("files.search")}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setQuery("");
+            }}
+          />
+        </span>
+      </div>
+
       <ImportStatus
         status={status}
         progress={importer.progress}
@@ -404,7 +442,15 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
         onRetry={(request) => void startImport(request)}
       />
 
-      {listing.isLoading ? (
+      {searching && results.error ? (
+        <div className="p-4">
+          <ErrorNotice error={results.error} onRetry={() => void results.refetch()} />
+        </div>
+      ) : null}
+
+      {searching && results.data?.length === 0 ? <EmptyState icon="search" title={t("files.searchNone")} /> : null}
+
+      {(searching ? results.isLoading : listing.isLoading) ? (
         <div className="flex flex-col gap-2 p-4" aria-hidden="true">
           {[0, 1, 2, 3, 4].map((index) => (
             <Skeleton key={index} className="h-7" />
@@ -424,11 +470,11 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
         </div>
       ) : null}
 
-      {listing.data?.length === 0 ? (
+      {!searching && listing.data?.length === 0 ? (
         <EmptyState icon="folder" title={t("files.empty")} hint={t("files.dropHint")} />
       ) : null}
 
-      {listing.data?.length ? (
+      {(searching ? results.data : listing.data)?.length ? (
         <>
           <div className="files-table" role="table" aria-label={t("files.title")}>
             <div className="files-row files-head" role="row">
@@ -444,7 +490,9 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
               </span>
               <span aria-hidden="true" />
             </div>
-            {listing.data.map((entry) => {
+            {(searching ? results.data ?? [] : listing.data ?? []).map((entry) => {
+              // In results, the folder it is in, under its name.
+              const where = searching ? entry.path.split("/").slice(0, -1).join("/") || t("files.rootFolder") : null;
               const editable = !entry.isDir && EDITABLE.test(entry.name);
               const kind = entry.isDir ? "dir" : editable ? "editable" : "file";
               return (
@@ -465,7 +513,7 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
                         type="button"
                         className="files-name"
                         onClick={() => {
-                          if (entry.isDir) setPath(entry.path);
+                          if (entry.isDir) goTo(entry.path);
                           else setEditing(entry.path);
                         }}
                       >
@@ -474,6 +522,7 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
                     ) : (
                       <span className="files-name">{entry.name}</span>
                     )}
+                    {where ? <span className="files-where mono">{where}</span> : null}
                   </span>
                   <span role="cell" className="mono files-meta text-right">
                     {entry.isDir ? "" : formatBytes(entry.size)}
@@ -497,6 +546,7 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
               );
             })}
           </div>
+          {searching && (results.data?.length ?? 0) >= 200 ? <p className="files-foot">{t("files.searchMore", { count: 200 })}</p> : null}
           <p className="files-foot">{t("files.dropHint")}</p>
         </>
       ) : null}

@@ -657,6 +657,7 @@ export const es: Copy = {
     quit: "Salir de Nebula Host",
     openServer: "Abrir {name}",
     seeAll: "Ver los {count} servidores",
+    unreachable: "{name} no responde",
   },
 
   status: {
@@ -869,6 +870,9 @@ export const es: Copy = {
     deleteWarning: "Esto lo quita de la carpeta del servidor para siempre. No se puede deshacer.",
     upload: "Subir archivos",
     uploadFolder: "Subir una carpeta",
+    search: "Buscar por nombre",
+    searchNone: "Nada con ese nombre",
+    searchMore: "Se muestran los primeros {count}. Escribe más del nombre para acotar.",
     rootFolder: "la carpeta del servidor",
     dropHint: "Arrastra archivos o carpetas desde tu equipo para copiarlos en esta carpeta.",
     dropInto: "Suelta para copiar en {folder}",

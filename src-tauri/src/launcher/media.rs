@@ -118,6 +118,30 @@ fn icon_file(profile: &Profile) -> Option<PathBuf> {
     Some(path)
 }
 
+#[cfg(windows)]
+fn write_shortcut(link: &std::path::Path, target: &std::path::Path, arguments: &str, icon: &std::path::Path, description: &str) -> AppResult<()> {
+    use windows::core::{Interface, HSTRING};
+    use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CoUninitialize, IPersistFile, CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED};
+    use windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
+
+    let failed = |error: windows::core::Error| AppError::new(ErrorCode::IoFailed).detail(format!("Could not create the shortcut: {error}"));
+    unsafe {
+        let init = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+        let result = (|| -> windows::core::Result<()> {
+            let shell_link: IShellLinkW = CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER)?;
+            shell_link.SetPath(&HSTRING::from(target))?;
+            shell_link.SetArguments(&HSTRING::from(arguments))?;
+            shell_link.SetIconLocation(&HSTRING::from(icon), 0)?;
+            shell_link.SetDescription(&HSTRING::from(description))?;
+            shell_link.cast::<IPersistFile>()?.Save(&HSTRING::from(link), true)
+        })();
+        if init.is_ok() {
+            CoUninitialize();
+        }
+        result.map_err(failed)
+    }
+}
+
 /// Put a "Play <instance>" shortcut on the desktop.
 pub fn create_shortcut(profile: &Profile) -> AppResult<PathBuf> {
     let exe = std::env::current_exe()?;
@@ -134,23 +158,20 @@ pub fn create_shortcut(profile: &Profile) -> AppResult<PathBuf> {
     {
         let link = desktop.join(format!("{safe}.lnk"));
         let icon = icon_file(profile).unwrap_or_else(|| exe.clone());
-        // WScript.Shell writes .lnk files; arguments travel as environment
-        // variables so no value is ever spliced into the script.
-        let script = "$s=(New-Object -ComObject WScript.Shell).CreateShortcut($env:NB_LINK);\
-            $s.TargetPath=$env:NB_EXE;$s.Arguments=$env:NB_ARGS;$s.IconLocation=$env:NB_ICON;\
-            $s.Description=$env:NB_DESC;$s.Save()";
-        let status = crate::runtime::java::configure_no_window_command(&mut std::process::Command::new(crate::net::firewall::powershell()))
-            .args(["-NoProfile", "-NonInteractive", "-Command", script])
-            .env("NB_LINK", &link)
-            .env("NB_EXE", &exe)
-            .env("NB_ARGS", format!("--play-instance {}", profile.id))
-            .env("NB_ICON", &icon)
-            .env("NB_DESC", format!("Play {} with Nebula Host", profile.name))
-            .status()?;
-        if !status.success() {
-            return Err(AppError::new(ErrorCode::IoFailed).detail("Could not create the shortcut"));
-        }
-        Ok(link)
+        let arguments = format!("--play-instance {}", profile.id);
+        let description = format!("Play {} with Nebula Host", profile.name);
+        // The shell's own ShellLink object writes the .lnk. A hidden PowerShell
+        // doing the same is what malware droppers look like, and Defender's
+        // heuristics treated the app as one.
+        let written = {
+            let link = link.clone();
+            // COM wants a thread of its own here: the caller may be a runtime
+            // worker that is already set up differently.
+            std::thread::spawn(move || write_shortcut(&link, &exe, &arguments, &icon, &description))
+                .join()
+                .unwrap_or_else(|_| Err(AppError::new(ErrorCode::IoFailed)))
+        };
+        written.map(|()| link)
     }
     #[cfg(not(windows))]
     {

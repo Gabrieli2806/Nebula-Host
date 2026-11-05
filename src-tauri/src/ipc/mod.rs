@@ -133,6 +133,7 @@ macro_rules! ipc_handlers {
             $crate::ipc::instances::instance_log_share,
             // files
             $crate::ipc::files::files_list,
+            $crate::ipc::files::files_search,
             $crate::ipc::files::file_read,
             $crate::ipc::files::file_write,
             $crate::ipc::files::file_delete,

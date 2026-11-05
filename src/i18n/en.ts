@@ -657,6 +657,7 @@ export const en = {
     quit: "Quit Nebula Host",
     openServer: "Open {name}",
     seeAll: "See all {count} servers",
+    unreachable: "{name} is not answering",
   },
 
   status: {
@@ -869,6 +870,9 @@ export const en = {
     deleteWarning: "This removes it from the server's folder for good. It cannot be undone.",
     upload: "Upload files",
     uploadFolder: "Upload a folder",
+    search: "Search by name",
+    searchNone: "Nothing by that name",
+    searchMore: "Showing the first {count}. Type more of the name to narrow it down.",
     rootFolder: "the server folder",
     dropHint: "Drag files or folders here from your computer to copy them into this folder.",
     dropInto: "Drop to copy into {folder}",

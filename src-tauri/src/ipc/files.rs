@@ -15,6 +15,15 @@ pub async fn files_list(
     files::list(&instance.path, path.as_deref().unwrap_or(""))
 }
 
+/// Files and folders in the instance whose name contains `query`.
+#[tauri::command]
+pub async fn files_search(state: State<'_>, instance_id: String, query: String) -> AppResult<Vec<FileEntry>> {
+    let instance = state.store.get(&instance_id).await?;
+    tokio::task::spawn_blocking(move || files::search(&instance.path, &query))
+        .await
+        .map_err(crate::error::AppError::unexpected)?
+}
+
 #[tauri::command]
 pub async fn file_read(state: State<'_>, instance_id: String, path: String) -> AppResult<String> {
     let instance = state.store.get(&instance_id).await?;

@@ -126,6 +126,12 @@ export function isRemote(): boolean {
   return activeRemote() !== null;
 }
 
+/** Choose the machine without reloading this window (the tray panel picks it
+ *  for the main window, which then reloads itself). */
+export function setActiveNode(id: string | "local") {
+  write(ACTIVE_KEY, id);
+}
+
 export function switchTo(id: string | "local") {
   write(ACTIVE_KEY, id);
   window.location.reload();

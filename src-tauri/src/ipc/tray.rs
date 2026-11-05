@@ -29,24 +29,45 @@ pub fn tray_panel_hide(app: AppHandle) {
 }
 
 /// Bring up the main window: on a server, on Settings, or as it was.
+/// `reload`: the panel switched the machine the window manages.
 #[tauri::command]
-pub async fn tray_open(app: AppHandle, state: State<'_>, settings: bool, instance_id: Option<String>) -> AppResult<()> {
+pub async fn tray_open(
+    app: AppHandle,
+    state: State<'_>,
+    settings: bool,
+    instance_id: Option<String>,
+    remote: Option<bool>,
+    reload: Option<bool>,
+) -> AppResult<()> {
     #[cfg(desktop)]
     {
         use tauri::Manager;
-        // The id must be a real server: it goes into the page's address.
+        // The id goes into the page's address: one of this PC's servers, or
+        // for another machine, an id's characters and nothing else.
         let route = match instance_id {
+            Some(id) if remote.unwrap_or(false) => {
+                if id.is_empty() || id.len() > 64 || !id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+                    return Err(crate::error::AppError::new(crate::error::ErrorCode::InvalidInput).with("instance", id));
+                }
+                Some(format!("#/servers/{id}/overview"))
+            }
             Some(id) => Some(format!("#/servers/{}/overview", state.store.get(&id).await?.id)),
             None if settings => Some("#/settings".to_string()),
             None => None,
         };
         crate::tray::show_main(&app);
-        if let (Some(route), Some(main)) = (route, app.get_webview_window("main")) {
-            let _ = main.eval(format!("window.location.hash = '{route}'"));
+        if let Some(main) = app.get_webview_window("main") {
+            let mut script = route.map(|route| format!("window.location.hash = '{route}';")).unwrap_or_default();
+            if reload.unwrap_or(false) {
+                script.push_str("window.location.reload();");
+            }
+            if !script.is_empty() {
+                let _ = main.eval(script);
+            }
         }
     }
     #[cfg(not(desktop))]
-    let _ = (app, state, settings, instance_id);
+    let _ = (app, state, settings, instance_id, remote, reload);
     Ok(())
 }
 

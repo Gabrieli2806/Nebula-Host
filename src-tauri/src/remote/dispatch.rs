@@ -139,6 +139,14 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             let path: Option<String> = opt(args, "path")?;
             ok(files::list(&instance.path, path.as_deref().unwrap_or(""))?)
         }
+        "files_search" => {
+            let instance = service.store.get(&id()?).await?;
+            let query: String = arg(args, "query")?;
+            let found = tokio::task::spawn_blocking(move || files::search(&instance.path, &query))
+                .await
+                .map_err(AppError::unexpected)??;
+            ok(found)
+        }
         "file_read" => {
             let instance = service.store.get(&id()?).await?;
             ok(files::read_text(&instance.path, &arg::<String>(args, "path")?)?)

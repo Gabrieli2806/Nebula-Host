@@ -24,6 +24,54 @@
     flex: none;
   }
 
+  /* == search ========================================================== */
+
+  .files-searchbar {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .files-search {
+    position: relative;
+    display: flex;
+    max-width: 360px;
+    align-items: center;
+  }
+
+  .files-search > svg {
+    position: absolute;
+    left: 10px;
+    color: var(--text-faint);
+    pointer-events: none;
+  }
+
+  .files-search .field {
+    width: 100%;
+    padding-left: 32px;
+  }
+
+  .files-where {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--text-xs);
+    color: var(--text-faint);
+  }
+
+  /* == narrow ========================================================== */
+
+  /* The header keeps the path readable: crumbs take the room, the actions
+     wrap under them before anything overlaps. */
+  .files-panel > .panel-header {
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
+  }
+
+  .files-panel > .panel-header > .panel-title {
+    flex: 1 1 200px;
+  }
+
   .files-foot {
     margin-top: auto;
     padding: var(--space-3) var(--space-4);
@@ -37,6 +85,33 @@
       grid-template-columns: 18px minmax(0, 1fr) 72px var(--control-height-sm);
     }
     .files-panel .files-col-date {
+      display: none;
+    }
+    /* Icons only: square buttons with room between them. */
+    .files-panel .files-action-label {
+      display: none;
+    }
+    .files-panel > .panel-header .btn {
+      width: var(--control-height-sm);
+      padding: 0;
+      justify-content: center;
+    }
+    .files-searchbar {
+      padding: var(--space-2) var(--space-3);
+    }
+    .files-search {
+      max-width: none;
+    }
+  }
+
+  @container (max-width: 420px) {
+    .files-panel .files-row {
+      grid-template-columns: 18px minmax(0, 1fr) var(--control-height-sm);
+      gap: var(--space-2);
+      padding-inline: var(--space-3);
+    }
+    .files-panel .files-row > .files-meta,
+    .files-panel .files-head > :nth-child(3) {
       display: none;
     }
   }

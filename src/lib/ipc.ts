@@ -346,6 +346,8 @@ export const api = {
   files: {
     list: (instanceId: string, path?: string) =>
       call<FileEntry[]>("files_list", { instanceId, path }),
+    /** Anywhere in the server folder, by part of the name. */
+    search: (instanceId: string, query: string) => call<FileEntry[]>("files_search", { instanceId, query }),
     read: (instanceId: string, path: string) => call<string>("file_read", { instanceId, path }),
     write: (instanceId: string, path: string, contents: string) =>
       call<void>("file_write", { instanceId, path, contents }),
