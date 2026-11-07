@@ -128,6 +128,9 @@ impl ClientEngine {
             return Err(AppError::new(ErrorCode::GameNotSupported)
                 .with("platform", "Windows x64 / Vanilla, Fabric, Forge, NeoForge"));
         }
+        // An instance made by another build (say, with a mod loader) does not
+        // start in one that may not run its code.
+        crate::flavor::Flavor::current().ensure_loader(&profile.loader)?;
         let guard = self
             .operation
             .try_lock()

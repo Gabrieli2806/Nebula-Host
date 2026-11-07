@@ -100,6 +100,11 @@ Descartadas:
 
 ## 4. Diseño técnico del sabor `play`
 
+> **Estado (07-11-2026): implementado en el código, apagado por defecto.**
+> El backend tiene la feature de Cargo `play-store` (`src-tauri/src/flavor.rs`); la interfaz la lee con `useDeviceBuild()` (`src/lib/deviceBuild.ts`).
+> Para el hosting en el teléfono se aplicó la postura conservadora: el sabor `play` no aloja servidores. Si se decide la opción B para el hosting (solo vanilla), basta con cambiar `Flavor::hosting_allowed`.
+> Lo que falta es empaquetarlo: el job de CI que genere el AAB con esa feature (§5.1).
+
 ### 4.1 Un interruptor de compilación
 
 - **Rust**: una feature de Cargo `play-store` en `src-tauri/Cargo.toml`, activada con `tauri android build --features play-store`.
@@ -120,10 +125,10 @@ Con `play-store` activo:
 | `launcher::content::install_modpack` | Rechazar siempre |
 | `launcher::content::import_file` | Rechazar `Mod`; los zip de resource packs pasan por la inspección de §4.3 |
 | `launcher::content::update` | Rechazar `Mod` (no debería haber ninguno) |
-| Hosting en el teléfono (`service/instances.rs`, `service/addons.rs`) | Opción B: solo la distribución `vanilla` y sin addons. Opción A: hosting desactivado |
+| Hosting en el teléfono (`Instances::create`, `install`, `start` y `transfer_adopt`) | Desactivado (implementado). Alternativa: solo la distribución `vanilla` y sin addons |
 | Arrastrar `.jar` sobre Mods/Plugins (`AddonDrop`) | Mismo rechazo en el backend |
 
-- **Error tipado.** Un código nuevo, por ejemplo `ErrorCode::NotInStoreBuild`, que la interfaz traduzca ("Esta versión de la app no instala mods"). Así se sigue la regla de `ARCHITECTURE.md`: el backend nunca devuelve frases.
+- **Error tipado.** `ErrorCode::NotInThisBuild` con un parámetro `reason` (`loader`, `content`, `code_in_archive`, `hosting`), traducido en en/es. Así se sigue la regla de `ARCHITECTURE.md`: el backend nunca devuelve frases.
 - **Capacidades.** Ampliar `launcher_capabilities` con `store: "play" | "full"`, `loaders: [...]` y `content_kinds: [...]`.
 - **Frontend.** La interfaz oculta lo que no está disponible:
   - el paso de loader en `CreateInstanceDialog` y el filtro de loader en `Library`;
@@ -227,7 +232,7 @@ Pendientes de [store-compliance-review.md](store-compliance-review.md) §5 que s
 | Fase | Trabajo | Resultado |
 |---|---|---|
 | **0. Bases** | Keystore de release y firma estable en el CI · job del AAB · verificación de 16 KB en el CI · medir tamaño · política de privacidad y descargo en *Acerca de* · `User-Agent` con contacto · LICENSE del proyecto | El APK `full` se puede actualizar; el AAB se puede subir |
-| **1. Sabor `play`** | Feature `play-store` · reglas de §4.2 con tests en Rust (`cargo test --features play-store`) · capacidades y ocultación en la interfaz · inspección de zips (§4.3) · `ErrorCode::NotInStoreBuild` con textos en/es | Un AAB sin código de terceros |
+| **1. Sabor `play`** ✅ código | Feature `play-store` · reglas de §4.2 con tests en Rust (`cargo test --features play-store`) · capacidades y ocultación en la interfaz · inspección de zips (§4.3) · `ErrorCode::NotInThisBuild` con textos en/es. **Hecho**; falta el job de CI del AAB | Un AAB sin código de terceros |
 | **2. Pista cerrada** | Ficha, Data safety, declaraciones de servicios en primer plano con vídeo, IARC · subir a prueba cerrada y responder a la revisión | Primer veredicto de Google sin exponer la ficha pública |
 | **3. Producción** | Publicar · vigilar avisos de política | En Play |
 | **4. (Opcional) Mods del usuario** | Solo si la fase 2 sale limpia y tras consultar al soporte de políticas de Play: importar desde el selector del sistema, sin catálogo ni enlaces de descarga de código | Opción C |

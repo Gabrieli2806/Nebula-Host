@@ -21,6 +21,7 @@ import { JavaInstallButton } from "@/features/java/JavaInstall";
 import { api } from "@/lib/ipc";
 import type { InstanceStatus, Requirement } from "@/types/api";
 import { isRemote } from "@/lib/connection";
+import { useDeviceBuild } from "@/lib/deviceBuild";
 import { IS_MOBILE } from "@/lib/web";
 import { useLauncherEnabled } from "@/lib/launcherPref";
 import { PHONE_HOSTING_KEY, PhoneHostingNotice, PhoneWelcome } from "./PhoneWelcome";
@@ -76,6 +77,7 @@ export function FirstRun() {
 
   // The phone app opens on "manage your computer" first; hosting here is the
   // second choice. Once it manages another machine, setup is done.
+  const device = useDeviceBuild();
   const [hostHere, setHostHere] = useState(() => {
     try {
       return localStorage.getItem(PHONE_HOSTING_KEY) === "1";
@@ -84,7 +86,7 @@ export function FirstRun() {
     }
   });
   if (IS_MOBILE && isRemote()) return <Navigate to="/servers" replace />;
-  if (IS_MOBILE && !hostHere) return <PhoneWelcome onHostHere={() => setHostHere(true)} />;
+  if (IS_MOBILE && (!hostHere || !device.hosting)) return <PhoneWelcome onHostHere={() => setHostHere(true)} />;
 
   const ready =
     requirements.data !== undefined &&

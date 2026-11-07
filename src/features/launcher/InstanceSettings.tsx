@@ -12,6 +12,7 @@ import { launcherApi, toAppError } from "@/lib/ipc";
 import { Button, Dialog, ErrorNotice, Field, Icon, LoaderIcon, Panel, Select, TextInput } from "@/ui";
 import { RamSlider } from "@/ui/RamSlider";
 import { LOADERS, loaderInfo } from "./loaderOptions";
+import { useDeviceBuild } from "@/lib/deviceBuild";
 import type { LauncherProfile, Loader } from "./types";
 
 /** The card's colour: the loader's, so each kind of instance reads at a glance. */
@@ -108,6 +109,7 @@ function DetailsBlock({ profile }: { profile: LauncherProfile }) {
 function VersionBlock({ profile, busy }: { profile: LauncherProfile; busy: boolean }) {
   const { t } = useI18n();
   const refresh = useRefreshProfiles();
+  const device = useDeviceBuild();
   const caps = useQuery({ queryKey: ["launcher", "capabilities"], queryFn: launcherApi.capabilities });
   const versions = useQuery({ queryKey: ["launcher", "versions"], queryFn: launcherApi.versions, staleTime: 300_000 });
   const [version, setVersion] = useState(profile.game_version);
@@ -139,7 +141,7 @@ function VersionBlock({ profile, busy }: { profile: LauncherProfile; busy: boole
         <label className="launcher-field">
           <span className="label">{t("launcher.loader")}</span>
           <Select value={loader} disabled={busy} onChange={(e) => { setLoader(e.target.value as Loader); setLoaderVersion(""); }}>
-            {LOADERS.filter((item) => item.id !== "quilt" || profile.loader === "quilt").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            {LOADERS.filter((item) => item.id === profile.loader || (item.id !== "quilt" && device.loaders.includes(item.id))).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </Select>
         </label>
         {modded ? (

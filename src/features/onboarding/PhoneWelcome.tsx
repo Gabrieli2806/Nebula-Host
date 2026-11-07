@@ -9,6 +9,7 @@ import { useState } from "react";
 import { PairDialog } from "@/app/NodeSwitcher";
 import { TitleBar } from "@/app/TitleBar";
 import { useI18n } from "@/i18n";
+import { useDeviceBuild } from "@/lib/deviceBuild";
 import { Icon, Mark } from "@/ui";
 
 import "./PhoneWelcome.css";
@@ -18,6 +19,7 @@ export const PHONE_HOSTING_KEY = "nebula.phoneHosting";
 export function PhoneWelcome({ onHostHere }: { onHostHere: () => void }) {
   const { t } = useI18n();
   const [pairing, setPairing] = useState(false);
+  const device = useDeviceBuild();
 
   return (
     <div className="flex h-full flex-col">
@@ -35,28 +37,31 @@ export function PhoneWelcome({ onHostHere }: { onHostHere: () => void }) {
           </span>
         </button>
 
-        <button
-          type="button"
-          className="phone-welcome-choice"
-          onClick={() => {
-            try {
-              localStorage.setItem(PHONE_HOSTING_KEY, "1");
-            } catch {
-              // Storage blocked: the choice lasts for this session.
-            }
-            onHostHere();
-          }}
-        >
-          <Icon name="servers" size={22} />
-          <span className="flex min-w-0 flex-col items-start gap-1">
-            <span className="phone-welcome-choice-title">{t("phoneWelcome.host")}</span>
-            <span className="phone-welcome-choice-hint">{t("phoneWelcome.hostHint")}</span>
-          </span>
-        </button>
+{/* The Google Play build hosts nothing on the phone (src-tauri/src/flavor.rs). */}
+        {device.hosting ? (
+          <button
+            type="button"
+            className="phone-welcome-choice"
+            onClick={() => {
+              try {
+                localStorage.setItem(PHONE_HOSTING_KEY, "1");
+              } catch {
+                // Storage blocked: the choice lasts for this session.
+              }
+              onHostHere();
+            }}
+          >
+            <Icon name="servers" size={22} />
+            <span className="flex min-w-0 flex-col items-start gap-1">
+              <span className="phone-welcome-choice-title">{t("phoneWelcome.host")}</span>
+              <span className="phone-welcome-choice-hint">{t("phoneWelcome.hostHint")}</span>
+            </span>
+          </button>
+        ) : null}
 
         <p className="phone-welcome-note">
           <Icon name="info" size={13} />
-          <span>{t("phoneWelcome.note")}</span>
+          <span>{t(device.hosting ? "phoneWelcome.note" : "phoneWelcome.noteConnectOnly")}</span>
         </p>
       </main>
       {pairing ? <PairDialog open onClose={() => setPairing(false)} /> : null}

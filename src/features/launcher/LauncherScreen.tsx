@@ -14,6 +14,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useI18n } from "@/i18n";
 import { launcherApi, toAppError } from "@/lib/ipc";
+import { useDeviceBuild } from "@/lib/deviceBuild";
 import { useLauncherEnabled } from "@/lib/launcherPref";
 import { IS_WEB } from "@/lib/web";
 import { Button, EmptyState, ErrorNotice, Segmented } from "@/ui";
@@ -58,6 +59,12 @@ export function LauncherScreen() {
   return <LauncherHome section={section ?? "library"} />;
 }
 
+/** The sections this build has: no Modpacks in the Google Play build. */
+function useSections() {
+  const build = useDeviceBuild();
+  return LAUNCHER_SECTIONS.filter((item) => item.id !== "discover" || build.contentKinds.includes("modpack"));
+}
+
 /** Fetch the skin early so the Skin section opens with it ready. */
 function usePrefetchSkin() {
   const client = useQueryClient();
@@ -77,6 +84,7 @@ function usePrefetchSkin() {
 function LauncherHome({ section }: { section: LauncherSection }) {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const sections = useSections();
   const open = (profileId: string) => navigate(instancePath(profileId));
 
   return (
@@ -96,9 +104,10 @@ function LauncherHome({ section }: { section: LauncherSection }) {
           className="launcher-sections"
           value={section}
           onChange={(next) => navigate(sectionPath(next))}
-          options={LAUNCHER_SECTIONS.map((item) => ({ id: item.id, label: t(item.labelKey), icon: item.icon }))}
+          options={sections.map((item) => ({ id: item.id, label: t(item.labelKey), icon: item.icon }))}
         />
       </header>
+      {sections.some((item) => item.id === section) ? null : <Navigate to="/launcher" replace />}
       {section === "library" ? <Library onOpen={(profile) => open(profile.id)} /> : null}
       {section === "discover" ? <Browse modpacks onCreated={(profile) => open(profile.id)} /> : null}
       {section === "screenshots" ? <Screenshots /> : null}

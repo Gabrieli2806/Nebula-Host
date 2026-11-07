@@ -4,7 +4,11 @@ export interface LauncherProfile {
   id: string; name: string; game_version: string; loader: Loader; memory_mb: number; loader_version?: string | null; icon?: string | null;
 }
 export type CreateProfile = Omit<LauncherProfile, "id" | "loader_version" | "icon">;
-export interface LauncherCapabilities { platform: string; can_launch: boolean }
+export interface LauncherCapabilities {
+  platform: string; can_launch: boolean;
+  /** `play_store`: the Google Play build (no loaders, mods, modpacks, shaders or hosting here). */
+  flavor: "full" | "play_store"; loaders: Loader[]; content_kinds: ContentKind[];
+}
 export interface ClientStatus { phase: string; stage: string; completed: number; total: number; error: import("@/lib/ipc").AppError | null; exit_code: number | null }
 export interface GameVersion { id: string; type: string; client_supported: boolean }
 export interface LauncherAccount { id: string; name: string }

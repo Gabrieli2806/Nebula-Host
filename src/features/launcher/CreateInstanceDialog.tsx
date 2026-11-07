@@ -5,6 +5,7 @@ import { launcherApi, toAppError } from "@/lib/ipc";
 import { Button, Dialog, ErrorNotice, LoaderIcon, Select, TextInput } from "@/ui";
 import type { Loader, LauncherProfile } from "./types";
 import { LOADERS, loaderInfo } from "./loaderOptions";
+import { useDeviceBuild } from "@/lib/deviceBuild";
 
 export function CreateInstanceDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (profile: LauncherProfile) => void }) {
   const { t } = useI18n();
@@ -14,6 +15,7 @@ export function CreateInstanceDialog({ onClose, onCreated }: { onClose: () => vo
   const [version, setVersion] = useState("");
   const [loader, setLoader] = useState<Loader>("vanilla");
   const [memory, setMemory] = useState(2048);
+  const build = useDeviceBuild();
   const versions = useQuery({ queryKey: ["launcher", "versions"], queryFn: launcherApi.versions, staleTime: 300_000 });
   const caps = useQuery({ queryKey: ["launcher", "capabilities"], queryFn: launcherApi.capabilities });
   const available = versions.data?.filter(v => caps.data?.can_launch ? v.client_supported : v.type === "release") ?? [];
@@ -39,7 +41,7 @@ export function CreateInstanceDialog({ onClose, onCreated }: { onClose: () => vo
       </section>
       <fieldset className="launcher-create-section" disabled={create.isPending}>
         <legend><span className="launcher-step">2</span>{t("launcher.chooseLoader")}</legend>
-        <div className="launcher-loader-options">{LOADERS.map(item => <label key={item.id} className="launcher-loader-option" data-selected={loader === item.id ? "" : undefined}>
+        <div className="launcher-loader-options">{LOADERS.filter(item => build.loaders.includes(item.id)).map(item => <label key={item.id} className="launcher-loader-option" data-selected={loader === item.id ? "" : undefined}>
           <input type="radio" name={`${formId}-loader`} value={item.id} checked={loader === item.id} disabled={item.id === "quilt"} onChange={() => setLoader(item.id)} />
           <LoaderIcon glyph={item.glyph} size={25} /><strong>{item.name}</strong><small>{t(item.id === "vanilla" ? "launcher.originalGame" : item.id === "quilt" ? "launcher.configOnly" : "launcher.modLoader")}</small>
         </label>)}</div>

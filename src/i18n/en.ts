@@ -10,6 +10,7 @@
 export const en = {
   launcher: {
     yourInstances: "Your instances",
+    storeBuildNote: "This version plays the official game with resource packs. It does not install mods or mod loaders.",
     instance: "Instance",
     instancesShort: "Instances",
     tabAdd: "Add",
@@ -321,6 +322,7 @@ export const en = {
     host: "Host on this phone",
     hostHint: "Run a small server here, for a few friends on the same Wi-Fi.",
     note: "You can do both later: switch machines from the name at the top.",
+    noteConnectOnly: "You can add more machines later from the name at the top.",
     hostWarning: "Hosting on a phone works for small games: it uses battery and memory, warms the phone, and players need the same Wi-Fi. A computer is the better host for anything bigger.",
     emptyTitle: "Nothing here yet",
     emptyHint: "Connect to the computer that hosts your servers, or host one on this phone.",
@@ -1319,6 +1321,11 @@ export const en = {
     backup_not_found: { title: "Backup not found", cause: "That restore point is gone.", action: "Refresh the backup list." },
     upstream_unavailable: { title: "Cannot reach the service", cause: "The download service did not answer.", action: "Check the connection and try again in a moment." },
     upstream_rejected: { title: "Service refused the request", cause: "The service answered with an error.", action: "Wait a minute and try again." },
+    not_in_this_build: { title: "Not in this version", cause: "This version of the app leaves that out.", action: "Use the full version of Nebula Host, or do it on your computer." },
+    not_in_this_build_loader: { title: "Mod loaders are not available here", cause: "This version of the app plays the official game only, without Fabric, Forge or NeoForge.", action: "Choose Vanilla, or use the full version of Nebula Host." },
+    not_in_this_build_content: { title: "Not available in this version", cause: "This version of the app adds resource packs only: no mods, modpacks or shaders.", action: "Add a resource pack, or use the full version of Nebula Host." },
+    not_in_this_build_code_in_archive: { title: "This file contains code", cause: "{file} carries program files, which this version of the app does not install.", action: "Choose a plain resource pack." },
+    not_in_this_build_hosting: { title: "Servers are not hosted on this phone", cause: "This version of the app manages servers on your computers, not on the phone itself.", action: "Connect to the computer that hosts your servers." },
   },
 
   game: {

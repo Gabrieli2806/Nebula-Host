@@ -17,6 +17,7 @@ import { InstanceTile } from "./InstanceSettings";
 import { PlayControls, StateChip } from "./InstancePage";
 import { useLauncherCapabilities, useLauncherStatus } from "./play";
 import { LOADERS, loaderInfo } from "./loaderOptions";
+import { useDeviceBuild } from "@/lib/deviceBuild";
 import type { LauncherProfile, Loader } from "./types";
 
 export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void }) {
@@ -36,6 +37,7 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
   const client = useQueryClient();
   const { primary } = usePrimaryAccount();
   const { open, menu } = useContextMenu();
+  const build = useDeviceBuild();
   const action = useMutation({
     mutationFn: async ({ profile, what }: { profile: LauncherProfile; what: "play" | "stop" | "folder" | "shortcut" }) => {
       if (what === "play") return launcherApi.start(profile.id, primary ? "account" : "demo", primary?.id);
@@ -71,10 +73,12 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
             <span className="servers-search-icon" aria-hidden="true"><Icon name="search" size={14} /></span>
             <input type="search" className="field" aria-label={t("launcher.searchInstances")} placeholder={t("launcher.searchInstances")} value={search} onChange={(e) => setSearch(e.target.value)} />
           </label>
-          <Select className="launcher-filter" aria-label={t("launcher.filterLoader")} value={loader} onChange={(e) => setLoader(e.target.value as Loader | "all")}>
+{build.loaders.length > 1 ? (
+                      <Select className="launcher-filter" aria-label={t("launcher.filterLoader")} value={loader} onChange={(e) => setLoader(e.target.value as Loader | "all")}>
             <option value="all">{t("launcher.allLoaders")}</option>
-            {LOADERS.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            {LOADERS.filter((item) => build.loaders.includes(item.id)).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </Select>
+          ) : null}
           <span className="launcher-toolbar-spacer" />
           <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>{t("launcher.newInstance")}</Button>
         </div>
@@ -102,7 +106,7 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
         <section className="servers-grid launcher-instance-grid" aria-label={t("launcher.yourInstances")}>
           {visible.map((profile) => {
             const phase = statuses.data?.[profile.id]?.phase;
-            const canLaunch = !!caps.data?.can_launch && profile.loader !== "quilt";
+            const canLaunch = !!caps.data?.can_launch && profile.loader !== "quilt" && build.loaders.includes(profile.loader);
             return (
               <article key={profile.id} {...manual.dragProps(arrangedIds, profile.id)} className="panel card-interactive server-card launcher-instance" data-phase={phase} onContextMenu={(event) => open(event, menuFor(profile))}>
                 <header className="flex items-start gap-3.5">
@@ -134,6 +138,7 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
       ) : null}
 
       {caps.data?.platform === "android" ? <p className="launcher-footnote">{t("launcher.androidRuntime")}</p> : null}
+      {build.playStore ? <p className="launcher-footnote">{t("launcher.storeBuildNote")}</p> : null}
       {menu}
       {action.isSuccess && action.variables?.what === "shortcut" ? <p role="status" className="launcher-notice">{t(caps.data?.platform === "android" ? "launcher.shortcutRequested" : "launcher.desktopShortcutDone")}</p> : null}
       {creating ? <CreateInstanceDialog onClose={() => setCreating(false)} onCreated={(profile) => { setCreating(false); onOpen(profile); }} /> : null}

@@ -60,7 +60,7 @@ export function InstancePage({ profile, panel }: { profile: LauncherProfile; pan
           {!play.canLaunch ? (
             <p className="launcher-notice">
               <Icon name="info" size={14} />
-              {t(profile.loader === "quilt" ? "launcher.loaderPending" : "launcher.androidRuntime")}
+              {t(profile.loader === "quilt" ? "launcher.loaderPending" : play.loaderNotInBuild ? "launcher.storeBuildNote" : "launcher.androidRuntime")}
             </p>
           ) : null}
           {play.canLaunch ? <Progress profile={profile} /> : null}

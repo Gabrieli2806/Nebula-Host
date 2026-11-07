@@ -16,6 +16,7 @@ import { AddonIcon } from "@/features/server/panels/addons/AddonIcon";
 import { type AddonView, PAGE_SIZES, compactCount, relativeDate, useAddonView, usePageSize } from "@/features/server/panels/addons/util";
 import type { ContentKind, InstalledContent, LauncherProfile, LauncherProject } from "./types";
 import { loaderInfo } from "./loaderOptions";
+import { useDeviceBuild } from "@/lib/deviceBuild";
 
 const SORTS = ["relevance", "downloads", "follows", "updated", "newest"] as const;
 type Sort = (typeof SORTS)[number];
@@ -38,7 +39,10 @@ export function Browse({
   const client = useQueryClient();
   const [view, setView] = useAddonView();
   const [PAGE, setPage] = usePageSize();
-  const [kind, setKind] = useState<Kind>(initialKind);
+  const build = useDeviceBuild();
+  const [chosenKind, setKind] = useState<Kind>(initialKind);
+  // The Google Play build adds resource packs only.
+  const kind: Kind = build.contentKinds.includes(chosenKind) ? chosenKind : "resourcepack";
   const searchKind: ContentKind = modpacks ? "modpack" : kind;
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -113,7 +117,7 @@ export function Browse({
             label={t("launcher.contentType")}
             value={kind}
             onChange={(next) => { setKind(next); setOffset(0); }}
-            options={(["mod", "resourcepack", "shader"] as const).map((id) => ({ id, label: t(`launcher.${id}`) }))}
+            options={(["mod", "resourcepack", "shader"] as const).filter((id) => build.contentKinds.includes(id)).map((id) => ({ id, label: t(`launcher.${id}`) }))}
           />
           {profile ? <span className="launcher-muted">{t("launcher.fitsInstance", { version: profile.game_version, loader: loaderInfo(profile.loader).name })}</span> : null}
         </div>

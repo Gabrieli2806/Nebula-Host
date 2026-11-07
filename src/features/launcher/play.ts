@@ -49,7 +49,9 @@ export function usePlayState(profile: LauncherProfile) {
     canReturn: state?.phase === "running" && caps.data?.platform === "android",
     /** One download at a time: another instance installing blocks Play. */
     anyInstalling: Object.values(states.data ?? {}).some((s) => s.phase === "installing"),
-    canLaunch: !!caps.data?.can_launch && profile.loader !== "quilt",
+    canLaunch: !!caps.data?.can_launch && profile.loader !== "quilt" && (caps.data.loaders?.includes(profile.loader) ?? true),
+    /** The Google Play build does not run mod loaders (src-tauri/src/flavor.rs). */
+    loaderNotInBuild: caps.data?.loaders ? !caps.data.loaders.includes(profile.loader) && profile.loader !== "quilt" : false,
     platform: caps.data?.platform,
     withAccount: !!primary,
     start,
