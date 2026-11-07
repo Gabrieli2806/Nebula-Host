@@ -13,6 +13,12 @@ val tauriProperties = Properties().apply {
     }
 }
 
+// One fixed key for every APK the CI publishes, so a release installs over
+// the previous one. Without NEBULA_KEYSTORE the build signs with this
+// machine's debug key: fine locally, but a fresh CI runner makes a new one
+// each time and Android then refuses the update. See .github/workflows/android.yml.
+val stableKeystore = System.getenv("NEBULA_KEYSTORE")?.let { file(it) }?.takeIf { it.isFile }
+
 android {
     compileSdk = 36
     // Pinned so CI installs the same NDK the launcher library is built with.
@@ -26,8 +32,19 @@ android {
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
+    signingConfigs {
+        if (stableKeystore != null) {
+            create("stable") {
+                storeFile = stableKeystore
+                storePassword = System.getenv("NEBULA_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("NEBULA_KEY_ALIAS")
+                keyPassword = System.getenv("NEBULA_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         getByName("debug") {
+            if (stableKeystore != null) signingConfig = signingConfigs.getByName("stable")
             manifestPlaceholders["usesCleartextTraffic"] = "true"
             isDebuggable = true
             isJniDebuggable = true
@@ -39,6 +56,7 @@ android {
             }
         }
         getByName("release") {
+            if (stableKeystore != null) signingConfig = signingConfigs.getByName("stable")
             isMinifyEnabled = true
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }
