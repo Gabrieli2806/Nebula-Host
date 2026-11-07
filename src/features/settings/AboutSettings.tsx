@@ -11,6 +11,7 @@ import { useI18n } from "@/i18n";
 import { activeRemote } from "@/lib/connection";
 import { openExternal } from "@/lib/external";
 import { api } from "@/lib/ipc";
+import { IS_MOBILE } from "@/lib/web";
 import { Button, Dialog, ErrorNotice, Icon, Mark, type IconName } from "@/ui";
 
 import { openTour } from "@/features/onboarding/tourEvents";
@@ -196,7 +197,7 @@ function LicencesDialog({ onClose }: { onClose: () => void }) {
       footer={<Button onClick={onClose}>{t("dialog.close")}</Button>}
     >
       <div className="flex flex-col gap-4">
-        {LICENCE_GROUPS.map((group) => (
+        {LICENCE_GROUPS.filter((group) => IS_MOBILE || !group.mobileOnly).map((group) => (
           <section key={group.key} className="about-licence-group">
             <h4 className="about-licence-heading">{t(`about.licencesGroup.${group.key}`)}</h4>
             <ul className="about-licence-list">

@@ -448,6 +448,7 @@ export const en = {
       app: "Interface",
       fonts: "Fonts",
       backend: "Engine",
+      android: "Android game engine",
     },
     licencesNote: "Each component keeps its own copyright and licence; follow its link for the full text.",
   },

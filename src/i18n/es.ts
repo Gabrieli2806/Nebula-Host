@@ -448,6 +448,7 @@ export const es: Copy = {
       app: "Interfaz",
       fonts: "Tipografías",
       backend: "Motor",
+      android: "Motor del juego en Android",
     },
     licencesNote: "Cada componente conserva sus derechos de autor y su licencia; abre su enlace para leer el texto completo.",
   },
