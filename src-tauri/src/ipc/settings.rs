@@ -17,13 +17,14 @@ pub async fn settings_get() -> AppResult<AppSettings> {
 #[tauri::command]
 pub async fn settings_set(mut settings: AppSettings) -> AppResult<AppSettings> {
     // The MCP endpoint is configured through its own commands (it has a live
-    // server and a secret behind it); a general settings save must never
-    // switch it off or drop its token just because the UI did not send them.
+    // server behind it); a general settings save must never switch it off
+    // just because the UI did not send them.
     let current = store::load()?;
     settings.mcp_enabled = current.mcp_enabled;
     settings.mcp_port = current.mcp_port;
-    settings.mcp_token = current.mcp_token;
+    settings.mcp_remote = current.mcp_remote;
     settings.mcp_read_only = current.mcp_read_only;
+    settings.mcp_launcher_play = current.mcp_launcher_play;
     settings.remote_enabled = current.remote_enabled;
     settings.remote_port = current.remote_port;
     store::save(&settings)?;

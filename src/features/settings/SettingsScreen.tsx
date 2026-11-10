@@ -22,7 +22,7 @@ import type { AppSettings, StorageLocation } from "@/types/api";
 import { isRemote } from "@/lib/connection";
 import { AboutSettings, DiagnosticsSettings } from "./AboutSettings";
 import { JavaSlots } from "./JavaSlots";
-import { McpSettings } from "./McpSettings";
+import { McpSettings, RemoteAgentsSetting } from "./McpSettings";
 import { RemoteSettings, UpnpTest } from "./RemoteSettings";
 import { DESKTOP_FEATURES, IS_WEB } from "@/lib/web";
 import { setLauncherEnabled, useLauncherEnabled } from "@/lib/launcherPref";
@@ -291,8 +291,11 @@ export function SettingsScreen() {
         )}
       </Panel>
 
-      <Panel title={t("settings.startupNetwork")}>
-        {!IS_WEB && !remote ? (
+      {/* Three short groups instead of one long one: how the app starts, who
+          can reach it, and what holds for every server. */}
+      {IS_WEB ? null : (
+      <Panel title={t("settings.startupTitle")}>
+        {!remote ? (
           <SwitchRow
             label={t("settings.launcherEnabled")}
             help={t("settings.launcherEnabledHelp")}
@@ -321,6 +324,10 @@ export function SettingsScreen() {
         />
           </>
         ) : null}
+      </Panel>
+      )}
+
+      <Panel title={t("settings.networkTitle")}>
         <SwitchRow
           label={t("settings.allowUpnp")}
           help={t("settings.allowUpnpHelp")}
@@ -342,9 +349,11 @@ export function SettingsScreen() {
           saved={saved === "listenOnLan"}
           error={failure("listenOnLan")}
         />
-        {/* Only from this machine's own window: the node refuses it from afar. */}
-        {agreementUrl && !remote && !IS_WEB ? (
-          <>
+      </Panel>
+
+      {/* Only from this machine's own window: the node refuses it from afar. */}
+      {agreementUrl && !remote && !IS_WEB ? (
+        <Panel title={t("settings.serversTitle")}>
             <SwitchRow
               label={t("settings.acceptAgreements")}
               help={t("settings.acceptAgreementsHelp")}
@@ -359,13 +368,15 @@ export function SettingsScreen() {
                 <Icon name="external" size={12} />
               </Button>
             </div>
-          </>
-        ) : null}
-      </Panel>
+        </Panel>
+      ) : null}
 
       {remote ? null : <RemoteSettings />}
 
       {remote || !DESKTOP_FEATURES ? null : <McpSettings />}
+      {/* Another machine's one agent setting: whether agents on paired
+          machines may act there. The web panel is not the place for it. */}
+      {remote && !IS_WEB ? <RemoteAgentsSetting settings={settings} /> : null}
 
       <JavaSlots paths={settings.javaPaths} onChange={(javaPaths) => update("java", { javaPaths })} />
 

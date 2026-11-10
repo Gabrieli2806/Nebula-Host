@@ -25,6 +25,7 @@ import type { InstanceView } from "@/types/api";
 import { TransferNote } from "@/features/server/transfer/TransferBanner";
 import { TransferProgressStrip } from "@/features/server/transfer/TransferStrip";
 import { movedTo } from "@/features/server/transfer/machines";
+import { SetupStrip, setupOf, useSetupLabel } from "./SetupStatus";
 import {
   Button,
   DistributionTag,
@@ -51,6 +52,9 @@ export function ServerCard({ instance, onOpen, drag }: { instance: InstanceView;
   const distribution = useDistribution(instance);
 
   const hint = statusHint(instance.status);
+  // Still being installed (or the install failed): the card says so.
+  const setup = setupOf(instance);
+  const setupLabel = useSetupLabel(setup);
   // Stop stays available while a server is starting (as in the rail), so a
   // stuck startup can be put out from the list.
   const busy = actions.start.isPending || actions.stop.isPending || instance.status === "stopping";
@@ -98,7 +102,15 @@ export function ServerCard({ instance, onOpen, drag }: { instance: InstanceView;
                 {instance.name}
               </button>
             </h3>
-            <StatusChip status={instance.status} className="flex-none" />
+            {setup ? (
+              <StatusChip
+                status={setup.phase === "failed" ? "crashed" : "starting"}
+                label={setupLabel ?? undefined}
+                className="flex-none"
+              />
+            ) : (
+              <StatusChip status={instance.status} className="flex-none" />
+            )}
           </div>
 
           {/* One line, always: every card in a row keeps the same header
@@ -137,7 +149,8 @@ export function ServerCard({ instance, onOpen, drag }: { instance: InstanceView;
         <TransferProgressStrip instanceId={instance.id} compact />
       </div>
 
-      {hint && !movedNode ? <p className="server-card-hint">{t(hint)}</p> : null}
+      {setup ? <SetupStrip setup={setup} /> : null}
+      {hint && !movedNode && !setup ? <p className="server-card-hint">{t(hint)}</p> : null}
 
       {/* While a process exists: what it is using, CPU as a share of the
           machine and memory against what it was given. */}
@@ -199,7 +212,7 @@ export function ServerCard({ instance, onOpen, drag }: { instance: InstanceView;
             <Button
               size="sm"
               icon="play"
-              disabled={busy || movedNode !== null}
+              disabled={busy || movedNode !== null || setup !== null}
               title={movedNode ? t("transfer.startDisabled", { node: movedNode }) : undefined}
               onClick={start}
               aria-label={`${instance.status === "sleeping" ? t("actions.wake") : t("actions.start")}: ${instance.name}`}

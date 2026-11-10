@@ -36,13 +36,15 @@ pub struct AppSettings {
     /// Answer requests from other machines on the LAN. Loopback-only until the
     /// user turns this on knowingly; see the security notes in the README.
     pub listen_on_lan: bool,
-    /// Serve the local MCP endpoint so AI assistants can manage servers.
-    /// Off until the user turns it on; loopback-only and token-protected.
+    /// Serve the local MCP endpoint so AI agents can manage servers.
+    /// Off until the user turns it on; loopback-only, and closed to web
+    /// pages (see `crate::mcp`).
     pub mcp_enabled: bool,
     /// Loopback port for the MCP endpoint.
     pub mcp_port: u16,
-    /// Bearer token MCP clients must send. Generated on first enable.
-    pub mcp_token: Option<String>,
+    /// Let an agent connected to a paired machine act on this one too. Off
+    /// until the user turns it on here, on this machine.
+    pub mcp_remote: bool,
     /// Let MCP clients read, but refuse every tool that changes something.
     pub mcp_read_only: bool,
     /// Let MCP clients start the game signed in with the user's account. Off
@@ -78,7 +80,7 @@ impl Default for AppSettings {
             listen_on_lan: false,
             mcp_enabled: false,
             mcp_port: 47391,
-            mcp_token: None,
+            mcp_remote: false,
             mcp_read_only: false,
             mcp_launcher_play: false,
             accept_agreements: false,
@@ -148,6 +150,8 @@ mod tests {
         assert!(!settings.listen_on_lan, "the LAN must be opt-in, never a default");
         assert!(!settings.allow_upnp, "port forwarding must be opt-in");
         assert!(!settings.accept_agreements, "the EULA is the user's to accept");
+        assert!(!settings.mcp_enabled, "agents are let in by the user, never by default");
+        assert!(!settings.mcp_remote, "nor are agents from other machines");
     }
 
     #[test]

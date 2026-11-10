@@ -142,9 +142,15 @@ function applyEvent(client: QueryClient, event: AppEvent) {
       });
       break;
     }
-    case "install":
-      // Install progress is consumed by whoever is watching that install; see
-      // `useInstallProgress`.
+    case "install": {
+      // The phases are consumed by whoever watches that install (see
+      // `useInstallProgress`); the server's card shows where it is.
+      const setup = event.progress.phase === "ready" ? null : event.progress;
+      patchInstance(client, event.instanceId, (instance) => ({ ...instance, setup }));
+      break;
+    }
+    case "instances":
+      void client.invalidateQueries({ queryKey: keys.instances });
       break;
     case "import":
       // Consumed by `useImportFiles`.

@@ -16,6 +16,9 @@
 //!   transfer (`transfer_export`). Bearer token required.
 //! - `GET  /local/pairing-code` — issue a code, loopback callers only (how a
 //!   headless node shows a code: `nebula-node pair`).
+//! - `POST /agent`  — `{tool, arguments}`: one MCP tool call from an agent
+//!   connected to a paired machine. Bearer token required, and refused unless
+//!   this machine's owner turned on `AppSettings::mcp_remote`.
 //!
 //! - Everything else — the web panel: the same interface the desktop app
 //!   shows, for a browser on the LAN, when `AppSettings::web_panel` is on
@@ -131,6 +134,8 @@ struct Info {
     node_id: String,
     node_name: String,
     platform: &'static str,
+    /// Whether agents connected to a paired machine may act here.
+    agents: bool,
 }
 
 async fn info(AxumState(ctx): AxumState<Ctx>) -> Json<Info> {
@@ -142,6 +147,7 @@ async fn info(AxumState(ctx): AxumState<Ctx>) -> Json<Info> {
         node_id: node.id,
         node_name: node.name,
         platform: std::env::consts::OS,
+        agents: crate::store::settings::load().map(|s| s.mcp_remote).unwrap_or(false),
     })
 }
 
@@ -211,6 +217,53 @@ struct RpcRequest {
     command: String,
     #[serde(default)]
     args: Value,
+}
+
+#[derive(Deserialize)]
+struct AgentRequest {
+    tool: String,
+    #[serde(default)]
+    arguments: Value,
+}
+
+/// One MCP tool call from an agent connected to a paired machine. It runs
+/// here with this machine's rules: its own read-only switch, its own EULA
+/// setting, its own launcher permission.
+async fn agent(AxumState(ctx): AxumState<Ctx>, headers: HeaderMap, Json(request): Json<AgentRequest>) -> Response {
+    let device_id = match authenticate(&headers) {
+        Ok(device_id) => device_id,
+        Err(response) => return response,
+    };
+    let config = match crate::store::settings::load() {
+        Ok(config) => config,
+        Err(error) => return error_response(StatusCode::INTERNAL_SERVER_ERROR, error),
+    };
+    if !config.mcp_remote {
+        return error_response(
+            StatusCode::FORBIDDEN,
+            AppError::new(ErrorCode::InvalidInput).with("reason", "agents_not_allowed"),
+        );
+    }
+
+    let mut args = if request.arguments.is_object() { request.arguments } else { json!({}) };
+    if let Some(object) = args.as_object_mut() {
+        // The call stops here: it is never passed on to a third machine.
+        object.remove("machine");
+        // And a file comes with the call, never from this machine's disk.
+        if matches!(request.tool.as_str(), "install_local_addon" | "launcher_install_local_file") {
+            object.remove("path");
+        }
+    }
+
+    let result = crate::mcp::tools::call(&ctx.service, config.mcp_read_only, &request.tool, &args).await;
+    let (text, is_error) = match result {
+        Ok(text) => (text, false),
+        Err(error) => (crate::mcp::tools::describe_error(&error), true),
+    };
+    let node = ctx.service.node().await;
+    let from = node.paired_devices.iter().find(|d| d.id == device_id).map(|d| d.name.as_str()).unwrap_or("a paired machine");
+    crate::mcp::activity::record(&request.tool, &args, Some(from), !is_error);
+    Json(json!({ "text": text, "isError": is_error })).into_response()
 }
 
 async fn rpc(AxumState(ctx): AxumState<Ctx>, headers: HeaderMap, Json(request): Json<RpcRequest>) -> Response {
@@ -390,6 +443,9 @@ fn router(ctx: Ctx) -> Router {
         .route("/info", get(info))
         .route("/pair", post(pair))
         .route("/rpc", post(rpc))
+        // A built jar travels inside the call, so this one takes more than
+        // the 2 MB a command does.
+        .route("/agent", post(agent).layer(axum::extract::DefaultBodyLimit::max(192 * 1024 * 1024)))
         .route("/events", get(events))
         .route("/upload", post(upload).layer(axum::extract::DefaultBodyLimit::disable()))
         .route("/download/{export_id}", get(download))

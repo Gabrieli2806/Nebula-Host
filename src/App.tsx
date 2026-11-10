@@ -9,6 +9,7 @@ import { AgreementGate } from "@/features/server/agreement/Agreement";
 import { ServerScreen } from "@/features/server/ServerScreen";
 import { ServersScreen } from "@/features/servers/ServersScreen";
 import { SettingsScreen } from "@/features/settings/SettingsScreen";
+import { useMachinesSync } from "@/features/settings/McpSettings";
 import { MachinesScreen } from "@/features/machines/MachinesScreen";
 import { LauncherScreen } from "@/features/launcher/LauncherScreen";
 import { LauncherShortcutListener } from "@/features/launcher/LauncherShortcutListener";
@@ -50,6 +51,8 @@ export function App() {
 }
 
 function Shell() {
+  // Agents connected to this PC reach the machines paired in this window.
+  useMachinesSync();
   return (
     <>
         <AgreementGate />

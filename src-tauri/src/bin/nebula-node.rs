@@ -7,6 +7,10 @@
 //! nebula-node pair    [--port 47400]                           show a pairing code
 //! nebula-node web     on|off                                   web panel for browsers on the LAN
 //! ```
+//!
+//! `--data-dir DIR` keeps the node's settings, servers and backups under DIR
+//! instead of the user's folders: a second node on one machine, or a
+//! throwaway one for a test.
 
 use std::sync::Arc;
 
@@ -21,18 +25,20 @@ struct Args {
     rest: Vec<String>,
     port: u16,
     name: Option<String>,
+    data_dir: Option<std::path::PathBuf>,
 }
 
 fn parse_args() -> Args {
     let mut args = std::env::args().skip(1);
-    let mut parsed = Args { command: "serve".into(), rest: Vec::new(), port: remote::DEFAULT_PORT, name: None };
+    let mut parsed = Args { command: "serve".into(), rest: Vec::new(), port: remote::DEFAULT_PORT, name: None, data_dir: None };
     let mut seen_command = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--port" => parsed.port = args.next().and_then(|p| p.parse().ok()).unwrap_or(parsed.port),
             "--name" => parsed.name = args.next(),
+            "--data-dir" => parsed.data_dir = args.next().map(std::path::PathBuf::from),
             "-h" | "--help" => {
-                println!("nebula-node [serve|pair|web on|web off] [--port 47400] [--name NAME]");
+                println!("nebula-node [serve|pair|web on|web off] [--port 47400] [--name NAME] [--data-dir DIR]");
                 std::process::exit(0);
             }
             other if !other.starts_with('-') && !seen_command => {
@@ -52,6 +58,14 @@ fn parse_args() -> Args {
 #[tokio::main]
 async fn main() {
     let args = parse_args();
+    // Before anything reads or writes a file.
+    if let Some(dir) = &args.data_dir {
+        if let Err(error) = std::fs::create_dir_all(dir) {
+            eprintln!("error: cannot use {}: {error}", dir.display());
+            std::process::exit(1);
+        }
+        store::paths::set_base(dir.clone());
+    }
     let result = match args.command.as_str() {
         "serve" => serve(args).await,
         "pair" => pair(args.port).await,

@@ -100,6 +100,9 @@ export interface InstanceView extends Instance {
   public_address?: string | null;
   /** The game's server-list icon as a `data:` URL, when the server has one. */
   icon_url?: string | null;
+  /** Where the install is while the server is being set up, or how it
+   *  failed. Absent once it is ready. */
+  setup?: InstallProgress | null;
 }
 
 export type ConsoleLevel = "info" | "warn" | "error" | "system";
@@ -574,6 +577,9 @@ export interface SharedLog {
 }
 
 export interface AppSettings {
+  /** Agents connected to a paired machine may act on this one. Changed
+   *  through `api.mcp`, never by a general settings save. */
+  mcpRemote?: boolean;
   language: string;
   /** Accent id the UI themes itself with: `cyan`, `amber`, `emerald`, … */
   accent: string;
@@ -614,7 +620,10 @@ export type AppEvent =
   | { type: "javaDownload"; major: number; progress: JavaDownloadProgress }
   | { type: "pendingAddons"; instanceId: string; pending: PendingAddonChange[] }
   | { type: "transfer"; instanceId: string; progress: TransferProgress }
-  | { type: "worldImport"; instanceId: string; progress: WorldImportProgress };
+  | { type: "worldImport"; instanceId: string; progress: WorldImportProgress }
+  /** A server was created, removed or finished installing (by an agent,
+   *  another window, a paired device): read the list again. */
+  | { type: "instances" };
 
 // -- transfers between machines ----------------------------------------------
 
@@ -676,17 +685,36 @@ export interface TransferOutcome {
   commitWarning?: string | null;
 }
 
-// -- AI assistants (MCP) ------------------------------------------------------
+// -- AI agents (MCP) ----------------------------------------------------------
+
+/** One thing an agent did, as the app shows it. */
+export interface McpActivity {
+  at: string;
+  /** The tool, by its MCP name (`create_server`). */
+  tool: string;
+  /** The server or instance it acted on, as the agent named it. */
+  target?: string | null;
+  /** The paired machine it was sent to, or that sent it here. */
+  machine?: string | null;
+  ok: boolean;
+}
 
 export interface McpStatus {
   enabled: boolean;
   running: boolean;
   readOnly: boolean;
   launcherPlay: boolean;
+  /** Agents connected to a paired machine may act on this one. */
+  remote: boolean;
   port: number;
   url: string;
-  token?: string | null;
   error?: string | null;
+  /** Paired machines an agent connected here can reach, by name. */
+  machines: string[];
+  /** The agent that connected last, as it named itself. */
+  client?: string | null;
+  /** Newest first. */
+  activity: McpActivity[];
 }
 
 // -- remote access + UPnP -----------------------------------------------------

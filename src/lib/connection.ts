@@ -41,6 +41,18 @@ function write(key: string, value: unknown) {
   } catch {
     // Storage blocked: nothing persists, the session still works.
   }
+  if (key === NODES_KEY) for (const listener of nodesListeners) listener();
+}
+
+const nodesListeners = new Set<() => void>();
+
+/** Told when the list of paired machines changes (one paired, forgotten or
+ *  renamed), in this window. */
+export function subscribeNodes(listener: () => void): () => void {
+  nodesListeners.add(listener);
+  return () => {
+    nodesListeners.delete(listener);
+  };
 }
 
 /**

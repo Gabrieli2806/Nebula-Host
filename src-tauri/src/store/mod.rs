@@ -5,6 +5,7 @@ pub mod devices;
 pub mod instances;
 pub mod nodes;
 pub mod paths;
+pub mod peers;
 pub mod settings;
 
 pub use instances::InstanceStore;

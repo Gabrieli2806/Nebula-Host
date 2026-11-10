@@ -7,7 +7,6 @@
 //! Accounts never cross this boundary: tools see profile names only, and
 //! launching uses an account that is already signed in on this device.
 
-use std::path::Path;
 use std::sync::Arc;
 
 use serde_json::{json, Value};
@@ -422,12 +421,8 @@ pub async fn call(name: &str, args: &Value) -> AppResult<String> {
         }
         "launcher_install_local_file" => {
             let profile = resolve(args).await?;
-            let path = Path::new(str_arg(args, "path")?);
-            if !path.is_absolute() {
-                return Err(invalid("`path` must be absolute"));
-            }
-            let name = path.file_name().and_then(|n| n.to_str()).ok_or_else(|| invalid("`path` has no file name"))?.to_string();
-            let data = tokio::fs::read(path).await?;
+            // By path on this PC, or carried in the call from a paired one.
+            let (name, data) = super::tools::local_file(args).await?;
             let kind = kind_of(args)?;
             // Replace a previous build with the same name (and its disabled copy).
             for existing in [name.clone(), format!("{name}.disabled")] {

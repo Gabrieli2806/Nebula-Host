@@ -148,7 +148,7 @@ macro_rules! ipc_handlers {
             // mcp
             $crate::ipc::mcp::mcp_status,
             $crate::ipc::mcp::mcp_configure,
-            $crate::ipc::mcp::mcp_regenerate_token,
+            $crate::ipc::mcp::mcp_sync_machines,
             // remote + upnp
             $crate::ipc::remote::remote_status,
             $crate::ipc::remote::remote_configure,

@@ -30,6 +30,6 @@ export function phaseDot(phase?: string): "online" | "starting" | "crashed" | "o
   return phase === "running" ? "online" : phase === "installing" || phase === "stopping" ? "starting" : phase === "failed" ? "crashed" : "offline";
 }
 export function phaseLabel(phase?: string): string {
-  return phase === "running" ? "launcher.runningShort" : phase === "installing" ? "launcher.installingShort" : phase === "failed" ? "launcher.failedShort" : "status.offline";
+  return phase === "running" ? "launcher.runningShort" : phase === "installing" ? "launcher.installingShort" : phase === "failed" ? "launcher.failedShort" : "launcher.readyShort";
 }
 export const isBusy = (phase?: string) => phase === "running" || phase === "installing" || phase === "stopping";

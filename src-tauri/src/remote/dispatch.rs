@@ -329,7 +329,7 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             // MCP is configured on the machine itself, never from afar.
             next.mcp_enabled = current.mcp_enabled;
             next.mcp_port = current.mcp_port;
-            next.mcp_token = current.mcp_token;
+            next.mcp_remote = current.mcp_remote;
             next.mcp_read_only = current.mcp_read_only;
             next.mcp_launcher_play = current.mcp_launcher_play;
             // So is accepting the EULA for every server.
@@ -337,6 +337,15 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             next.remote_enabled = current.remote_enabled;
             next.remote_port = current.remote_port;
             next.web_panel = current.web_panel;
+            settings_store::save(&next)?;
+            ok(settings_store::load()?)
+        }
+        // The one agent setting a paired device may change: whether agents
+        // connected to paired machines act here. Its own command, so a
+        // settings save from an older app never switches it off unasked.
+        "mcp_remote_set" => {
+            let mut next = settings_store::load()?;
+            next.mcp_remote = arg(args, "enabled")?;
             settings_store::save(&next)?;
             ok(settings_store::load()?)
         }
@@ -370,7 +379,7 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
 
         // Commands that act on the local machine's files or desktop.
         "instance_open_folder" | "app_open_log_folder" | "transfer_run" | "transfer_cancel" | "files_import" | "files_import_check" | "mcp_status" | "mcp_configure"
-        | "mcp_regenerate_token" => {
+        | "mcp_sync_machines" => {
             Err(local_only(command))
         }
         other => Err(AppError::new(ErrorCode::InvalidInput)

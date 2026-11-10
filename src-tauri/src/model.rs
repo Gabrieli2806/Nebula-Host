@@ -403,6 +403,12 @@ pub struct InstanceView {
     /// The server's `server-icon.png` as a `data:` URL, when it has one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub icon_url: Option<String>,
+    /// Where the install is, while the server is being set up (or how it
+    /// failed). Absent once the server is ready. Whoever lists the servers
+    /// sees it, not only the window that asked for the install: a server an
+    /// agent creates shows as "getting ready" in the app.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub setup: Option<crate::game::registry::InstallProgress>,
 }
 
 /// One line of server output.

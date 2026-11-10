@@ -38,6 +38,32 @@ from the app. Forks must register and get their own application approved: never
 reuse another launcher's application ID, and never add a client secret.
 See [docs/LAUNCHER.md](docs/LAUNCHER.md).
 
+## AI agents (MCP)
+
+Settings › AI agents lets an agent (Claude Code, Cursor, any MCP client) manage
+the servers and the launcher: turn it on, press **Copy prompt** and paste the
+prompt in the agent's chat. The endpoint is `http://127.0.0.1:47391/mcp`
+(Streamable HTTP).
+
+- **This PC only, no token.** It listens on loopback and refuses web pages (it
+  checks `Host`, `Origin` and the content type). Any program run by this user
+  can use it, so there is nothing to paste or rotate.
+- **Paired machines.** Every tool takes `machine`: the call is handed to that
+  paired machine (`POST /agent` on its remote API) and runs there with that
+  machine's own rules. Its owner must turn on *Allow agents from paired
+  machines* there.
+- **Mod and plugin development.** `create_server` (with `settings` and
+  `start`), `install_local_addon` (the jar a build produced, with `restart`),
+  `wait_for_server`, `get_console`, `diagnose_server`, `send_command`,
+  `write_file`, `delete_server`; `launcher_*` for a test game instance.
+- **In the app.** A server an agent creates shows on its card as *Getting
+  ready* while it installs, and Settings › AI agents › View details lists what
+  agents did last.
+- **EULA.** With *Accept the Minecraft EULA for every server* on (Settings ›
+  Servers), servers an agent creates start without asking.
+
+Code: `src-tauri/src/mcp/` (tools in `tools.rs` and `launcher_tools.rs`).
+
 ## Layout
 
 | Path | What |

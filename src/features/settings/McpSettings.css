@@ -1,26 +1,34 @@
-/* AI assistants (MCP) card in App Settings. */
+/* AI agents (MCP): the card in App Settings and its details dialog. */
 
 @layer components {
-  .mcp-intro {
-    /* Lined up with the rows below it, which carry the panel's side padding themselves. */
+  /* == the details dialog ================================================ */
+
+  .mcp-details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  .mcp-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .mcp-section > h3 {
     margin: 0;
-    padding: 14px 20px 0;
-    max-width: 68ch;
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-    line-height: var(--leading-body, 1.5);
   }
 
   .mcp-status {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    margin: var(--space-3) 0;
     color: var(--text-muted);
     font-size: var(--text-sm);
   }
 
   .mcp-status-dot {
+    flex: none;
     width: 8px;
     height: 8px;
     border-radius: 999px;
@@ -31,25 +39,11 @@
     background: var(--status-online);
   }
 
-  .mcp-fields {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    margin: 0;
-  }
-
-  .mcp-field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .mcp-field dd {
+  .mcp-line {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
-    margin: 0;
   }
 
   .mcp-code {
@@ -68,25 +62,11 @@
   }
 
   .mcp-note {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
-    margin: var(--space-3) 0 0;
-    color: var(--text-faint);
-    font-size: var(--text-xs);
+    margin: 0;
+    max-width: 68ch;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
     line-height: 1.5;
-  }
-
-  .mcp-note svg {
-    flex: none;
-    margin-top: 2px;
-    color: var(--status-starting);
-  }
-
-  .mcp-setup {
-    margin-top: var(--space-5);
-    padding-top: var(--space-4);
-    border-top: 1px solid var(--line);
   }
 
   .mcp-setup-head {
@@ -95,12 +75,6 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-2);
-  }
-
-  .mcp-setup-help {
-    margin: var(--space-2) 0;
-    color: var(--text-muted);
-    font-size: var(--text-sm);
   }
 
   .mcp-snippet {
@@ -126,8 +100,107 @@
     box-sizing: border-box;
   }
 
+  /* == what agents may do: a switch per line ============================= */
+
+  .mcp-rows {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  /* The same rows straight inside a settings panel, which has its own edge. */
+  .mcp-rows-panel {
+    border: 0;
+    border-radius: 0;
+    padding: 0 6px;
+  }
+
+  .mcp-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-4);
+    padding: 12px 14px;
+    cursor: pointer;
+  }
+
+  .mcp-row + .mcp-row {
+    border-top: 1px solid var(--line);
+  }
+
+  .mcp-row-text {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .mcp-row-label {
+    color: var(--text);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-control, 600);
+  }
+
+  .mcp-row-help {
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    line-height: 1.5;
+    text-wrap: pretty;
+  }
+
+  /* == what agents did =================================================== */
+
+  .mcp-activity {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .mcp-activity-row {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    align-items: baseline;
+    column-gap: var(--space-3);
+    padding: 7px 12px;
+    font-size: var(--text-xs);
+  }
+
+  .mcp-activity-row + .mcp-activity-row {
+    border-top: 1px solid var(--line);
+  }
+
+  .mcp-activity-time {
+    color: var(--text-faint);
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mcp-activity-tool {
+    color: var(--text);
+    font-family: var(--font-mono);
+  }
+
+  .mcp-activity-target {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mcp-activity-failed {
+    color: var(--status-crashed);
+    font-weight: var(--weight-control, 600);
+  }
+
   .mcp-tools {
-    margin-top: var(--space-4);
     color: var(--text-muted);
     font-size: var(--text-sm);
   }
@@ -140,6 +213,7 @@
 
   .mcp-tools p {
     margin: var(--space-2) 0 0;
-    line-height: 1.6;
+    line-height: 1.55;
+    text-wrap: pretty;
   }
 }

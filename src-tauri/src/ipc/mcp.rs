@@ -1,10 +1,11 @@
-//! Settings for the MCP endpoint (AI assistants).
+//! Settings for the MCP endpoint (AI agents).
 
 use std::sync::Arc;
 
 use crate::error::AppResult;
 use crate::ipc::State;
-use crate::mcp::{self, McpServer, McpStatus};
+use crate::mcp::{McpServer, McpStatus};
+use crate::store::peers::{self, Peer};
 use crate::store::settings;
 
 type Mcp<'a> = tauri::State<'a, Arc<McpServer>>;
@@ -23,12 +24,16 @@ pub async fn mcp_configure(
     read_only: bool,
     port: Option<u16>,
     launcher_play: Option<bool>,
+    remote: Option<bool>,
 ) -> AppResult<McpStatus> {
     let mut config = settings::load()?;
     config.mcp_enabled = enabled;
     config.mcp_read_only = read_only;
     if let Some(play) = launcher_play {
         config.mcp_launcher_play = play;
+    }
+    if let Some(remote) = remote {
+        config.mcp_remote = remote;
     }
     if let Some(port) = port.filter(|p| *p >= 1024) {
         config.mcp_port = port;
@@ -37,11 +42,12 @@ pub async fn mcp_configure(
     mcp.reconcile(state.inner().clone()).await
 }
 
-/// Issue a new token; every connected assistant must be given the new one.
+/// The window's list of paired machines, handed over so an agent connected
+/// here can reach them. Called at startup and whenever the list changes.
 #[tauri::command]
-pub async fn mcp_regenerate_token(state: State<'_>, mcp: Mcp<'_>) -> AppResult<McpStatus> {
-    let mut config = settings::load()?;
-    config.mcp_token = Some(mcp::new_token());
-    settings::save(&config)?;
-    mcp.reconcile(state.inner().clone()).await
+pub async fn mcp_sync_machines(machines: Vec<Peer>) -> AppResult<()> {
+    if peers::load()? != machines {
+        peers::save(&machines)?;
+    }
+    Ok(())
 }

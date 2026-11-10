@@ -141,7 +141,7 @@ export function toAppError(value: unknown): AppError {
 const ALWAYS_LOCAL = new Set([
   "mcp_status",
   "mcp_configure",
-  "mcp_regenerate_token",
+  "mcp_sync_machines",
   "remote_status",
   "remote_configure",
 ]);
@@ -547,9 +547,15 @@ export const api = {
 
   mcp: {
     status: () => call<McpStatus>("mcp_status"),
-    configure: (enabled: boolean, readOnly: boolean, port?: number, launcherPlay?: boolean) =>
-      call<McpStatus>("mcp_configure", { enabled, readOnly, port, launcherPlay }),
-    regenerateToken: () => call<McpStatus>("mcp_regenerate_token"),
+    configure: (next: { enabled: boolean; readOnly: boolean; port?: number; launcherPlay?: boolean; remote?: boolean }) =>
+      call<McpStatus>("mcp_configure", next),
+    /** Hand this window's paired machines to the backend, so an agent
+     *  connected to this PC can reach them. */
+    syncMachines: (machines: { nodeId?: string; name: string; address: string; token: string }[]) =>
+      local<void>("mcp_sync_machines", { machines }),
+    /** On the machine being managed: let agents from paired machines act
+     *  there. (On this PC it is part of `configure`.) */
+    setRemote: (enabled: boolean) => call<AppSettings>("mcp_remote_set", { enabled }),
   },
 
   remote: {

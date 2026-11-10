@@ -88,6 +88,9 @@ pub enum AppEvent {
     },
     /// A world import moving along: `backup`, `unpack` (bytes), `place`,
     /// `done`. Throttled.
+    /// The list of servers changed (one was created, removed or finished
+    /// installing) by someone other than this window: read it again.
+    Instances,
     WorldImport {
         #[serde(rename = "instanceId")]
         instance_id: String,
@@ -142,6 +145,9 @@ pub struct InstanceService {
     /// time) without holding up the other servers.
     completion_fetch: Mutex<HashMap<String, Arc<Mutex<()>>>>,
     disk_usage: RwLock<HashMap<String, DiskUsage>>,
+    /// Per instance: where its install is, until it is ready. A failed
+    /// install stays here so the server's card can say so.
+    installs: Arc<std::sync::RwLock<HashMap<String, InstallProgress>>>,
     /// Per instance: Modrinth project id → installed file name.
     pub(crate) addon_index: RwLock<HashMap<String, HashMap<String, String>>>,
     pub(crate) events: broadcast::Sender<AppEvent>,
@@ -188,6 +194,7 @@ impl InstanceService {
             completions: RwLock::new(HashMap::new()),
             completion_fetch: Mutex::new(HashMap::new()),
             disk_usage: RwLock::new(HashMap::new()),
+            installs: Arc::new(std::sync::RwLock::new(HashMap::new())),
             addon_index: RwLock::new(HashMap::new()),
             events,
             pending_lock: Mutex::new(()),
@@ -281,7 +288,8 @@ impl InstanceService {
                 });
                 let icon_spec = self.registry.manifest(&instance.game).ok().and_then(|m| m.server_icon);
                 let icon_url = crate::service::icon::icon_data_url(&instance.path, icon_spec.as_ref());
-                InstanceView { instance, state, address, public_address, icon_url }
+                let setup = self.setup_of(&instance.id);
+                InstanceView { instance, state, address, public_address, icon_url, setup }
             })
             .collect())
     }
@@ -291,7 +299,13 @@ impl InstanceService {
         let state = self.state_of(instance_id).await;
         let icon_spec = self.registry.manifest(&instance.game).ok().and_then(|m| m.server_icon);
         let icon_url = crate::service::icon::icon_data_url(&instance.path, icon_spec.as_ref());
-        Ok(InstanceView { instance, state, address: None, public_address: None, icon_url })
+        let setup = self.setup_of(instance_id);
+        Ok(InstanceView { instance, state, address: None, public_address: None, icon_url, setup })
+    }
+
+    /// Where this server's install is, while it is being set up.
+    pub fn setup_of(&self, instance_id: &str) -> Option<InstallProgress> {
+        self.installs.read().ok().and_then(|installs| installs.get(instance_id).cloned())
     }
 
     pub async fn state_of(&self, instance_id: &str) -> InstanceState {
@@ -490,6 +504,7 @@ impl InstanceService {
         }
 
         self.store.put(instance.clone()).await?;
+        self.emit(AppEvent::Instances);
         Ok(instance)
     }
 
@@ -501,9 +516,18 @@ impl InstanceService {
 
         let id = instance_id.to_string();
         let events = self.events.clone();
+        let installs = self.installs.clone();
         let progress = ProgressSink::new(move |progress| {
+            if let Ok(mut installs) = installs.write() {
+                if matches!(progress, InstallProgress::Ready) {
+                    installs.remove(&id);
+                } else {
+                    installs.insert(id.clone(), progress.clone());
+                }
+            }
             let _ = events.send(AppEvent::Install { instance_id: id.clone(), progress });
         });
+        progress.report(InstallProgress::Resolving);
 
         let report = adapter
             .install(InstallContext {
@@ -541,6 +565,7 @@ impl InstanceService {
         }
 
         progress.report(InstallProgress::Ready);
+        self.emit(AppEvent::Instances);
         Ok(())
     }
 
@@ -921,7 +946,12 @@ impl InstanceService {
         self.drop_pending_addons(instance_id).await;
         self.states.write().await.remove(instance_id);
         self.consoles.write().await.remove(instance_id);
-        self.store.remove(instance_id, delete_files).await
+        if let Ok(mut installs) = self.installs.write() {
+            installs.remove(instance_id);
+        }
+        self.store.remove(instance_id, delete_files).await?;
+        self.emit(AppEvent::Instances);
+        Ok(())
     }
 
     // -- event plumbing ----------------------------------------------------

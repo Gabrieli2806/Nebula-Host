@@ -1,7 +1,8 @@
-//! A native MCP (Model Context Protocol) endpoint, so AI assistants — Claude
+//! A native MCP (Model Context Protocol) endpoint, so AI agents — Claude
 //! Code, Claude Desktop, Cursor, anything that speaks MCP — can manage this
-//! node's servers: list and inspect them, start and stop them, create new ones,
-//! read their console and diagnose crashes.
+//! machine's servers and launcher instances, and those of the machines paired
+//! with it: create and inspect them, start and stop them, install the jar a
+//! build just produced, read the console and diagnose crashes.
 //!
 //! Transport: MCP "Streamable HTTP", answered with plain JSON (no SSE stream —
 //! nothing here needs server-initiated messages). One `POST /mcp` per JSON-RPC
@@ -9,16 +10,22 @@
 //!
 //! Security posture, matching the rest of the app:
 //! - Off until the user turns it on (`AppSettings::mcp_enabled`).
-//! - Bound to loopback only: an assistant on this PC, never the LAN.
-//! - Every request needs `Authorization: Bearer <token>`; the token is random
-//!   and lives in settings.json.
-//! - Requests carrying a browser `Origin` other than localhost are refused, so
-//!   a web page cannot drive the endpoint (DNS-rebinding defence).
+//! - Bound to loopback only: an agent on this PC, never the LAN. There is no
+//!   token to paste: whoever can run a program as this user can already do
+//!   everything this endpoint does.
+//! - Closed to web pages, which is what loopback alone does not stop. A
+//!   request must name this machine as its `Host` (a DNS-rebinding page names
+//!   its own domain), carry no browser `Origin` other than localhost, and be
+//!   `application/json` (a page cannot send that across origins without a
+//!   preflight, which gets no permission here).
 //! - `mcp_read_only` refuses every tool that changes something.
+//! - Another machine is reached only when it is paired and its own owner
+//!   turned on `AppSettings::mcp_remote` there (see `remote::agent`).
 
+pub mod activity;
 mod diagnose;
 mod launcher_tools;
-mod tools;
+pub(crate) mod tools;
 
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
@@ -49,11 +56,18 @@ pub struct McpStatus {
     pub running: bool,
     pub read_only: bool,
     pub launcher_play: bool,
+    /// Agents connected to a paired machine may act on this one.
+    pub remote: bool,
     pub port: u16,
     pub url: String,
-    pub token: Option<String>,
     /// Why it is not running although enabled (port taken…).
     pub error: Option<String>,
+    /// The paired machines an agent here can ask for, by name.
+    pub machines: Vec<String>,
+    /// The agent that connected last, as it named itself.
+    pub client: Option<String>,
+    /// What agents did most recently, newest first.
+    pub activity: Vec<activity::Entry>,
 }
 
 struct Running {
@@ -71,12 +85,7 @@ pub struct McpServer {
 #[derive(Clone)]
 struct Ctx {
     service: Arc<InstanceService>,
-    token: Arc<String>,
     read_only: bool,
-}
-
-pub fn new_token() -> String {
-    format!("{}{}", uuid::Uuid::new_v4().simple(), uuid::Uuid::new_v4().simple())
 }
 
 impl McpServer {
@@ -86,11 +95,7 @@ impl McpServer {
 
     /// Bring the endpoint in line with settings: start, stop or restart it.
     pub async fn reconcile(&self, service: Arc<InstanceService>) -> AppResult<McpStatus> {
-        let mut config = settings::load()?;
-        if config.mcp_enabled && config.mcp_token.as_deref().is_none_or(str::is_empty) {
-            config.mcp_token = Some(new_token());
-            settings::save(&config)?;
-        }
+        let config = settings::load()?;
 
         let mut running = self.running.lock().await;
         if let Some(current) = running.take() {
@@ -101,11 +106,7 @@ impl McpServer {
         *self.last_error.lock().await = None;
 
         if config.mcp_enabled {
-            let ctx = Ctx {
-                service,
-                token: Arc::new(config.mcp_token.clone().unwrap_or_default()),
-                read_only: config.mcp_read_only,
-            };
+            let ctx = Ctx { service, read_only: config.mcp_read_only };
             match serve(ctx, config.mcp_port).await {
                 Ok(shutdown) => {
                     *running = Some(Running { port: config.mcp_port, shutdown });
@@ -133,10 +134,13 @@ impl McpServer {
             running: running.is_some(),
             read_only: config.mcp_read_only,
             launcher_play: config.mcp_launcher_play,
+            remote: config.mcp_remote,
             port,
             url: format!("http://127.0.0.1:{port}/mcp"),
-            token: config.mcp_token.clone(),
             error: self.last_error.lock().await.clone(),
+            machines: crate::store::peers::load().unwrap_or_default().into_iter().map(|p| p.name).collect(),
+            client: activity::client(),
+            activity: activity::recent(),
         })
     }
 
@@ -193,34 +197,36 @@ fn origin_allowed(headers: &HeaderMap) -> bool {
     matches!(host, "localhost" | "127.0.0.1" | "[::1]")
 }
 
-fn authorized(headers: &HeaderMap, token: &str) -> bool {
-    let Some(value) = headers.get("authorization").and_then(|v| v.to_str().ok()) else {
+/// The request names this machine, by loopback address or `localhost`. A
+/// DNS-rebinding page reaches the port through its own domain, and that
+/// domain is what its requests carry here.
+fn host_allowed(headers: &HeaderMap) -> bool {
+    let Some(host) = headers.get("host").and_then(|v| v.to_str().ok()) else {
         return false;
     };
-    let Some(given) = value.strip_prefix("Bearer ").or_else(|| value.strip_prefix("bearer ")) else {
-        return false;
+    let name = match host.strip_prefix('[') {
+        Some(rest) => rest.split(']').next().unwrap_or(""),
+        None => host.rsplit_once(':').map(|(h, _)| h).unwrap_or(host),
     };
-    constant_time_eq(given.trim().as_bytes(), token.as_bytes()) && !token.is_empty()
+    matches!(name, "localhost" | "127.0.0.1" | "::1")
 }
 
-fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
-    if a.len() != b.len() {
-        return false;
-    }
-    a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
+/// JSON, said so. A web page cannot send this content type to another origin
+/// without asking first (a preflight), and nothing here grants it.
+fn is_json(headers: &HeaderMap) -> bool {
+    headers
+        .get("content-type")
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.split(';').next().unwrap_or("").trim().eq_ignore_ascii_case("application/json"))
+        .unwrap_or(false)
 }
 
 async fn handle_post(AxumState(ctx): AxumState<Ctx>, headers: HeaderMap, body: Bytes) -> Response {
-    if !origin_allowed(&headers) {
-        return (StatusCode::FORBIDDEN, "Origin not allowed").into_response();
+    if !origin_allowed(&headers) || !host_allowed(&headers) {
+        return (StatusCode::FORBIDDEN, "Only programs on this PC can use this endpoint").into_response();
     }
-    if !authorized(&headers, &ctx.token) {
-        return (
-            StatusCode::UNAUTHORIZED,
-            [("WWW-Authenticate", "Bearer")],
-            "Missing or wrong bearer token",
-        )
-            .into_response();
+    if !is_json(&headers) {
+        return (StatusCode::UNSUPPORTED_MEDIA_TYPE, "Content-Type must be application/json").into_response();
     }
 
     let parsed: Value = match serde_json::from_slice(&body) {
@@ -277,6 +283,9 @@ async fn handle_message(ctx: &Ctx, message: Value) -> Option<Value> {
 
     let reply = match method {
         "initialize" => {
+            if let Some(client) = params.pointer("/clientInfo/name").and_then(Value::as_str) {
+                activity::set_client(client);
+            }
             let requested = params.get("protocolVersion").and_then(Value::as_str).unwrap_or("");
             let version = PROTOCOL_VERSIONS
                 .iter()
@@ -289,7 +298,7 @@ async fn handle_message(ctx: &Ctx, message: Value) -> Option<Value> {
                     "protocolVersion": version,
                     "capabilities": { "tools": { "listChanged": false } },
                     "serverInfo": { "name": "nebula-host", "title": "Nebula Host", "version": env!("CARGO_PKG_VERSION") },
-                    "instructions": tools::INSTRUCTIONS,
+                    "instructions": tools::instructions(),
                 }),
             )
         }
@@ -298,12 +307,12 @@ async fn handle_message(ctx: &Ctx, message: Value) -> Option<Value> {
         "tools/call" => {
             let name = params.get("name").and_then(Value::as_str).unwrap_or("").to_string();
             let args = params.get("arguments").cloned().unwrap_or_else(|| json!({}));
-            let outcome = tools::call(&ctx.service, ctx.read_only, &name, &args).await;
-            let (text, is_error) = match outcome {
-                Ok(text) => (text, false),
-                Err(error) => (tools::describe_error(&error), true),
-            };
-            rpc_result(id, json!({ "content": [{ "type": "text", "text": text }], "isError": is_error }))
+            let outcome = tools::call_routed(&ctx.service, ctx.read_only, &name, &args).await;
+            activity::record(&name, &args, None, !outcome.is_error);
+            rpc_result(
+                id,
+                json!({ "content": [{ "type": "text", "text": outcome.text }], "isError": outcome.is_error }),
+            )
         }
         "resources/list" => rpc_result(id, json!({ "resources": [] })),
         "prompts/list" => rpc_result(id, json!({ "prompts": [] })),
@@ -332,21 +341,30 @@ mod tests {
     }
 
     #[test]
-    fn bearer_token_must_match_exactly() {
+    fn only_a_request_that_names_this_machine_is_answered() {
         let mut headers = HeaderMap::new();
-        assert!(!authorized(&headers, "abc"));
-        headers.insert("authorization", HeaderValue::from_static("Bearer abc"));
-        assert!(authorized(&headers, "abc"));
-        assert!(!authorized(&headers, "abcd"));
-        assert!(!authorized(&headers, ""), "an empty token never authorizes");
-        headers.insert("authorization", HeaderValue::from_static("Basic abc"));
-        assert!(!authorized(&headers, "abc"));
+        assert!(!host_allowed(&headers), "no Host is not this machine");
+        for good in ["127.0.0.1:47391", "localhost:47391", "localhost", "[::1]:47391"] {
+            headers.insert("host", HeaderValue::from_static(good));
+            assert!(host_allowed(&headers), "{good}");
+        }
+        // What a DNS-rebinding page sends: its own name, resolved to loopback.
+        for bad in ["evil.example:47391", "127.0.0.1.evil.example", "192.168.1.10:47391"] {
+            headers.insert("host", HeaderValue::from_static(bad));
+            assert!(!host_allowed(&headers), "{bad}");
+        }
     }
 
     #[test]
-    fn tokens_are_long_and_unique() {
-        let a = new_token();
-        assert_eq!(a.len(), 64);
-        assert_ne!(a, new_token());
+    fn only_json_is_read() {
+        let mut headers = HeaderMap::new();
+        assert!(!is_json(&headers));
+        headers.insert("content-type", HeaderValue::from_static("application/json; charset=utf-8"));
+        assert!(is_json(&headers));
+        // The types a web page may send across origins without asking.
+        for simple in ["text/plain", "application/x-www-form-urlencoded", "multipart/form-data"] {
+            headers.insert("content-type", HeaderValue::from_static(simple));
+            assert!(!is_json(&headers), "{simple}");
+        }
     }
 }

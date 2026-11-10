@@ -14,6 +14,7 @@ import { formatDuration, formatMegabytes } from "@/lib/format";
 import type { InstanceView } from "@/types/api";
 import { TransferTag } from "@/features/server/transfer/TransferStrip";
 import { movedTo } from "@/features/server/transfer/machines";
+import { setupOf, useSetupLabel } from "./SetupStatus";
 import { Button, DistributionTag, ErrorNotice, ServerTile, StatusDot, identityProps, isIdle } from "@/ui";
 
 /** Allocated memory the way it was chosen: "4 GB", not "4.0 GB". */
@@ -36,6 +37,11 @@ export function ServerRow({ instance, onOpen, drag }: { instance: InstanceView; 
   const failure = actions.start.error ?? actions.stop.error;
   // An older copy left behind by a transfer does not start from here.
   const movedNode = movedTo(instance);
+  // Still being installed (or the install failed): the row says so.
+  const setup = setupOf(instance);
+  const setupLabel = useSetupLabel(setup);
+  const shownStatus = setup ? (setup.phase === "failed" ? "crashed" : "starting") : instance.status;
+  const statusWord = setupLabel ?? t(`status.${instance.status}`);
   const actionLabel = running
     ? t("actions.stop")
     : instance.status === "sleeping"
@@ -77,14 +83,14 @@ export function ServerRow({ instance, onOpen, drag }: { instance: InstanceView; 
             </button>
             {/* In a narrow table the status column folds into this lamp. */}
             <span className="server-row-lamp">
-              <StatusDot status={instance.status} label={t(`status.${instance.status}`)} />
+              <StatusDot status={shownStatus} label={statusWord} />
             </span>
           </span>
         </td>
         <td data-col="status">
           <span className="server-row-status">
-            <StatusDot status={instance.status} />
-            {t(`status.${instance.status}`)}
+            <StatusDot status={shownStatus} />
+            {statusWord}
           </span>
         </td>
         <td>
@@ -119,7 +125,7 @@ export function ServerRow({ instance, onOpen, drag }: { instance: InstanceView; 
             size="sm"
             icon={running ? "stop" : "play"}
             iconOnly
-            disabled={busy || (!running && movedNode !== null)}
+            disabled={busy || (!running && movedNode !== null) || setup !== null}
             onClick={toggle}
           >
             {`${actionLabel}: ${instance.name}`}
