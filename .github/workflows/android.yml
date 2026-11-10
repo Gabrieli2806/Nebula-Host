@@ -53,7 +53,7 @@ jobs:
           git submodule update --init src-tauri/android/engine
           git -C src-tauri/android/engine -c submodule.androidnsbypass.url=https://github.com/alexytomi/androidnsbypass.git submodule update --init androidnsbypass
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -74,12 +74,12 @@ jobs:
           toolchain: stable
           targets: aarch64-linux-android
 
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           key: android-arm64
 
       - name: Cache bundled runtimes
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache
           key: android-runtimes-${{ hashFiles('scripts/android-jre.mjs', 'scripts/android-game-jre.mjs') }}
@@ -127,7 +127,7 @@ jobs:
           (cd out && sha256sum "$name" > "$name.sha256")
           echo "file=out/$name" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: android-apk
           path: out/

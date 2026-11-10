@@ -258,13 +258,14 @@ async fn gateway() -> AppResult<igd_next::aio::Gateway<igd_tokio::Tokio>> {
         None => SocketAddr::new(Ipv4Addr::UNSPECIFIED.into(), 0),
     };
 
-    igd_tokio::search_gateway(SearchOptions {
-        bind_addr,
-        timeout: Some(SEARCH_TIMEOUT),
-        ..SearchOptions::default()
-    })
-    .await
-    .map_err(|error| AppError::new(ErrorCode::RouterNotFound).detail(error))
+    // SearchOptions is #[non_exhaustive]: set the fields on a default.
+    let mut options = SearchOptions::default();
+    options.bind_addr = bind_addr;
+    options.timeout = Some(SEARCH_TIMEOUT);
+
+    igd_tokio::search_gateway(options)
+        .await
+        .map_err(|error| AppError::new(ErrorCode::RouterNotFound).detail(error))
 }
 
 #[cfg(test)]
