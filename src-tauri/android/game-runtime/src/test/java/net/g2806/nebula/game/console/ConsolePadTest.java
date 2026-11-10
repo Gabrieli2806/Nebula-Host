@@ -1,4 +1,4 @@
-package net.kdt.pojavlaunch.console;
+package net.g2806.nebula.game.console;
 
 import android.content.Context;
 import android.graphics.RectF;
@@ -25,13 +25,13 @@ import static org.junit.Assert.*;
 @Config(sdk = 36, qualifiers = "w800dp-h720dp-land-mdpi")
 public class ConsolePadTest {
     private final FakeGame game = new FakeGame();
-    private NebulaConsolePad pad;
+    private ConsolePad pad;
     private Context context;
     private long time;
 
     @Before public void createPad() {
         context = new ContextThemeWrapper(RuntimeEnvironment.getApplication(), R.style.AppTheme);
-        pad = new NebulaConsolePad(context, game, () -> {});
+        pad = new ConsolePad(context, game, () -> {});
         layout(600, 270); // Smallest supported panel, in mdpi pixels.
     }
     private void layout(int width, int height) {
@@ -172,7 +172,7 @@ public class ConsolePadTest {
         event.recycle();
     }
 
-    private static class FakeGame implements NebulaConsolePad.Game {
+    private static class FakeGame implements ConsolePad.Game {
         boolean grabbing = true;
         Set<Integer> keys = new HashSet<>(), mouse = new HashSet<>();
         float dx, dy;

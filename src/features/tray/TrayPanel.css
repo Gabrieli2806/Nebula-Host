@@ -1,0 +1,169 @@
+/* Solid on purpose: live acrylic behind a webview made the panel lag. */
+html:has(.tray-panel),
+html:has(.tray-panel) body,
+html:has(.tray-panel) #root {
+  height: auto;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.tray-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-sm);
+  user-select: none;
+}
+
+.tray-panel,
+.tray-panel * {
+  transition: none !important;
+  animation: none !important;
+}
+
+.tray-head {
+  padding: 4px 6px 6px;
+  color: var(--text-heading);
+}
+
+.tray-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--line-strong);
+}
+
+.tray-empty {
+  margin: 0;
+  padding: 6px;
+  color: var(--text-muted);
+}
+
+.tray-servers {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 340px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.tray-servers:empty {
+  display: none;
+}
+
+.tray-server {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.tray-item,
+.tray-server-open,
+.tray-action {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: default;
+}
+
+.tray-item:hover,
+.tray-server-open:hover,
+.tray-action:hover:not(:disabled) {
+  background: var(--line-strong);
+}
+
+.tray-item:focus-visible,
+.tray-server-open:focus-visible,
+.tray-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.tray-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 8px;
+  text-align: left;
+}
+
+.tray-item-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.tray-item-detail {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.tray-server-open {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 2px 8px;
+  text-align: left;
+}
+
+.tray-server-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tray-server-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tray-server-meta {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.tray-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+.tray-dot[data-status="online"] {
+  background: #34d399;
+}
+
+.tray-dot[data-status="starting"],
+.tray-dot[data-status="stopping"],
+.tray-dot[data-status="sleeping"] {
+  background: #fbbf24;
+}
+
+.tray-dot[data-status="crashed"] {
+  background: #f87171;
+}
+
+.tray-action {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+}
+
+.tray-action:disabled {
+  opacity: 0.4;
+}

@@ -6,7 +6,6 @@
  * list, and once a server is open: a way back, that server's Start / Stop /
  * Restart control and its panels. Everything that describes the server (name,
  * state, numbers) lives in the page, never here, so nothing is said twice.
- * An open launcher instance gets the same treatment (LauncherInstanceNav).
  *
  * At phone width there is no sidebar: MobileTabs puts the same destinations
  * in a tab bar along the bottom.
@@ -48,7 +47,6 @@ import { Button, ErrorNotice, Icon, Ring, StatusDot } from "@/ui";
 import { useTransferTracking } from "@/features/server/transfer/active";
 import { Tour } from "@/features/onboarding/Tour";
 import { AccountMenu } from "@/features/launcher/Account";
-import { LauncherInstanceNav } from "@/features/launcher/LauncherRail";
 import { MobileTabs } from "./MobileTabs";
 import { NavItem, RailAlert, RailBack, RailKey } from "./RailItems";
 import { SERVER_PANELS } from "./panels";
@@ -87,8 +85,6 @@ export function AppShell() {
   const { data: instances } = useInstances();
   const match = useMatch("/servers/:instanceId/:panel");
   const instanceId = match?.params.instanceId ?? null;
-  const launcherMatch = useMatch("/launcher/instances/:profileId/:panel");
-  const profileId = launcherMatch?.params.profileId ?? null;
 
   useBackendEvents();
   useTransferTracking();
@@ -173,11 +169,7 @@ export function AppShell() {
                 <ServerNav key={instanceId} instanceId={instanceId} collapsed={collapsed} onExpand={expandSidebar} />
               ) : (
                 <>
-                  {profileId ? (
-                    <LauncherInstanceNav key={profileId} profileId={profileId} collapsed={collapsed} onExpand={expandSidebar} />
-                  ) : (
-                    <AppNav />
-                  )}
+                  <AppNav />
                   {/* In the launcher the foot of the rail is the account, not the machine. */}
                   {inLauncher ? (
                     <div className="rail-account" data-collapsed={collapsed ? "" : undefined}>
@@ -199,7 +191,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
-      {narrow ? <MobileTabs instanceId={instanceId} profileId={profileId} /> : null}
+      {narrow ? <MobileTabs instanceId={instanceId} /> : null}
       <Tour />
       {tooltip.element}
     </div>

@@ -27,7 +27,8 @@ never mix with a server's, and its commands are never routed to another node.
   and home-screen shortcuts.
 - **Android engine**: the game runs in its own process and task through a module
   built from the Amethyst-Android submodule (`src-tauri/android/game-runtime`),
-  with its own bundled OpenJDK, LWJGL and renderers. On Android the client skips
+  with its own bundled OpenJDK and LWJGL, and a renderer chosen per instance
+  (auto, MobileGlues, Zink over Vulkan, Krypton, LTW). On Android the client skips
   Mojang's LWJGL and native libraries. See `android-launcher-graphics.md` and
   `android-console-mode.md`.
 - **Assistants (MCP)**: local tools to list and manage instances; launching with
@@ -37,11 +38,11 @@ never mix with a server's, and its commands are never routed to another node.
 
 | Part | Path |
 |---|---|
-| Screens | `src/features/launcher/` (routes in `panels.ts`: `/launcher`, `/launcher/:section`, `/launcher/instances/:id/:panel`) |
-| Sidebar / tab bar while an instance is open | `LauncherRail.tsx`, `src/app/MobileTabs.tsx` |
+| Screens | `src/features/launcher/`. One route, `/launcher`; the section, open instance and panel are in its query (`?tab=`, `?instance=`, `?panel=`; see `panels.ts`) so the back button walks back to the library |
+| Layout | `launcher.css`: container queries on the launcher's own width (list beside the instance when wide, one pane with Play pinned at the bottom when narrow) |
 | Backend | `src-tauri/src/launcher/` (`client.rs` engine, `loaders.rs`, `content.rs`, `auth.rs`, `vault.rs`, `media.rs`, `android.rs`) |
 | IPC | `src-tauri/src/ipc/launcher.rs` (local only; not in `remote/dispatch.rs`) |
-| Android engine | `src-tauri/android/game-runtime/`, `src-tauri/android/amethyst` (submodule) |
+| Android engine | `src-tauri/android/game-runtime/`, `src-tauri/android/engine` (submodule) |
 
 ## Still open
 
@@ -55,8 +56,12 @@ never mix with a server's, and its commands are never routed to another node.
 
 ## Reference review
 
-- [Amethyst Android](https://github.com/AngelAuraMC/Amethyst-Android), branch
-  `v3_openjdk`: Android architecture and
+- [Amethyst Android](https://github.com/AngelAuraMC/Amethyst-Android) (LGPL-3.0),
+  pinned as the Android game engine in `src-tauri/android/engine`. Nebula's own
+  integration lives in `net.g2806.nebula.game` (game-runtime); the engine's
+  classes keep their upstream package because its native libraries bind to
+  those names over JNI. Visible product names in its strings are replaced at
+  build time; the license notice keeps the upstream attribution. Also reviewed:
   `app_pojavlauncher/src/main/java/net/kdt/pojavlaunch/authenticator/microsoft/MicrosoftBackgroundLogin.java`
   for the Microsoft/Xbox/Minecraft boundary. Its repository LICENSE is LGPL-3.0;
   check individual native components before future engine integration.

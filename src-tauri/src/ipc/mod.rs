@@ -16,6 +16,7 @@ pub mod players;
 pub mod remote;
 pub mod settings;
 pub mod transfer;
+pub mod tray;
 
 use std::sync::Arc;
 
@@ -48,6 +49,11 @@ pub fn open_folder(app: &tauri::AppHandle, folder: &std::path::Path) -> crate::e
 macro_rules! ipc_handlers {
     () => {
         tauri::generate_handler![
+            $crate::ipc::tray::tray_panel_fit,
+            $crate::ipc::tray::tray_panel_hide,
+            $crate::ipc::tray::tray_open,
+            $crate::ipc::tray::tray_server_action,
+            $crate::ipc::tray::tray_quit,
             $crate::ipc::launcher::launcher_capabilities,
             $crate::ipc::launcher::launcher_pin_shortcut,
             $crate::ipc::launcher::launcher_take_shortcut,
@@ -69,6 +75,7 @@ macro_rules! ipc_handlers {
             $crate::ipc::launcher::launcher_content_remove,
             $crate::ipc::launcher::launcher_content_set_enabled,
             $crate::ipc::launcher::launcher_modpack_install,
+            $crate::ipc::launcher::launcher_mods_share,
             $crate::ipc::launcher::launcher_login_begin,
             $crate::ipc::launcher::launcher_login_poll,
             $crate::ipc::launcher::launcher_login_cancel,
@@ -79,6 +86,8 @@ macro_rules! ipc_handlers {
             $crate::ipc::launcher::launcher_set_skin,
             $crate::ipc::launcher::launcher_set_cape,
             $crate::ipc::launcher::launcher_set_memory,
+            $crate::ipc::launcher::launcher_set_graphics,
+            $crate::ipc::launcher::launcher_device_graphics,
             $crate::ipc::launcher::launcher_change_version,
             $crate::ipc::launcher::launcher_content_check,
             $crate::ipc::launcher::launcher_screenshots,
@@ -124,6 +133,7 @@ macro_rules! ipc_handlers {
             $crate::ipc::instances::instance_log_share,
             // files
             $crate::ipc::files::files_list,
+            $crate::ipc::files::files_search,
             $crate::ipc::files::file_read,
             $crate::ipc::files::file_write,
             $crate::ipc::files::file_delete,
@@ -155,9 +165,6 @@ macro_rules! ipc_handlers {
             $crate::ipc::players::players_write_list,
             $crate::ipc::players::players_identities,
             // addons
-            $crate::ipc::addons::addons_search,
-            $crate::ipc::addons::addons_installed,
-            $crate::ipc::addons::addon_install,
             $crate::ipc::addons::addon_set_enabled,
             $crate::ipc::addons::addon_remove,
             $crate::ipc::addons::addons_context,

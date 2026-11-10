@@ -571,14 +571,9 @@ impl Modrinth {
             options = options.with_checksum(checksum);
         }
 
-        download_file(&self.client, options).await.map_err(|error| {
-            let code = if error.contains("integrity check failed") {
-                ErrorCode::ChecksumMismatch
-            } else {
-                ErrorCode::DownloadFailed
-            };
-            AppError::new(code).with("file", &file_name).detail(error)
-        })?;
+        download_file(&crate::game::download_client(), options)
+            .await
+            .map_err(|error| crate::error::download_error(&file_name, error))?;
 
         let replaced = commit_jar(dir, &part_path, &final_path, &file_name, replace)?;
 
@@ -606,14 +601,9 @@ impl Modrinth {
         if let Some(checksum) = checksum.as_ref() {
             options = options.with_checksum(checksum);
         }
-        download_file(&self.client, options).await.map_err(|error| {
-            let code = if error.contains("integrity check failed") {
-                ErrorCode::ChecksumMismatch
-            } else {
-                ErrorCode::DownloadFailed
-            };
-            AppError::new(code).with("file", &file_name).detail(error)
-        })?;
+        download_file(&crate::game::download_client(), options)
+            .await
+            .map_err(|error| crate::error::download_error(&file_name, error))?;
         Ok((staged, file_name))
     }
 }

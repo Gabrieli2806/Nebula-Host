@@ -1,7 +1,7 @@
 # Pendiente
 
-Estado del proyecto tras la auditoría del 05-11-2026 y la segunda tanda del
-07-11-2026, y lo que falta por hacer, ordenado por prioridad. El detalle de
+Estado del proyecto tras la auditoría del 05-11-2026, la segunda tanda del
+07-11-2026 y la fusión con `main` del repo original del 10-11-2026, y lo que falta por hacer, ordenado por prioridad. El detalle de
 Google Play está en [docs/google-play-proposal.md](docs/google-play-proposal.md)
 y el de tiendas y licencias en
 [docs/store-compliance-review.md](docs/store-compliance-review.md).
@@ -10,14 +10,15 @@ y el de tiendas y licencias en
 
 ### Auditoría (05-11)
 
-**Launcher en Android, con paridad con el resto de la app.**
-- Una instancia abierta se comporta como un servidor abierto:
-  - en el móvil, la barra inferior pasa a ser ← Instancias · Content · Add · Log · Settings;
-  - en el escritorio, la barra lateral muestra ← Your instances, Play / Close y los paneles.
-- La sección y el panel van en la URL: el botón Atrás de Android vuelve a la biblioteca.
+**Launcher en Android.**
+- Al fusionar con `main` del repo original (10-11), su rediseño del launcher (PR #31) pasó a ser la base de la maquetación:
+  - lista e instancia lado a lado en pantallas anchas;
+  - Play fijo abajo en el móvil;
+  - pestañas en una fila.
+- La barra de instancia propia que tenía esta rama en el *shell* se retiró, para no duplicar la lista ni el botón Play.
+- **Lo que esta rama añade encima:** la sección, la instancia abierta y su panel van en la URL (`?tab=`, `?instance=`, `?panel=`). El botón Atrás de Android vuelve panel → instancia → biblioteca en vez de salir del launcher.
 
 **Bugs corregidos.**
-- Play en las tarjetas del Library abría la instancia en vez de lanzar el juego.
 - La IP de internet (UPnP) no se veía en el Overview.
 - Las etiquetas del slider de memoria se pisaban en el móvil.
 - La primera ejecución mandaba a *welcome* al abrir un atajo a una instancia.
@@ -40,6 +41,11 @@ La interfaz oculta lo que el build rechazaría (`src/lib/deviceBuild.ts`). Hay t
 
 **Bug de diálogos.** Los diálogos abiertos desde cualquier pantalla quedaban debajo de la barra inferior del móvil, y en el escritorio su fondo no cubría toda la ventana. La causa: la animación de entrada dejaba un `transform` aplicado.
 
+**Fusión con `main` del original (10-11).**
+- Los 8 conflictos del launcher se resolvieron partiendo de la versión del original.
+- El sabor Play también cubre "compartir mods" entre servidor e instancia (`mod_share.rs`), que es nuevo en `main`.
+- Se arregló un error de lint de `main` (`TrayPanel.tsx`) que hacía fallar `npm run check`.
+
 **CI de Android** (`.github/workflows/android.yml`):
 - Firma estable si existen los *secrets* `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` y `ANDROID_KEY_PASSWORD`. Sin ellos funciona como antes y avisa.
 - Informe de alineación a 16 KB (`scripts/check-16k.sh`).
@@ -57,7 +63,7 @@ La interfaz oculta lo que el build rechazaría (`src/lib/deviceBuild.ts`). Hay t
 | `cargo test --workspace --no-default-features --locked` | ✅ |
 | `cargo test -p nebula-host --no-default-features --features play-store --lib` | ✅ |
 | `cargo build -p nebula-host --no-default-features --bin nebula-node` | ✅ |
-| Interfaz con un backend simulado (Playwright, móvil y escritorio) | ✅ Navegación del launcher, diálogos sobre la barra inferior, modo Play (sin loaders, sin Modpacks, sin hosting) |
+| Interfaz con un backend simulado (Playwright, móvil y escritorio), sobre el resultado de la fusión | ✅ Sección, instancia y panel en la URL; Atrás recorre panel → instancia → biblioteca; diálogos sobre la barra inferior; modo Play (sin loaders, sin Modpacks, sin Play en instancias con loader, sin hosting) |
 | `scripts/check-16k.sh` con librerías de prueba de 4 KB y 16 KB | ✅ |
 
 **No se pudo verificar aquí** (el contenedor no tiene SDK de Android, ni webkit2gtk, ni MinGW):

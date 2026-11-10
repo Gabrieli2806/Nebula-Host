@@ -139,6 +139,14 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             let path: Option<String> = opt(args, "path")?;
             ok(files::list(&instance.path, path.as_deref().unwrap_or(""))?)
         }
+        "files_search" => {
+            let instance = service.store.get(&id()?).await?;
+            let query: String = arg(args, "query")?;
+            let found = tokio::task::spawn_blocking(move || files::search(&instance.path, &query))
+                .await
+                .map_err(AppError::unexpected)??;
+            ok(found)
+        }
         "file_read" => {
             let instance = service.store.get(&id()?).await?;
             ok(files::read_text(&instance.path, &arg::<String>(args, "path")?)?)
@@ -323,6 +331,9 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             next.mcp_port = current.mcp_port;
             next.mcp_token = current.mcp_token;
             next.mcp_read_only = current.mcp_read_only;
+            next.mcp_launcher_play = current.mcp_launcher_play;
+            // So is accepting the EULA for every server.
+            next.accept_agreements = current.accept_agreements;
             next.remote_enabled = current.remote_enabled;
             next.remote_port = current.remote_port;
             next.web_panel = current.web_panel;
@@ -359,7 +370,7 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
 
         // Commands that act on the local machine's files or desktop.
         "instance_open_folder" | "app_open_log_folder" | "transfer_run" | "transfer_cancel" | "files_import" | "files_import_check" | "mcp_status" | "mcp_configure"
-        | "mcp_regenerate_token" | "addons_search" | "addons_installed" | "addon_install" => {
+        | "mcp_regenerate_token" => {
             Err(local_only(command))
         }
         other => Err(AppError::new(ErrorCode::InvalidInput)

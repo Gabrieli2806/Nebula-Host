@@ -50,6 +50,10 @@ pub struct AppSettings {
     /// a jar and then launch with the account could run code holding the
     /// account's session.
     pub mcp_launcher_play: bool,
+    /// The user accepted the game's agreement (the Minecraft EULA) once, for
+    /// every server on this machine. Only a person at this machine's own
+    /// window can turn it on: not MCP, and not a paired device.
+    pub accept_agreements: bool,
     /// Let other devices on the LAN pair with and control this machine.
     pub remote_enabled: bool,
     /// Port for the remote API.
@@ -77,6 +81,7 @@ impl Default for AppSettings {
             mcp_token: None,
             mcp_read_only: false,
             mcp_launcher_play: false,
+            accept_agreements: false,
             remote_enabled: false,
             remote_port: crate::remote::DEFAULT_PORT,
             web_panel: false,
@@ -142,6 +147,7 @@ mod tests {
         let settings = AppSettings::default();
         assert!(!settings.listen_on_lan, "the LAN must be opt-in, never a default");
         assert!(!settings.allow_upnp, "port forwarding must be opt-in");
+        assert!(!settings.accept_agreements, "the EULA is the user's to accept");
     }
 
     #[test]

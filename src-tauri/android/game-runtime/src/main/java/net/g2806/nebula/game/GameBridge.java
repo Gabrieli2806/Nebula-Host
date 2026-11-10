@@ -1,5 +1,7 @@
-package net.kdt.pojavlaunch;
+package net.g2806.nebula.game;
 
+import net.kdt.pojavlaunch.MainActivity;
+import net.kdt.pojavlaunch.Tools;
 import net.kdt.pojavlaunch.multirt.MultiRTUtils;
 import net.kdt.pojavlaunch.prefs.LauncherPreferences;
 import net.kdt.pojavlaunch.utils.JREUtils;
@@ -9,12 +11,15 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class NebulaGameBridge {
-    private NebulaGameBridge() {}
+public final class GameBridge {
+    private GameBridge() {}
 
-    static void run(MainActivity activity) throws Throwable {
-        if (!(activity instanceof NebulaGameActivity)) throw new IllegalStateException("Game requests must originate in Nebula");
-        JSONObject request = ((NebulaGameActivity) activity).request;
+    /** Replaces the engine's runCraft: Nebula has already resolved the version,
+     *  libraries and arguments; this adds the Android runtime pieces. */
+    public static void run(MainActivity activity) throws Throwable {
+        if (!(activity instanceof GameActivity)) throw new IllegalStateException("Game requests must originate in Nebula");
+        GameActivity game = (GameActivity) activity;
+        JSONObject request = game.request;
         String lwjgl = "3.3.3";
         JSONArray libraries = request.getJSONObject("metadata").getJSONArray("libraries");
         for (int index = 0; index < libraries.length(); index++) {
@@ -60,8 +65,9 @@ public final class NebulaGameBridge {
         }
         LauncherPreferences.PREF_RAM_ALLOCATION = request.getInt("memory");
         LauncherPreferences.PREF_ARC_CAPES = false;
-        Tools.LOCAL_RENDERER = "opengles_mobileglues";
-        LauncherPreferences.writeMGRendererSettings();
+        Tools.LOCAL_RENDERER = game.renderer;
+        if (Graphics.DEFAULT_RENDERER.equals(game.renderer)) LauncherPreferences.writeMGRendererSettings();
+        System.out.println("[Nebula] Renderer: " + game.renderer + ", resolution " + Math.round(LauncherPreferences.PREF_SCALE_FACTOR * 100) + "%");
         JREUtils.redirectAndPrintJRELog();
         JREUtils.launchJavaVM(activity, MultiRTUtils.forceReread(request.getString("runtime")), new File(request.getString("gameDir")), args, "");
     }

@@ -153,11 +153,25 @@ pub fn run() {
             Ok(())
         })
         .on_page_load(move |webview, payload| {
-            if payload.event() == tauri::webview::PageLoadEvent::Finished && (launcher_preview || std::env::args().any(|arg| arg == "--launcher")) {
+            if webview.label() == "main" && payload.event() == tauri::webview::PageLoadEvent::Finished && (launcher_preview || std::env::args().any(|arg| arg == "--launcher")) {
                 let _ = webview.eval("window.location.hash = '#/launcher'");
             }
         })
         .on_window_event(|_window, _event| {
+            #[cfg(windows)]
+            if _window.label() == tray::panel::LABEL {
+                if let Some(panel) = _window.app_handle().get_webview_window(tray::panel::LABEL) {
+                    match _event {
+                        tauri::WindowEvent::Focused(false) => tray::panel::hide(&panel),
+                        tauri::WindowEvent::CloseRequested { api, .. } => {
+                            api.prevent_close();
+                            tray::panel::hide(&panel);
+                        }
+                        _ => {}
+                    }
+                }
+                return;
+            }
             #[cfg(desktop)]
             if let tauri::WindowEvent::CloseRequested { api, .. } = _event {
                 let window = _window;

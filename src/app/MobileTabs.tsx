@@ -5,8 +5,7 @@
  *
  * Outside a server: Servers, Launcher (when on), Machines (once there is
  * another machine) and Settings. Inside a server: back, its four everyday
- * panels, and "More" for the rest, as a sheet. Inside a launcher instance,
- * the same shape: back and its four panels.
+ * panels, and "More" for the rest, as a sheet.
  */
 
 import { useState } from "react";
@@ -16,7 +15,6 @@ import { useI18n } from "@/i18n";
 import { useLauncherEnabled } from "@/lib/launcherPref";
 import { remoteNodes } from "@/lib/connection";
 import { Icon, type IconName } from "@/ui";
-import { INSTANCE_PANELS, instancePath } from "@/features/launcher/panels";
 
 import { SERVER_PANELS } from "./panels";
 import "./MobileTabs.css";
@@ -24,22 +22,11 @@ import "./MobileTabs.css";
 /** Panels that get their own tab; the rest go under "More". */
 const PRIMARY = ["overview", "console", "players", "files"];
 
-export function MobileTabs({ instanceId, profileId }: { instanceId: string | null; profileId: string | null }) {
+export function MobileTabs({ instanceId }: { instanceId: string | null }) {
   const { t } = useI18n();
   const launcher = useLauncherEnabled();
 
   if (instanceId) return <ServerTabs instanceId={instanceId} />;
-
-  if (profileId) {
-    return (
-      <nav className="mobile-tabs" aria-label={t("nav.sidebar")}>
-        <BackTab to="/launcher" label={t("launcher.instancesShort")} />
-        {INSTANCE_PANELS.map((panel) => (
-          <Tab key={panel.id} to={instancePath(profileId, panel.id)} icon={panel.icon} label={t(panel.shortKey)} />
-        ))}
-      </nav>
-    );
-  }
 
   return (
     <nav className="mobile-tabs" aria-label={t("nav.sidebar")}>
@@ -101,7 +88,7 @@ function ServerTabs({ instanceId }: { instanceId: string }) {
   );
 }
 
-/** Back to the list the open server or instance came from. */
+/** Back to the server list. */
 function BackTab({ to, label }: { to: string; label: string }) {
   const navigate = useNavigate();
   return (

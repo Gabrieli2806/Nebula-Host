@@ -1,4 +1,4 @@
-package net.kdt.pojavlaunch.console;
+package net.g2806.nebula.game.console;
 
 /** Pixel geometry, independent of Android so posture edge cases can be tested. */
 public final class ConsoleGeometry {

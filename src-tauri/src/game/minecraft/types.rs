@@ -85,66 +85,6 @@ pub struct ModrinthFile {
     pub size: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AddonCatalogVersion {
-    pub id: String,
-    pub name: String,
-    pub version_number: String,
-    pub game_versions: Vec<String>,
-    pub loaders: Vec<String>,
-    pub download_url: String,
-    pub file_name: String,
-    pub file_size: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AddonCatalogEntry {
-    pub project_id: String,
-    pub slug: String,
-    pub title: String,
-    pub description: String,
-    pub icon_url: Option<String>,
-    pub downloads: u64,
-    pub project_type: String,
-    pub featured_version: AddonCatalogVersion,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AddonSearchResult {
-    pub entries: Vec<AddonCatalogEntry>,
-    /// Total matching projects upstream, for pagination.
-    pub total_hits: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct InstalledAddon {
-    pub id: String,
-    pub name: String,
-    pub version: String,
-    pub enabled: bool,
-    pub file_name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub icon_data_url: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AddonModrinthMeta {
-    pub file_name: String,
-    pub project_id: String,
-    pub slug: String,
-    pub title: String,
-    pub description: String,
-    pub icon_url: Option<String>,
-    pub installed_version_id: String,
-    pub installed_version_number: String,
-    pub latest_version_id: Option<String>,
-    pub latest_version_number: Option<String>,
-    pub latest_download_url: Option<String>,
-    pub latest_file_name: Option<String>,
-    pub latest_file_size: Option<u64>,
-    pub update_available: bool,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -34,7 +34,7 @@ const PATTERNS: &[Pattern] = &[
     },
     Pattern {
         needles: &["You need to agree to the EULA", "eula.txt"],
-        hint: "The Minecraft EULA has not been accepted. Only the server's owner can accept it: ask them to start the server in the Nebula Host app, which shows the EULA and asks.",
+        hint: "The Minecraft EULA has not been accepted. Only the server's owner can accept it: ask them to start the server in the Nebula Host app, which shows the EULA and asks, or to accept it for every server in Settings.",
     },
     Pattern {
         needles: &["Incompatible mods found", "Missing or unsupported mandatory dependencies", "requires version", "Unmet dependency listing", "depends on"],

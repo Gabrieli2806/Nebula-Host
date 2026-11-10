@@ -1,4 +1,4 @@
-package net.kdt.pojavlaunch.console;
+package net.g2806.nebula.game.console;
 
 import org.junit.Test;
 import static org.junit.Assert.*;

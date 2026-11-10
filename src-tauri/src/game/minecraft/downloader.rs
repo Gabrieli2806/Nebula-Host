@@ -33,6 +33,27 @@ pub struct Downloader {
 }
 
 /// A resolved artefact: where it is, and what it should hash to.
+/// Forge's installer for one build, on its Maven (server and launcher).
+pub fn forge_installer_url(build: &str) -> String {
+    format!("https://maven.minecraftforge.net/net/minecraftforge/forge/{build}/forge-{build}-installer.jar")
+}
+
+/// NeoForge's installer for one build, on its Maven (server and launcher).
+pub fn neoforge_installer_url(build: &str) -> String {
+    format!("https://maven.neoforged.net/releases/net/neoforged/neoforge/{build}/neoforge-{build}-installer.jar")
+}
+
+/// The SHA-1 a Maven repository publishes beside an artifact (`<url>.sha1`),
+/// so installers are verified like every other download.
+pub async fn maven_sha1(client: &Client, url: &str) -> AppResult<String> {
+    let text = client.get(format!("{url}.sha1")).send().await?.error_for_status()?.text().await?;
+    let hash = text.split_whitespace().next().unwrap_or_default().to_ascii_lowercase();
+    if hash.len() != 40 || !hash.bytes().all(|b| b.is_ascii_hexdigit()) {
+        return Err(AppError::new(ErrorCode::ChecksumMismatch).with("file", url).detail("Invalid published SHA-1"));
+    }
+    Ok(hash)
+}
+
 #[derive(Debug)]
 struct DownloadTarget {
     url: String,
@@ -281,15 +302,9 @@ impl Downloader {
             options = options.with_checksum(checksum);
         }
 
-        download_file(&self.client, options).await.map_err(|error| {
-            let lowered = error.to_lowercase();
-            let code = if lowered.contains("checksum") || lowered.contains("hash") {
-                ErrorCode::ChecksumMismatch
-            } else {
-                ErrorCode::DownloadFailed
-            };
-            AppError::new(code).with("file", file_name).detail(error)
-        })?;
+        download_file(&crate::game::download_client(), options)
+            .await
+            .map_err(|error| crate::error::download_error(file_name, error))?;
 
         if server_type.uses_installer() {
             progress.report(InstallProgress::InstallingLoader {
@@ -457,15 +472,9 @@ impl Downloader {
                                 .with("version", mc_version)
                         })?,
                 };
-                Ok((
-                    DownloadTarget {
-                        url: format!(
-                            "https://maven.minecraftforge.net/net/minecraftforge/forge/{loader}/forge-{loader}-installer.jar"
-                        ),
-                        checksum: None,
-                    },
-                    Some(loader),
-                ))
+                let url = forge_installer_url(&loader);
+                let checksum = Some(Checksum::Sha1(maven_sha1(&self.client, &url).await?));
+                Ok((DownloadTarget { url, checksum }, Some(loader)))
             }
 
             ServerType::NeoForge => {
@@ -482,15 +491,9 @@ impl Downloader {
                                 .with("version", mc_version)
                         })?,
                 };
-                Ok((
-                    DownloadTarget {
-                        url: format!(
-                            "https://maven.neoforged.net/releases/net/neoforged/neoforge/{loader}/neoforge-{loader}-installer.jar"
-                        ),
-                        checksum: None,
-                    },
-                    Some(loader),
-                ))
+                let url = neoforge_installer_url(&loader);
+                let checksum = Some(Checksum::Sha1(maven_sha1(&self.client, &url).await?));
+                Ok((DownloadTarget { url, checksum }, Some(loader)))
             }
 
             ServerType::Spigot => Err(AppError::new(ErrorCode::GameNotSupported)

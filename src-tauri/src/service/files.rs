@@ -157,6 +157,55 @@ pub fn usage(root: &Path) -> AppResult<DiskUsage> {
     Ok(DiskUsage { total_bytes, file_count, largest, computed_at: Utc::now() })
 }
 
+/// Most results a search returns: past this, a narrower name is needed.
+const SEARCH_LIMIT: usize = 200;
+/// Entries looked at before giving up, so a world with 100k region files
+/// cannot hold the panel.
+const SEARCH_BUDGET: usize = 100_000;
+
+/// Files and folders under `root` whose name contains `query`, ignoring case.
+/// Folders first, then by path. Symlinks are not followed.
+pub fn search(root: &Path, query: &str) -> AppResult<Vec<FileEntry>> {
+    let needle = query.trim().to_lowercase();
+    if needle.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut found = Vec::new();
+    let mut seen = 0usize;
+    let mut queue = std::collections::VecDeque::from([(root.to_path_buf(), String::new())]);
+    while let Some((dir, relative)) = queue.pop_front() {
+        let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+        for entry in entries.flatten() {
+            seen += 1;
+            if seen > SEARCH_BUDGET || found.len() >= SEARCH_LIMIT {
+                queue.clear();
+                break;
+            }
+            let Ok(file_type) = entry.file_type() else { continue };
+            if file_type.is_symlink() {
+                continue;
+            }
+            let name = entry.file_name().to_string_lossy().to_string();
+            let path = join_relative(&relative, &name);
+            if file_type.is_dir() {
+                queue.push_back((entry.path(), path.clone()));
+            }
+            if name.to_lowercase().contains(&needle) {
+                let metadata = entry.metadata().ok();
+                found.push(FileEntry {
+                    name,
+                    path,
+                    is_dir: file_type.is_dir(),
+                    size: if file_type.is_dir() { 0 } else { metadata.as_ref().map(|m| m.len()).unwrap_or(0) },
+                    modified: metadata.and_then(|m| m.modified().ok()).map(DateTime::<Utc>::from),
+                });
+            }
+        }
+    }
+    found.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then_with(|| a.path.to_lowercase().cmp(&b.path.to_lowercase())));
+    Ok(found)
+}
+
 fn join_relative(base: &str, name: &str) -> String {
     if base.trim().is_empty() {
         name.to_string()
@@ -168,6 +217,19 @@ fn join_relative(base: &str, name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn search_finds_names_in_subfolders_ignoring_case() {
+        let root = std::env::temp_dir().join(format!("nebula-search-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(root.join("config/sub")).expect("dirs");
+        std::fs::write(root.join("config/sub/MyMod.toml"), "x").expect("file");
+        std::fs::write(root.join("server.properties"), "x").expect("file");
+        let found = search(&root, "mymod").expect("search");
+        assert_eq!(found.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), vec!["config/sub/MyMod.toml"]);
+        assert!(search(&root, "  ").expect("search").is_empty(), "a blank query finds nothing");
+        assert_eq!(search(&root, "SUB").expect("search")[0].path, "config/sub");
+        let _ = std::fs::remove_dir_all(root);
+    }
 
     fn temp_root(label: &str) -> std::path::PathBuf {
         let root = std::env::temp_dir().join(format!("nebula-files-{label}-{}", std::process::id()));

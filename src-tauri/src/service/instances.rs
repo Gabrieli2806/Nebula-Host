@@ -365,9 +365,9 @@ impl InstanceService {
         })
         .await
         .map_err(AppError::unexpected)??;
-        self.disk_usage.write().await.remove(instance_id);
-        // Dropping jars into mods/ or plugins/ changes what is installed.
-        self.addon_index.write().await.remove(instance_id);
+        // Dropping jars into mods/ or plugins/ changes what is installed and
+        // which commands the console can complete.
+        self.after_folder_change(instance_id).await;
         Ok(summary)
     }
 
@@ -547,15 +547,20 @@ impl InstanceService {
     // -- the game's agreement (the Minecraft EULA) ---------------------------
 
     /// Refuse to run a server whose operator has not accepted the game's
-    /// agreement. The UI answers this error by asking the user; nothing in
-    /// the backend ever accepts on their behalf.
+    /// agreement. The UI answers this error by asking the user. The backend
+    /// only records an acceptance when the user gave it for every server, in
+    /// settings (`accept_agreements`).
     fn ensure_agreement(&self, instance: &Instance) -> AppResult<()> {
         let manifest = self.registry.manifest(&instance.game)?;
         let Some(agreement) = manifest.agreement else {
             return Ok(());
         };
-        if self.registry.get(&instance.game)?.agreement_accepted(&instance.path) {
+        let adapter = self.registry.get(&instance.game)?;
+        if adapter.agreement_accepted(&instance.path) {
             return Ok(());
+        }
+        if crate::store::settings::load()?.accept_agreements {
+            return adapter.accept_agreement(&instance.path);
         }
         Err(AppError::new(ErrorCode::InvalidInput)
             .with("reason", "agreement_required")

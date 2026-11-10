@@ -1,4 +1,4 @@
-[submodule "src-tauri/android/amethyst"]
-	path = src-tauri/android/amethyst
+[submodule "src-tauri/android/engine"]
+	path = src-tauri/android/engine
 	url = https://github.com/AngelAuraMC/Amethyst-Android.git
 	ignore = untracked

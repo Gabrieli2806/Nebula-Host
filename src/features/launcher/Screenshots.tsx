@@ -13,6 +13,7 @@ import { Button, Dialog, EmptyState, ErrorNotice, Icon, Panel, Select } from "@/
 import { useContextMenu, type MenuItem } from "@/ui/ContextMenu";
 import { InstanceTile } from "./InstanceSettings";
 import type { LauncherProfile } from "./types";
+import { useLauncherProfiles } from "./hooks";
 
 type Shot = { instance_id: string; file: string; size: number; taken: number };
 
@@ -33,7 +34,7 @@ async function copyImage(dataUrl: string) {
 export function Screenshots() {
   const { t, language } = useI18n();
   const client = useQueryClient();
-  const profiles = useQuery({ queryKey: ["launcher", "profiles"], queryFn: launcherApi.profiles });
+  const profiles = useLauncherProfiles();
   const shots = useQuery({ queryKey: ["launcher", "screenshots"], queryFn: launcherApi.screenshots, refetchInterval: 15_000 });
   const [filter, setFilter] = useState("all");
   const [viewing, setViewing] = useState<Shot | null>(null);

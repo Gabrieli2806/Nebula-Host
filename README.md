@@ -26,7 +26,7 @@ Launcher) manages Minecraft instances on this device:
   Windows, app-private on Android), skins and capes; or the official demo.
 - Game launch on **Windows x64** and **Android arm64** (an engine built from
   [Amethyst-Android](https://github.com/AngelAuraMC/Amethyst-Android), the
-  `src-tauri/android/amethyst` submodule). Linux can manage instances but not launch.
+  `src-tauri/android/engine` submodule). Linux can manage instances but not launch.
 
 Launcher commands always stay on this device, even while managing another machine,
 and are never exposed over the remote API.
@@ -85,8 +85,8 @@ Needs JDK 21, the Android SDK and the NDK versions pinned in
 runtimes are bundled into the package (Android may not run a downloaded runtime):
 
 ```bash
-git submodule update --init src-tauri/android/amethyst
-git -C src-tauri/android/amethyst -c submodule.androidnsbypass.url=https://github.com/alexytomi/androidnsbypass.git submodule update --init androidnsbypass
+git submodule update --init src-tauri/android/engine
+git -C src-tauri/android/engine -c submodule.androidnsbypass.url=https://github.com/alexytomi/androidnsbypass.git submodule update --init androidnsbypass
 node scripts/android-game-jre.mjs
 node scripts/android-jre.mjs arm64-v8a 21,25
 npx tauri android build --debug --target aarch64 --apk

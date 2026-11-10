@@ -37,6 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let profile = Profile {
         loader_version: None,
         icon: None,
+        graphics: Default::default(),
         id,
         name: input.name,
         game_version: version,

@@ -14,6 +14,7 @@ import "@fontsource-variable/jetbrains-mono/wght.css";
 import "./styles/global.css";
 
 import { App } from "./App";
+import { TrayPanel } from "./features/tray/TrayPanel";
 import { applyStoredDensity } from "./app/density";
 import { applyStoredTheme } from "./app/theme";
 import { IS_MOBILE } from "./lib/web";
@@ -29,6 +30,6 @@ if (!container) throw new Error("index.html is missing #root");
 
 createRoot(container).render(
   <StrictMode>
-    <App />
+    {window.location.hash === "#/tray-panel" ? <TrayPanel /> : <App />}
   </StrictMode>,
 );

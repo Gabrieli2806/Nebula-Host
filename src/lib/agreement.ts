@@ -8,7 +8,8 @@
  * the box, records the acceptance and repeats what they asked for.
  *
  * Nothing in the app accepts on the user's behalf: the only path to
- * `instances.acceptAgreement` is a person ticking a checkbox.
+ * `instances.acceptAgreement` is a person ticking a checkbox. The switch in
+ * Settings is the same person accepting once for every server on this PC.
  */
 
 import { useSyncExternalStore } from "react";

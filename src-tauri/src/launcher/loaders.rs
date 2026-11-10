@@ -61,11 +61,7 @@ async fn download(descriptor: &mut Value, path: &Path, cancel: &AtomicBool) -> A
     let url = string(descriptor, "url")?.to_owned();
     super::client::validate_download_url(&url)?;
     if descriptor["sha1"].as_str().filter(|s| !s.is_empty()).is_none() {
-        let response = crate::game::http_client().get(format!("{url}.sha1"))
-            .send().await?.error_for_status()?;
-        let text = response.text().await?;
-        let hash = text.split_whitespace().next().unwrap_or_default();
-        super::client::validate_hash(hash)?;
+        let hash = crate::game::minecraft::downloader::maven_sha1(&crate::game::http_client(), &url).await?;
         descriptor["sha1"] = json!(hash);
     }
     fetch(descriptor, path, cancel).await
@@ -88,13 +84,13 @@ pub async fn install(profile: &Profile, root: &Path, java_path: &Path, client_ja
         if metadata["inheritsFrom"] != profile.game_version { return Err(failure("Loader Minecraft version mismatch")); }
         return Ok(metadata);
     }
-    let (repository, coordinate) = if matches!(profile.loader, Loader::Forge) {
-        ("https://maven.minecraftforge.net", format!("net/minecraftforge/forge/{version}/forge-{version}-installer.jar"))
+    let installer_url = if matches!(profile.loader, Loader::Forge) {
+        crate::game::minecraft::downloader::forge_installer_url(&version)
     } else {
-        ("https://maven.neoforged.net/releases", format!("net/neoforged/neoforge/{version}/neoforge-{version}-installer.jar"))
+        crate::game::minecraft::downloader::neoforge_installer_url(&version)
     };
     let installer = installation.join("installer.jar");
-    download(&mut json!({"url":format!("{repository}/{coordinate}")}), &installer, cancel).await?;
+    download(&mut json!({ "url": installer_url }), &installer, cancel).await?;
     let (recipe, overlay) = {
         let mut archive = zip::ZipArchive::new(std::fs::File::open(&installer)?).map_err(AppError::unexpected)?;
         let recipe: Value = serde_json::from_slice(&zip_file(&mut archive, "install_profile.json")?)?;

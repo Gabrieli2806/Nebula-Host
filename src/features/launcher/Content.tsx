@@ -11,6 +11,7 @@ import { useDeviceBuild } from "@/lib/deviceBuild";
 import { launcherApi, toAppError } from "@/lib/ipc";
 import { Button, ErrorNotice, Icon, Segmented, Switch, type IconName } from "@/ui";
 import { type AddonView, useAddonView } from "@/features/server/panels/addons/util";
+import { ShareToServer } from "./ModShare";
 import type { ContentKind, InstalledContent, LauncherProfile } from "./types";
 
 const FALLBACK: Record<Exclude<ContentKind, "modpack">, IconName> = { mod: "puzzle", resourcepack: "image", shader: "sun" };
@@ -104,6 +105,7 @@ export function InstanceContent({ profile, onBrowse }: { profile: LauncherProfil
     <div className="launcher-content-head">
       <h3 className="label">{t("launcher.content")}</h3>
       <div className="launcher-content-add">
+        {kind === "mod" && !noLoader && items.length ? <ShareToServer profile={profile} /> : null}
         <input ref={picker} type="file" hidden accept={ACCEPT[kind]} onChange={e => { const file = e.target.files?.[0]; e.target.value = ""; if (file) upload.mutate(file); }} />
         <Button size="sm" icon="upload" disabled={noLoader || upload.isPending} title={noLoader ? t("launcher.vanillaNoMods") : undefined} onClick={() => picker.current?.click()}>{upload.isPending ? t("launcher.installing") : t(kind === "mod" ? "launcher.addJar" : "launcher.addZip")}</Button>
         <Button size="sm" variant="primary" icon="plus" disabled={noLoader} title={noLoader ? t("launcher.vanillaNoMods") : undefined} onClick={() => onBrowse(kind)}>{t("launcher.addFromModrinth")}</Button>

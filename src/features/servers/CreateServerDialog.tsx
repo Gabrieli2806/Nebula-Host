@@ -16,7 +16,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { InstallProgressPanel } from "./InstallProgressPanel";
 import { AgreementConsent } from "@/features/server/agreement/Agreement";
-import { keys, useGames } from "@/hooks/useBackend";
+import { keys, useAppSettings, useGames } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { api } from "@/lib/ipc";
 import type { Distribution } from "@/types/api";
@@ -78,10 +78,13 @@ export function CreateServerDialog({
   const distributionLabelId = useId();
   const distributionHelpId = useId();
 
+  const { data: settings } = useAppSettings();
+
   // The only game there is. When there are two, this becomes a first step.
   const game = games?.[0];
   const gameId = game?.id ?? "";
-  const agreement = game?.agreement ?? null;
+  // Already accepted for every server in Settings: nothing to ask here.
+  const agreement = settings?.acceptAgreements ? null : (game?.agreement ?? null);
 
   // Default to the second distribution: for Minecraft that is Paper, which is
   // what most people actually want.

@@ -19,4 +19,5 @@
     <string name="nebula_console_keyboard">Keyboard</string>
     <string name="nebula_console_menu">Game menu</string>
     <string name="nebula_console_slot">Hotbar slot %1$d</string>
+    <string name="nebula_preparing_game">Preparing Minecraft…</string>
 </resources>
