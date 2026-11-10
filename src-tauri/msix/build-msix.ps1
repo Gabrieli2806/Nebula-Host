@@ -29,6 +29,11 @@
   Package identity publisher. Defaults to the Store-assigned value (the Store
   signs the package, so it must match what Partner Center expects).
 
+.PARAMETER Revision
+  Fourth version part (default 0, which the Store requires). Raise it to
+  sideload a rebuild over an installed package of the same app version:
+  Windows refuses to reinstall the same version with different contents.
+
 .PARAMETER CertThumbprint
   Thumbprint of a certificate already in the local store, as an alternative to
   -Sign. Never hard-code one here.
@@ -42,7 +47,9 @@ param(
     [string]$Sign,
     [string]$CertThumbprint,
     [string]$PackageName = "44733G2806.NebulaHost",
-    [string]$Publisher = "CN=334A4A5F-C172-4419-93DE-B4E9376FFA14"
+    [string]$Publisher = "CN=334A4A5F-C172-4419-93DE-B4E9376FFA14",
+    [ValidateRange(0, 65535)]
+    [int]$Revision = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -59,7 +66,8 @@ $OutDir      = Join-Path $ScriptDir "out"
 $TauriConf  = Get-Content (Join-Path $TauriRoot "tauri.conf.json") -Raw | ConvertFrom-Json
 $AppVersion = $TauriConf.version
 # MSIX insists on four version parts.
-while (($AppVersion -split '\.').Count -lt 4) { $AppVersion = "$AppVersion.0" }
+while (($AppVersion -split '\.').Count -lt 3) { $AppVersion = "$AppVersion.0" }
+$AppVersion = "$AppVersion.$Revision"
 
 $AppId          = "NebulaHost"
 $DisplayName    = "Nebula Host"
