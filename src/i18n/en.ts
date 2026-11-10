@@ -10,6 +10,7 @@
 export const en = {
   launcher: {
     yourInstances: "Your instances",
+    storeBuildNote: "This version plays the official game with resource packs. It does not install mods or mod loaders.",
     libraryIntro: "A separate space for each way you play.",
     newInstance: "New instance",
     createInstance: "Create instance",
@@ -100,7 +101,8 @@ export const en = {
     "namePlaceholder": "My survival world",
     "version": "Minecraft version",
     "loader": "Loader",
-    "memory": "Memory (MiB)",
+    "memory": "Memory",
+    "memoryMib": "Memory (MiB)",
     "snapshots": "Include snapshots and historical versions",
     "saving": "Saving…",
     "create": "Create profile",
@@ -341,6 +343,7 @@ export const en = {
     host: "Host on this phone",
     hostHint: "Run a small server here, for a few friends on the same Wi-Fi.",
     note: "You can do both later: switch machines from the name at the top.",
+    noteConnectOnly: "You can add more machines later from the name at the top.",
     hostWarning: "Hosting on a phone works for small games: it uses battery and memory, warms the phone, and players need the same Wi-Fi. A computer is the better host for anything bigger.",
     emptyTitle: "Nothing here yet",
     emptyHint: "Connect to the computer that hosts your servers, or host one on this phone.",
@@ -466,6 +469,7 @@ export const en = {
       app: "Interface",
       fonts: "Fonts",
       backend: "Engine",
+      android: "Android game engine",
     },
     licencesNote: "Each component keeps its own copyright and licence; follow its link for the full text.",
   },
@@ -778,6 +782,7 @@ export const en = {
     title: "Overview",
     address: "Address for players",
     copyHint: "Click to copy",
+    tapToCopy: "Tap to copy",
     sleepIn: "Sleeps in {minutes} min if nobody joins",
     noAddress: "This machine is not on a network right now",
     tickRate: "Tick rate",
@@ -1176,6 +1181,10 @@ export const en = {
     cautionShared: "With the servers already running ({others}), {sum} of {total} would be in use. The machine may slow down.",
     cautionAlone: "That is over three quarters of this machine's memory. Other programs may slow down.",
     belowRecommended: "Below the recommended amount. The server may lag or run out of memory.",
+    gameVanilla: "the game",
+    gameMods: "a modded game",
+    tooHighGame: "Leaves {free} for the system and other programs. The device may slow down or the game may fail to start.",
+    belowRecommendedGame: "Below the recommended amount. The game may stutter or run out of memory.",
   },
 
   settings: {
@@ -1366,6 +1375,11 @@ export const en = {
     backup_not_found: { title: "Backup not found", cause: "That restore point is gone.", action: "Refresh the backup list." },
     upstream_unavailable: { title: "Cannot reach the service", cause: "The download service did not answer.", action: "Check the connection and try again in a moment." },
     upstream_rejected: { title: "Service refused the request", cause: "The service answered with an error.", action: "Wait a minute and try again." },
+    not_in_this_build: { title: "Not in this version", cause: "This version of the app leaves that out.", action: "Use the full version of Nebula Host, or do it on your computer." },
+    not_in_this_build_loader: { title: "Mod loaders are not available here", cause: "This version of the app plays the official game only, without Fabric, Forge or NeoForge.", action: "Choose Vanilla, or use the full version of Nebula Host." },
+    not_in_this_build_content: { title: "Not available in this version", cause: "This version of the app adds resource packs only: no mods, modpacks or shaders.", action: "Add a resource pack, or use the full version of Nebula Host." },
+    not_in_this_build_code_in_archive: { title: "This file contains code", cause: "{file} carries program files, which this version of the app does not install.", action: "Choose a plain resource pack." },
+    not_in_this_build_hosting: { title: "Servers are not hosted on this phone", cause: "This version of the app manages servers on your computers, not on the phone itself.", action: "Connect to the computer that hosts your servers." },
   },
 
   game: {

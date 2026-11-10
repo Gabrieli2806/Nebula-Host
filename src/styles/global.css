@@ -1317,6 +1317,13 @@
     border-radius: var(--radius-lg);
   }
 
+  /* A small well that carries a label grows to hold both lines. */
+  .copy-address[data-size="sm"]:has(.copy-address-label) {
+    height: auto;
+    min-height: 36px;
+    padding-block: 8px;
+  }
+
   .copy-address-body {
     display: flex;
     flex: 1;

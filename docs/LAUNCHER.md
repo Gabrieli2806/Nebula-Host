@@ -1,69 +1,58 @@
-# Launcher implementation status
+# Launcher
 
-Branch: `feat/launcher-cross-platform`, based on the existing `android` branch.
+The launcher manages Minecraft: Java Edition instances on **this device**. It is a
+separate workspace from server instances: its records, accounts and game files
+never mix with a server's, and its commands are never routed to another node.
 
-## Implemented
+## What it does today
 
-- Desktop sidebar and narrow-screen/Android bottom navigation entry.
-- Library: create and remove local profile configurations, select official Mojang
-  releases or snapshots, declare a loader and memory budget. A loader selection is
-  configuration only; it does not imply installation or compatibility.
-- Backend profile validation, UUID identifiers and serialized atomic index writes
-  in the app's private configuration directory. Server instance records are untouched.
-- Discovery: paginated Modrinth client-content searches for mods, modpacks,
-  resource packs and shaders; project links open in the external browser.
-- Accounts: device authorization using a user-provided/locally configured Microsoft
-  public client ID, then Xbox Live, XSTS, Minecraft login and Java profile lookup.
-  Multiple verified accounts can coexist during the current app session.
-- OAuth polling respects the server interval, `slow_down`, expiration and cancellation.
-  Device codes and tokens stay in backend memory. Only the user-visible code and
-  verified profile identity cross IPC. Error bodies are not logged or exposed.
-- Launcher IPC bypasses remote-node routing. No launcher operations are registered
-  in the HTTP or MCP dispatchers. The browser panel does not expose this feature.
-- English and Spanish copy, loading/error/empty states, retry and delete confirmation.
-- Windows x64 Vanilla 1.20.5+: official metadata and SHA-1/size-verified client,
-  libraries and asset objects; bounded native extraction; Java major selection
-  with a verified Temurin download when necessary. Game arguments are expanded
-  as individual arguments with OS/architecture/features rules.
-- Explicit official demo mode (`--demo`) and separate verified-account mode.
-  There is no unlicensed full-game/offline-account mode.
-- Per-profile game directories, download progress/cancellation, install/repair,
-  process supervision, intentional-stop handling and bounded redacted console output.
-- Debug-only `--launcher-preview` uses separate app data and skips the production
-  single-instance handoff, so it cannot adopt an existing host's servers/settings.
+- **Instances**: Vanilla, Fabric, Forge and NeoForge, each with its own game
+  folder, memory and picture. Quilt can be saved as a configuration; its
+  installer is not written yet. The version and loader can be changed in place.
+- **Content**: Modrinth search for mods, resource packs and shaders filtered to
+  the instance's version and loader; required dependencies; update and
+  compatibility checks; enable/disable/remove; a `.jar`/`.zip` from disk.
+  Modrinth modpacks (`.mrpack`) become new instances (bounded extraction,
+  relative paths only, allowed download hosts).
+- **Accounts**: Microsoft device-code sign-in → Xbox Live → XSTS → Minecraft.
+  One refresh token per profile is remembered (`launcher/vault.rs`: DPAPI on
+  Windows, the app-private folder on Android, owner-only elsewhere); access
+  tokens are minted again when needed and never stored or sent over IPC.
+  Skins and capes. The official demo works without an account; there is no
+  offline/unlicensed mode.
+- **Playing**: Windows x64 and Android arm64 (`launcher_capabilities.can_launch`).
+  Downloads are SHA-1/size verified; Java is chosen by the version's major and
+  installed when missing (Temurin on Windows, bundled on Android). Progress,
+  cancel, repair, logs (shareable to mclo.gs, redacted), screenshots, desktop
+  and home-screen shortcuts.
+- **Android engine**: the game runs in its own process and task through a module
+  built from the Amethyst-Android submodule (`src-tauri/android/game-runtime`),
+  with its own bundled OpenJDK and LWJGL, and a renderer chosen per instance
+  (auto, MobileGlues, Zink over Vulkan, Krypton, LTW). On Android the client skips
+  Mojang's LWJGL and native libraries. See `android-launcher-graphics.md` and
+  `android-console-mode.md`.
+- **Assistants (MCP)**: local tools to list and manage instances; launching with
+  the user's account is a separate opt-in.
 
-## Still required before calling this a stable playable launcher
+## Where it lives
 
-1. Broaden client validation beyond Windows x64 Vanilla, add offline cache-only
-   preparation, more detailed Java download progress and graceful game-stop UX.
-   Stopping currently terminates the process; save and quit within Minecraft first
-   when keeping world changes matters. Historical releases and snapshots are not
-   offered as playable clients.
-2. Loader-specific installers and pinned loader versions; compatible client
-   dependency resolution, update checks and file ownership tracking.
-3. `.mrpack` support: bounded extraction, traversal/symlink protection, hashes,
-   environment filtering, overrides, dependency resolution and rollback. Existing
-   server-only addon compatibility rules must not be used as client rules.
-4. Persistent accounts: Windows credential storage and Android Keystore-backed
-   encryption, token renewal, default-account selection and expired/revoked-session
-   UX. This implementation intentionally requests no offline refresh scope and
-   stores no refresh token. Relaunching Nebula requires signing in again.
-5. Android engine: separate native game activity/process, supported ARM runtimes,
-   LWJGL/JNI bridge, renderer selection, surface lifecycle, keyboard/mouse/gamepad
-   and configurable touch controls. The bundled server JVM is insufficient.
-6. Real-device matrix: Windows and Android builds, sign-in with approved app ID,
-   owned Java account, denied/expired consent, child-account/Xbox policy failures,
-   interrupted downloads, corrupt assets, GPU/runtime incompatibilities, resume
-   after backgrounding and repeated launch/exit cycles. Do not advertise all mods
-   or shaders as Android-compatible.
+| Part | Path |
+|---|---|
+| Screens | `src/features/launcher/`. One route, `/launcher`; the section, open instance and panel are in its query (`?tab=`, `?instance=`, `?panel=`; see `panels.ts`) so the back button walks back to the library |
+| Layout | `launcher.css`: container queries on the launcher's own width (list beside the instance when wide, one pane with Play pinned at the bottom when narrow) |
+| Backend | `src-tauri/src/launcher/` (`client.rs` engine, `loaders.rs`, `content.rs`, `auth.rs`, `vault.rs`, `media.rs`, `android.rs`) |
+| IPC | `src-tauri/src/ipc/launcher.rs` (local only; not in `remote/dispatch.rs`) |
+| Android engine | `src-tauri/android/game-runtime/`, `src-tauri/android/engine` (submodule) |
 
-`launcher_capabilities.can_launch` is true only on Windows x64. Android continues
-to expose profiles, catalog and accounts, with its native-runtime limitation stated
-in the UI. The library displays instance cards with search, loader filters and
-a selected-instance detail panel. Creating an instance opens a dialog to choose
-the Minecraft version and loader, name it and optionally adjust memory. Non-Vanilla
-loaders can be saved as configuration-only instances; their game controls remain
-unavailable until their engines are implemented.
+## Still open
+
+1. Quilt installer; Linux and macOS game launch.
+2. Real-device matrix: child accounts and Xbox policy failures, revoked
+   consent, interrupted downloads, GPU/driver differences on Android, repeated
+   launch/exit and background/resume cycles. Do not advertise every mod or
+   shader as Android-compatible.
+3. Publishing the Android launcher on Google Play: the game, loaders and mods
+   are JARs downloaded at run time. See `google-play-proposal.md`.
 
 ## Reference review
 
@@ -84,11 +73,17 @@ unavailable until their engines are implemented.
 - [Microsoft device authorization protocol](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-device-code):
   public client registration, polling and error semantics.
 
-The implementation added in this branch is original code using public protocols;
-no source files or binaries from those launchers have been vendored. Any future
-reuse must include the applicable source, notices and license obligations.
+The launcher's own code (`src/features/launcher/`, `src-tauri/src/launcher/`) is
+original and uses public protocols. The Android engine is different: the
+`game-runtime` module compiles sources and native libraries from the
+Amethyst-Android submodule (LGPL-3.0, pinned commit) and bundles OpenJDK builds
+(GPLv2 with the Classpath Exception). Its build copies Amethyst's LICENSE into
+the package's `assets/licenses/`; any redistribution must keep those notices and
+offer the corresponding source.
 
-## Validation performed
+## Validation performed when the engine first landed (October 2026)
+
+Kept as a record; the launcher has grown since (see above).
 
 - `npm run check`: passed; existing Fast Refresh warnings remain.
 - `npm run build`: passed.

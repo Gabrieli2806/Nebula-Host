@@ -1,6 +1,8 @@
 /*
- * Nebula Host: shell.css. Area styles for the app frame: title bar, sidebar (AppNav/ServerNav, collapsible), machine block, server page title, first run.
- * Owner: Shell agent (Build phase). Only that agent edits this file.
+ * Nebula Host: shell.css. Area styles for the app frame: title bar, sidebar
+ * (AppNav, ServerNav and LauncherInstanceNav; collapsible), machine block,
+ * server page title, first run. At phone width the sidebar is replaced by the
+ * tab bar (app/MobileTabs.css).
  *
  * Imported by global.css AFTER the shared primitives, so a rule here at the
  * same specificity wins over the primitive it extends. Keep every rule inside
@@ -106,26 +108,6 @@
     width: var(--rail-collapsed);
   }
 
-  /* Phone width: a drawer over the content, opened from the title bar. */
-  .rail[data-drawer] {
-    position: absolute;
-    z-index: 40;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    --sidebar-width: min(300px, calc(100vw - 48px));
-    width: var(--sidebar-width);
-    margin: var(--space-3);
-    background: var(--surface-raised);
-    box-shadow: var(--shadow-pop);
-    transform: translateX(calc(-100% - var(--space-4)));
-    transition: transform var(--duration) var(--ease);
-  }
-
-  .rail[data-drawer][data-open] {
-    transform: none;
-  }
-
   /* The phone app draws under the status bar: keep the bar clear of it. */
   html[data-mobile] .titlebar {
     height: calc(var(--titlebar-height) + var(--status-bar, 32px));
@@ -146,23 +128,16 @@
       flex: 1 1 100%;
     }
 
-    .copy-address[data-size="lg"] {
+    .copy-address[data-size="lg"],
+    .copy-address:has(.copy-address-label) {
       flex-wrap: wrap;
       row-gap: var(--space-2);
     }
 
-    .copy-address[data-size="lg"] .copy-address-body {
+    .copy-address[data-size="lg"] .copy-address-body,
+    .copy-address:has(.copy-address-label) .copy-address-body {
       flex: 1 1 100%;
     }
-  }
-
-  .rail-scrim {
-    position: absolute;
-    z-index: 39;
-    inset: 0;
-    border: 0;
-    background: rgb(0 0 0 / 45%);
-    cursor: default;
   }
 
   @media (prefers-reduced-motion: reduce) {

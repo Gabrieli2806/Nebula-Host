@@ -176,6 +176,8 @@ jobs:
       contents: write
     needs: create-release
     uses: ./.github/workflows/android.yml
+    # The signing key lives in the repository secrets (see android.yml).
+    secrets: inherit
     with:
       tag: ${{ github.event.inputs.tag || github.ref_name }}
 

@@ -76,6 +76,7 @@ const PHONE_WORDING: Record<string, string> = {
   "remote.thisPc": "phone.thisPhone",
   "transfer.thisPc": "phone.thisPhone",
   "node.thisMachine": "phone.thisPhone",
+  "overview.copyHint": "overview.tapToCopy",
 };
 
 export function I18nProvider({ children }: { children: ReactNode }) {

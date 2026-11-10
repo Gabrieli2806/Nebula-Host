@@ -15,6 +15,7 @@
 //! replaces the node's transport at the top and nothing below changes.
 
 pub mod error;
+pub mod flavor;
 pub mod game;
 #[cfg(feature = "desktop")]
 pub mod ipc;

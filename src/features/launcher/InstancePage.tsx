@@ -9,6 +9,7 @@
  */
 
 import { useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useContextMenu } from "@/ui/ContextMenu";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -22,20 +23,27 @@ import { isBusy, launcherKeys, phaseDot, phaseLabel, useLauncherCapabilities, us
 import { InstanceLog } from "./InstanceLog";
 import { InstanceSettingsPanel, InstanceTile, squareIcon } from "./InstanceSettings";
 import { loaderInfo } from "./loaderOptions";
+import { INSTANCE_PANELS, instanceUrl, isAddKind, isInstancePanel } from "./panels";
 import { usePrimaryAccount } from "./primaryAccount";
-import type { ContentKind, LauncherProfile } from "./types";
-
-type Tab = "content" | "add" | "log" | "settings";
+import type { LauncherProfile } from "./types";
 
 export function InstancePage({ profile, onBack, onRemoved }: { profile: LauncherProfile; onBack: () => void; onRemoved: () => void }) {
   const { t } = useI18n();
-  const [tab, setTab] = useState<Tab>("content");
-  const [addKind, setAddKind] = useState<Exclude<ContentKind, "modpack">>("mod");
+  // The open panel is in the URL (panels.ts), so back walks through panels.
+  const navigate = useNavigate();
+  const [search] = useSearchParams();
+  const asked = search.get("panel");
+  const tab = isInstancePanel(asked) ? asked : "content";
+  const askedKind = search.get("kind");
+  const addKind = isAddKind(askedKind) ? askedKind : "mod";
   const caps = useLauncherCapabilities();
   const states = useLauncherStatus();
   const phase = states.data?.[profile.id]?.phase;
   const busy = isBusy(phase);
-  const canLaunch = !!caps.data?.can_launch && profile.loader !== "quilt";
+  // The Google Play build runs no mod loaders (src-tauri/src/flavor.rs): an
+  // instance made with one elsewhere shows why instead of a Play key.
+  const loaderInBuild = caps.data?.loaders?.includes(profile.loader) ?? true;
+  const canLaunch = !!caps.data?.can_launch && profile.loader !== "quilt" && loaderInBuild;
 
   return (
     <article className="launcher-instance-page" aria-label={profile.name}>
@@ -58,24 +66,19 @@ export function InstancePage({ profile, onBack, onRemoved }: { profile: Launcher
         </div>
         {canLaunch ? <div className="launcher-hero-play"><PlayControls profile={profile} /></div> : null}
       </section>
-      {!canLaunch ? <p className="launcher-notice"><Icon name="info" size={14} />{t(profile.loader === "quilt" ? "launcher.loaderPending" : "launcher.androidRuntime")}</p> : null}
+      {!canLaunch ? <p className="launcher-notice"><Icon name="info" size={14} />{t(profile.loader === "quilt" ? "launcher.loaderPending" : !loaderInBuild ? "launcher.storeBuildNote" : "launcher.androidRuntime")}</p> : null}
       {canLaunch ? <Progress profile={profile} /> : null}
 
-      <Tabs<Tab>
+      <Tabs
         label={profile.name}
         className="launcher-tabs"
         active={tab}
-        onChange={setTab}
-        tabs={[
-          { id: "content", label: t("launcher.content"), icon: "puzzle" },
-          { id: "add", label: t("launcher.addContent"), icon: "plus" },
-          { id: "log", label: t("launcher.gameLogs"), icon: "terminal" },
-          { id: "settings", label: t("launcher.instanceSettings"), icon: "sliders" },
-        ]}
+        onChange={(next) => navigate(instanceUrl(profile.id, next))}
+        tabs={INSTANCE_PANELS.map((panel) => ({ id: panel.id, label: t(panel.labelKey), icon: panel.icon }))}
       />
 
       <div role="tabpanel" className="launcher-panel">
-        {tab === "content" ? <InstanceContent profile={profile} onBrowse={(kind) => { if (kind !== "modpack") setAddKind(kind); setTab("add"); }} /> : null}
+        {tab === "content" ? <InstanceContent profile={profile} onBrowse={(kind) => navigate(instanceUrl(profile.id, "add", kind === "modpack" ? undefined : kind))} /> : null}
         {tab === "add" ? <Browse key={addKind} profile={profile} initialKind={addKind} /> : null}
         {tab === "log" ? <InstanceLog profile={profile} /> : null}
         {tab === "settings" ? <InstanceSettingsPanel profile={profile} busy={busy} onRemoved={onRemoved} /> : null}

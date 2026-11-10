@@ -22,7 +22,7 @@ import { FilesPanel } from "./panels/FilesPanel";
 import { OverviewPanel } from "./panels/OverviewPanel";
 import { PlayersPanel } from "./panels/PlayersPanel";
 import { ServerSettingsPanel } from "./panels/ServerSettingsPanel";
-import { SERVER_PANELS } from "@/app/AppShell";
+import { SERVER_PANELS } from "@/app/panels";
 import { useInstance } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { Button, EmptyState, StatusDot } from "@/ui";

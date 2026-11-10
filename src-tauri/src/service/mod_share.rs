@@ -139,6 +139,8 @@ fn copy_jar(from: &Path, to_dir: &Path, file: &str, replaces: Option<&str>) -> A
 
 impl InstanceService {
     pub async fn share_mods(&self, instance_id: &str, profile: &Profile, direction: ModShareDirection) -> AppResult<ModShareReport> {
+        // Mods are code: the Google Play build moves none (crate::flavor).
+        crate::flavor::Flavor::current().ensure_content(crate::launcher::ContentKind::Mod)?;
         self.ensure_not_transferring(instance_id).await?;
         let instance = self.store.get(instance_id).await?;
         let (server_dir, mut addon_profile) = self.addon_profile(&instance)?;

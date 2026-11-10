@@ -75,6 +75,11 @@ pub enum ErrorCode {
     // --- external services -------------------------------------------------
     UpstreamUnavailable,
     UpstreamRejected,
+
+    // --- build -------------------------------------------------------------
+    /// This build leaves the feature out (the Google Play build installs no
+    /// mods and hosts no servers; see `flavor.rs`). `reason` says which part.
+    NotInThisBuild,
 }
 
 impl ErrorCode {
@@ -119,6 +124,7 @@ impl ErrorCode {
             Self::BackupNotFound => "backup_not_found",
             Self::UpstreamUnavailable => "upstream_unavailable",
             Self::UpstreamRejected => "upstream_rejected",
+            Self::NotInThisBuild => "not_in_this_build",
         }
     }
 }

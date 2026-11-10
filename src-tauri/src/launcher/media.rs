@@ -146,16 +146,18 @@ fn write_shortcut(link: &std::path::Path, target: &std::path::Path, arguments: &
 pub fn create_shortcut(profile: &Profile) -> AppResult<PathBuf> {
     let exe = std::env::current_exe()?;
     let desktop = dirs::desktop_dir().ok_or_else(|| AppError::new(ErrorCode::IoFailed).detail("No desktop folder"))?;
-    let safe: String = profile
-        .name
-        .chars()
-        .map(|c| if c.is_alphanumeric() || " -_()".contains(c) { c } else { '_' })
-        .collect();
-    let safe = safe.trim();
-    let safe = if safe.is_empty() { "Minecraft" } else { safe };
 
     #[cfg(windows)]
     {
+        // The .lnk file is named after the instance (Linux names its
+        // .desktop entry by id instead).
+        let safe: String = profile
+            .name
+            .chars()
+            .map(|c| if c.is_alphanumeric() || " -_()".contains(c) { c } else { '_' })
+            .collect();
+        let safe = safe.trim();
+        let safe = if safe.is_empty() { "Minecraft" } else { safe };
         let link = desktop.join(format!("{safe}.lnk"));
         let icon = icon_file(profile).unwrap_or_else(|| exe.clone());
         let arguments = format!("--play-instance {}", profile.id);

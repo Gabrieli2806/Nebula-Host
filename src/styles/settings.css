@@ -1,6 +1,5 @@
 /*
  * Nebula Host: settings.css. Area styles for the app Settings screen: preference rows, theme / accent / density controls, Java list.
- * Owner: Settings agent (Build phase). Only that agent edits this file.
  *
  * Imported by global.css AFTER the shared primitives, so a rule here at the
  * same specificity wins over the primitive it extends. Keep every rule inside

@@ -57,19 +57,22 @@ function Panel() {
   // Only the first time: after that the backend shows it on the click itself.
   const showNext = useRef(true);
 
-  const refreshLocal = useCallback(async () => {
-    const list = await invoke<InstanceView[]>("instances_list");
-    setLocal(list.map((server) => ({ server, node: null })));
-  }, []);
+  // Both refreshes set state in a promise callback, once the answers arrive
+  // (written with .then so the effects lint sees it is not synchronous).
+  const refreshLocal = useCallback(
+    () => invoke<InstanceView[]>("instances_list").then((list) => setLocal(list.map((server) => ({ server, node: null })))),
+    [],
+  );
 
   // Paired machines answer at their own pace; this PC is not kept waiting.
-  const refreshRemote = useCallback(async () => {
+  const refreshRemote = useCallback(() => {
     const nodes = remoteNodes();
-    const answers = await Promise.allSettled(
+    return Promise.allSettled(
       nodes.map((node) => remoteCall<InstanceView[]>(node, "instances_list").then((list) => list.map((server) => ({ server, node })))),
-    );
-    setRemote(answers.flatMap((answer) => (answer.status === "fulfilled" ? answer.value : [])));
-    setUnreachable(nodes.filter((_, index) => answers[index]?.status === "rejected").map((node) => node.name));
+    ).then((answers) => {
+      setRemote(answers.flatMap((answer) => (answer.status === "fulfilled" ? answer.value : [])));
+      setUnreachable(nodes.filter((_, index) => answers[index]?.status === "rejected").map((node) => node.name));
+    });
   }, []);
 
   useEffect(() => {

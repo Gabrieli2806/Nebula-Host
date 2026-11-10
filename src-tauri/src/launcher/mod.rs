@@ -105,6 +105,13 @@ pub struct CreateProfile {
 pub struct Capabilities {
     pub platform: &'static str,
     pub can_launch: bool,
+    /// The build: `full`, or `play_store` (see `crate::flavor`).
+    pub flavor: crate::flavor::Flavor,
+    /// The loaders this build installs.
+    pub loaders: Vec<Loader>,
+    /// The content this build adds to an instance (and `modpack` when it
+    /// can make an instance from one).
+    pub content_kinds: Vec<ContentKind>,
 }
 
 pub fn capabilities() -> Capabilities {
@@ -112,6 +119,15 @@ pub fn capabilities() -> Capabilities {
         platform: std::env::consts::OS,
         // The server JVM cannot run a graphical Minecraft client on Android.
         can_launch: client::supported(),
+        flavor: crate::flavor::Flavor::current(),
+        loaders: [Loader::Vanilla, Loader::Fabric, Loader::Forge, Loader::Neoforge, Loader::Quilt]
+            .into_iter()
+            .filter(|loader| crate::flavor::Flavor::current().loader_allowed(loader))
+            .collect(),
+        content_kinds: [ContentKind::Mod, ContentKind::Modpack, ContentKind::Resourcepack, ContentKind::Shader]
+            .into_iter()
+            .filter(|kind| crate::flavor::Flavor::current().content_allowed(*kind))
+            .collect(),
     }
 }
 
@@ -163,6 +179,7 @@ pub fn validate_profile(input: &CreateProfile) -> AppResult<()> {
 
 pub async fn create(input: CreateProfile) -> AppResult<Profile> {
     validate_profile(&input)?;
+    crate::flavor::Flavor::current().ensure_loader(&input.loader)?;
     // Accept only IDs from Mojang's manifest, never user-supplied paths or URLs.
     let manifest = versions().await?;
     if !manifest.iter().any(|v| v.id == input.game_version) {
@@ -261,6 +278,7 @@ pub async fn change_version(
     loader: Loader,
     loader_version: Option<String>,
 ) -> AppResult<Profile> {
+    crate::flavor::Flavor::current().ensure_loader(&loader)?;
     if !versions().await?.iter().any(|v| v.id == game_version) {
         return Err(AppError::new(ErrorCode::VersionNotFound).with("version", &game_version));
     }
@@ -325,7 +343,7 @@ pub async fn versions() -> AppResult<Vec<GameVersion>> {
     }).collect())
 }
 
-#[derive(Clone, Copy, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ContentKind {
     Mod,

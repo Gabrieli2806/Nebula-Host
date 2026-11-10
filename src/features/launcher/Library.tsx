@@ -23,6 +23,7 @@ import { isBusy, launcherKeys, phaseDot, phaseLabel, useLauncherCapabilities, us
 import { InstanceTile } from "./InstanceSettings";
 import { PlayControls } from "./InstancePage";
 import { LOADERS, loaderInfo } from "./loaderOptions";
+import { useDeviceBuild } from "@/lib/deviceBuild";
 import type { LauncherProfile, Loader } from "./types";
 
 const ORDER_KEY = "nebula.instancesOrder";
@@ -44,6 +45,7 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
   const client = useQueryClient();
   const { primary } = usePrimaryAccount();
   const { open, menu } = useContextMenu();
+  const build = useDeviceBuild();
   const android = caps.data?.platform === "android";
   const action = useMutation({
     mutationFn: async ({ profile, what }: { profile: LauncherProfile; what: "play" | "stop" | "folder" | "shortcut" }) => {
@@ -76,10 +78,13 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
             <Icon name="search" size={14} />
             <TextInput type="search" aria-label={t("launcher.searchInstances")} placeholder={t("launcher.searchInstances")} value={search} onChange={(e) => setSearch(e.target.value)} />
           </label>
-          <Select className="launcher-filter" aria-label={t("launcher.filterLoader")} value={loader} onChange={(e) => setLoader(e.target.value as Loader | "all")}>
-            <option value="all">{t("launcher.allLoaders")}</option>
-            {LOADERS.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </Select>
+          {/* One loader (the Google Play build): nothing to filter by. */}
+          {build.loaders.length > 1 ? (
+            <Select className="launcher-filter" aria-label={t("launcher.filterLoader")} value={loader} onChange={(e) => setLoader(e.target.value as Loader | "all")}>
+              <option value="all">{t("launcher.allLoaders")}</option>
+              {LOADERS.filter((item) => build.loaders.includes(item.id)).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </Select>
+          ) : null}
           <Button variant="primary" icon="plus" className="launcher-new" onClick={() => setCreating(true)}>{t("launcher.newInstance")}</Button>
         </div>
       ) : null}
@@ -110,7 +115,7 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
         <ul className="launcher-grid" aria-label={t("launcher.yourInstances")}>
           {visible.map((profile) => {
             const phase = statuses.data?.[profile.id]?.phase;
-            const canLaunch = !!caps.data?.can_launch && profile.loader !== "quilt";
+            const canLaunch = !!caps.data?.can_launch && profile.loader !== "quilt" && build.loaders.includes(profile.loader);
             return (
               <li key={profile.id} {...manual.dragProps(arrangedIds, profile.id)} className="panel card-interactive launcher-card" data-phase={phase} onContextMenu={(event) => open(event, menuFor(profile))}>
                 <button type="button" className="launcher-card-open" onClick={() => onOpen(profile)} title={profile.name}>
@@ -135,6 +140,7 @@ export function Library({ onOpen }: { onOpen: (profile: LauncherProfile) => void
       ) : null}
 
       {android ? <p className="launcher-footnote">{t("launcher.androidRuntime")}</p> : null}
+      {build.playStore ? <p className="launcher-footnote">{t("launcher.storeBuildNote")}</p> : null}
       {menu}
       {action.isSuccess && action.variables?.what === "shortcut" ? <p role="status" className="launcher-notice">{t(android ? "launcher.shortcutRequested" : "launcher.desktopShortcutDone")}</p> : null}
       {creating ? <CreateInstanceDialog onClose={() => setCreating(false)} onCreated={(profile) => { setCreating(false); onOpen(profile); }} /> : null}

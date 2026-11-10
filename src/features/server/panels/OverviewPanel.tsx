@@ -237,12 +237,17 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
             emptyText={t("overview.noAddress")}
           />
         )}
+        {/* The sentence about UPnP sits under the well: as the well's hint it
+            pushed the address itself out of view. */}
         {!olderCopy && instance.public_address ? (
-          <CopyAddress
-            value={instance.public_address}
-            label={t("overview.publicAddress")}
-            hint={t("overview.publicAddressHint")}
-          />
+          <div className="overview-public-address">
+            <CopyAddress
+              value={instance.public_address}
+              label={t("overview.publicAddress")}
+              hint={t("overview.copyHint")}
+            />
+            <p className="overview-public-address-note">{t("overview.publicAddressHint")}</p>
+          </div>
         ) : null}
       </header>
 

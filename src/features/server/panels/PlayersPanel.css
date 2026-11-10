@@ -1,5 +1,5 @@
 /*
- * Players panel. Owner: Players agent (round 3).
+ * Players panel.
  * Online players as cards around a 64px head; the lists as dense rows with
  * 32px heads. Heads come from the PlayerHead primitive (src/ui/PlayerHead.css).
  */

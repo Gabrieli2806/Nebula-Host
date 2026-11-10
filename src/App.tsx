@@ -59,6 +59,8 @@ function Shell() {
             <Route path="/welcome" element={<FirstRun />} />
             <Route element={<AppShell />}>
               <Route path="/servers" element={<ServersScreen />} />
+              {/* The launcher keeps its place in the query (?tab, ?instance,
+                  ?panel; see features/launcher/panels.ts). */}
               <Route path="/launcher" element={<LauncherScreen />} />
               {/* The open panel lives in the URL, so the sidebar can be plain
                   links and the back button walks through panels. */}

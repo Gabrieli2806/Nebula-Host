@@ -28,8 +28,11 @@ use crate::game::registry::InstallReport;
 pub enum NodeTransport {
     /// This machine. No network hop, no auth — the process *is* the node.
     Local,
-    /// Another machine on the LAN, reached over the node protocol after
-    /// pairing. Not implemented yet; modelled so the UI never has to change.
+    /// Another machine on the LAN. The backend never produces this today:
+    /// the app keeps its paired machines itself (`src/lib/connection.ts`) and
+    /// calls each one's remote API (`crate::remote`) directly. Kept so this
+    /// type and its TypeScript twin stay stable if the backend ever lists
+    /// paired nodes.
     Paired { address: String, fingerprint: String },
 }
 

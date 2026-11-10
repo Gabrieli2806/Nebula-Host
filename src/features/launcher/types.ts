@@ -11,7 +11,11 @@ export type Renderer = "auto" | "mobileglues" | "krypton" | "zink" | "ltw";
 export interface Graphics { renderer: Renderer; resolution: number | null; sustained: boolean | null; big_cores: boolean }
 /** What the phone can render with; null on the desktop. */
 export interface DeviceGraphics { vulkan: boolean; vulkan_version?: string | null; gles_version: string; renderers: Renderer[]; total_memory_mb: number; gpu?: string | null }
-export interface LauncherCapabilities { platform: string; can_launch: boolean }
+export interface LauncherCapabilities {
+  platform: string; can_launch: boolean;
+  /** `play_store`: the Google Play build (no loaders, mods, modpacks, shaders or hosting here). */
+  flavor: "full" | "play_store"; loaders: Loader[]; content_kinds: ContentKind[];
+}
 export interface ClientStatus { phase: string; stage: string; completed: number; total: number; error: import("@/lib/ipc").AppError | null; exit_code: number | null }
 export interface GameVersion { id: string; type: string; client_supported: boolean }
 export interface LauncherAccount { id: string; name: string }

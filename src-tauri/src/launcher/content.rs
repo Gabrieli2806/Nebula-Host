@@ -9,6 +9,7 @@
 
 use super::{client, ContentKind, Loader, Profile};
 use crate::error::{AppError, AppResult, ErrorCode};
+use crate::flavor::Flavor;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashSet;
@@ -264,12 +265,14 @@ pub fn import_file(profile: &Profile, kind: ContentKind, name: &str, data: &[u8]
         ContentKind::Resourcepack | ContentKind::Shader => &[".zip"],
         ContentKind::Modpack => return Err(invalid("modpack")),
     };
+    Flavor::current().ensure_content(kind)?;
     if !allowed.iter().any(|ext| lower.ends_with(ext)) {
         return Err(invalid("file type"));
     }
     if data.len() as u64 > MAX_FILE || !data.starts_with(b"PK\x03\x04") {
         return Err(invalid("not a valid archive"));
     }
+    Flavor::current().ensure_no_code(std::io::Cursor::new(data), name)?;
     let target = profile_dir(profile)?.join(folder(kind)?).join(name);
     if let Some(parent) = target.parent() {
         std::fs::create_dir_all(parent)?;
@@ -341,9 +344,24 @@ async fn download(file: &RemoteFile, destination: &Path) -> AppResult<()> {
     Ok(std::fs::rename(temp, destination)?)
 }
 
+/// In a build that may not run code from outside (see `crate::flavor`), a
+/// downloaded archive that carries some is deleted and refused.
+fn keep_if_clean(path: &Path, name: &str) -> AppResult<()> {
+    let flavor = Flavor::current();
+    if !flavor.scans_archives() {
+        return Ok(());
+    }
+    let verdict = std::fs::File::open(path).map_err(AppError::from).and_then(|file| flavor.ensure_no_code(file, name));
+    if verdict.is_err() {
+        let _ = std::fs::remove_file(path);
+    }
+    verdict
+}
+
 /// Install a project (a mod, resource pack or shader) into an instance, with
 /// the mods it requires. Returns the files that were added.
 pub async fn install(profile: &Profile, project: &str, kind: ContentKind) -> AppResult<Vec<String>> {
+    Flavor::current().ensure_content(kind)?;
     let root = profile_dir(profile)?;
     let mut added = Vec::new();
     let mut seen = HashSet::new();
@@ -361,6 +379,7 @@ pub async fn install(profile: &Profile, project: &str, kind: ContentKind) -> App
         }
         if !target.exists() && !target.with_file_name(format!("{}.disabled", file.name)).exists() {
             download(&file, &target).await?;
+            keep_if_clean(&target, &file.name)?;
             added.push(file.name.clone());
         }
         // Required mods come along (two levels deep: enough for the usual
@@ -385,6 +404,7 @@ pub async fn install(profile: &Profile, project: &str, kind: ContentKind) -> App
 /// version and loader, lists every file with its checksum, and carries
 /// override files (configs, options) that are copied over.
 pub async fn install_modpack(project: &str) -> AppResult<Profile> {
+    Flavor::current().ensure_content(ContentKind::Modpack)?;
     let versions = get_json(&format!("{API}/project/{}/version", project_ref(project)?), &[]).await?;
     let list = versions.as_array().cloned().unwrap_or_default();
     let version = list
@@ -773,6 +793,7 @@ pub async fn check(profile: &Profile) -> AppResult<Vec<ContentStatus>> {
 /// Replace an installed file with the given Modrinth version (from `check`),
 /// keeping it switched off if it was off.
 pub async fn update(profile: &Profile, kind: ContentKind, file: &str, version_id: &str) -> AppResult<String> {
+    Flavor::current().ensure_content(kind)?;
     let old = existing(profile, kind, file)?;
     let version = get_json(&format!("{API}/version/{}", project_ref(version_id)?), &[]).await?;
     let next = primary_file(&version)?;
@@ -780,6 +801,7 @@ pub async fn update(profile: &Profile, kind: ContentKind, file: &str, version_id
     let name = if disabled { format!("{}.disabled", next.name) } else { next.name.clone() };
     let target = profile_dir(profile)?.join(folder(kind)?).join(&name);
     download(&next, &target).await?;
+    keep_if_clean(&target, &next.name)?;
     if target != old {
         let _ = std::fs::remove_file(&old);
     }

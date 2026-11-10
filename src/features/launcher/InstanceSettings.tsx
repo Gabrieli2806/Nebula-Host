@@ -13,6 +13,7 @@ import { Button, Dialog, ErrorNotice, Field, Icon, LoaderIcon, Panel, Select, Sw
 import { RamSlider } from "@/ui/RamSlider";
 import { launcherKeys, useDeviceGraphics, useGameVersions, useLauncherCapabilities } from "./hooks";
 import { LOADERS, loaderInfo } from "./loaderOptions";
+import { useDeviceBuild } from "@/lib/deviceBuild";
 import type { Graphics, LauncherProfile, Loader, Renderer } from "./types";
 
 /** The card's colour: the loader's, so each kind of instance reads at a glance. */
@@ -110,6 +111,7 @@ function DetailsBlock({ profile }: { profile: LauncherProfile }) {
 /** Move to another Minecraft version or loader without a new instance. */
 function VersionBlock({ profile, busy }: { profile: LauncherProfile; busy: boolean }) {
   const { t } = useI18n();
+  const device = useDeviceBuild();
   const refresh = useRefreshProfiles();
   const caps = useLauncherCapabilities();
   const versions = useGameVersions();
@@ -142,7 +144,7 @@ function VersionBlock({ profile, busy }: { profile: LauncherProfile; busy: boole
         <label className="launcher-field">
           <span className="label">{t("launcher.loader")}</span>
           <Select value={loader} disabled={busy} onChange={(e) => { setLoader(e.target.value as Loader); setLoaderVersion(""); }}>
-            {LOADERS.filter((item) => item.id !== "quilt" || profile.loader === "quilt").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            {LOADERS.filter((item) => item.id === profile.loader || (item.id !== "quilt" && device.loaders.includes(item.id))).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </Select>
         </label>
         {modded ? (
@@ -183,6 +185,7 @@ function MemoryBlock({ profile, busy }: { profile: LauncherProfile; busy: boolea
         projectType={profile.loader === "vanilla" ? null : "mod"}
         labelledBy={`memory-${profile.id}`}
         disabled={busy || save.isPending}
+        subject="game"
       />
       {busy ? <p className="launcher-muted">{t("launcher.closeGameFirst")}</p> : null}
       {save.error ? <ErrorNotice error={toAppError(save.error)} compact /> : null}

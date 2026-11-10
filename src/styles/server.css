@@ -1,6 +1,5 @@
 /*
  * Nebula Host: server.css. Area styles for the server detail screen: screen frame, overview (header card, resources, storage, details), console.
- * Owner: Server-detail agent (Build phase). Only that agent edits this file.
  *
  * Imported by global.css AFTER the shared primitives, so a rule here at the
  * same specificity wins over the primitive it extends. Keep every rule inside
@@ -45,6 +44,20 @@
     flex-direction: column;
     gap: var(--space-4);
     padding: var(--space-5);
+  }
+
+  /* The internet address: its well, then one quiet line on where it comes
+     from. */
+  .overview-public-address {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .overview-public-address-note {
+    margin: 0;
+    color: var(--text-faint);
+    font-size: var(--text-xs);
   }
 
   .plate.overview-head[data-status="crashed"] {

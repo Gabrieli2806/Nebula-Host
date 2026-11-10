@@ -1,10 +1,25 @@
-# Builds the Android APK (arm64, debug-signed). Run by hand to get the APK as
+# Builds the Android APK (arm64, debug build). Run by hand to get the APK as
 # a workflow artifact, or from the Release workflow, which attaches it to the
 # release.
+#
+# Signing: with the repository secrets ANDROID_KEYSTORE_BASE64 (the .jks file,
+# base64), ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and
+# ANDROID_KEY_PASSWORD, every APK is signed with that one key, so each release
+# installs over the last. Without them the runner's throwaway debug key is
+# used and Android refuses to update from the previous release.
+#
+# Run by hand with "store: play" for the Google Play flavor (cargo feature
+# `play-store`: no mod loaders, mods or hosting on the phone).
 name: Android
 
 on:
   workflow_dispatch:
+    inputs:
+      store:
+        description: "Which build: full (GitHub releases) or play (Google Play flavor)."
+        type: choice
+        options: [full, play]
+        default: full
   workflow_call:
     inputs:
       tag:
@@ -76,14 +91,37 @@ jobs:
           node scripts/android-game-jre.mjs
           node scripts/android-jre.mjs arm64-v8a 21,25
 
+      - name: Release signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::warning title=Unstable signature::ANDROID_KEYSTORE_BASE64 is not set: this APK is signed with a throwaway debug key and will not install over the previous release."
+            exit 0
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/nebula-release.jks"
+          echo "NEBULA_KEYSTORE=$RUNNER_TEMP/nebula-release.jks" >> "$GITHUB_ENV"
+
       - name: Build APK
-        run: npx tauri android build --debug --target aarch64 --apk --ci
+        env:
+          NEBULA_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          NEBULA_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          NEBULA_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_FEATURES: ${{ inputs.store == 'play' && '--features play-store' || '' }}
+        run: npx tauri android build --debug --target aarch64 --apk --ci $STORE_FEATURES
+
+      # Report only for now: the bundled runtimes are prebuilt, and Play stops
+      # accepting updates without 16 KB support on 2027-02-01.
+      - name: 16 KB page alignment
+        run: scripts/check-16k.sh src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk
 
       - name: Name the APK
         id: apk
         run: |
           version=$(node -p "require('./src-tauri/tauri.conf.json').version")
-          name="NebulaHost-${version}-android-arm64.apk"
+          suffix=""
+          if [ "${{ inputs.store }}" = "play" ]; then suffix="-play"; fi
+          name="NebulaHost-${version}-android-arm64${suffix}.apk"
           mkdir -p out
           cp src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk "out/$name"
           (cd out && sha256sum "$name" > "$name.sha256")

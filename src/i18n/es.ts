@@ -10,6 +10,7 @@ import type { Copy } from "./en";
 export const es: Copy = {
   launcher: {
     yourInstances: "Tus instancias",
+    storeBuildNote: "Esta versión juega al juego oficial con resource packs. No instala mods ni loaders de mods.",
     libraryIntro: "Un espacio independiente para cada forma de jugar.",
     newInstance: "Nueva instancia",
     createInstance: "Crear instancia",
@@ -100,7 +101,8 @@ export const es: Copy = {
     "namePlaceholder": "Mi mundo de supervivencia",
     "version": "Versión de Minecraft",
     "loader": "Cargador",
-    "memory": "Memoria (MiB)",
+    "memory": "Memoria",
+    "memoryMib": "Memoria (MiB)",
     "snapshots": "Incluir snapshots y versiones históricas",
     "saving": "Guardando…",
     "create": "Crear perfil",
@@ -341,6 +343,7 @@ export const es: Copy = {
     host: "Alojar en este teléfono",
     hostHint: "Ejecuta un servidor pequeño aquí, para unos pocos amigos en el mismo Wi-Fi.",
     note: "Puedes hacer ambas cosas después: cambia de equipo desde el nombre de arriba.",
+    noteConnectOnly: "Puedes añadir más máquinas luego desde el nombre de arriba.",
     hostWarning: "Alojar en un teléfono sirve para partidas pequeñas: gasta batería y memoria, calienta el teléfono y los jugadores necesitan el mismo Wi-Fi. Para algo más grande, un PC es mejor anfitrión.",
     emptyTitle: "Aún no hay nada aquí",
     emptyHint: "Conecta con el equipo que aloja tus servidores, o aloja uno en este teléfono.",
@@ -466,6 +469,7 @@ export const es: Copy = {
       app: "Interfaz",
       fonts: "Tipografías",
       backend: "Motor",
+      android: "Motor del juego en Android",
     },
     licencesNote: "Cada componente conserva sus derechos de autor y su licencia; abre su enlace para leer el texto completo.",
   },
@@ -778,6 +782,7 @@ export const es: Copy = {
     title: "Resumen",
     address: "Dirección para los jugadores",
     copyHint: "Clic para copiar",
+    tapToCopy: "Toca para copiar",
     sleepIn: "Se duerme en {minutes} min si no entra nadie",
     noAddress: "Este equipo no está en una red ahora mismo",
     tickRate: "Ritmo del mundo",
@@ -1176,6 +1181,10 @@ export const es: Copy = {
     cautionShared: "Con los servidores que ya están en marcha ({others}), se usarían {sum} de {total}. El equipo puede ir lento.",
     cautionAlone: "Supera las tres cuartas partes de la memoria de este equipo. Otros programas pueden ir lentos.",
     belowRecommended: "Por debajo de lo recomendado. El servidor puede ir lento o quedarse sin memoria.",
+    gameVanilla: "el juego",
+    gameMods: "un juego con mods",
+    tooHighGame: "Deja {free} para el sistema y otros programas. El dispositivo puede ir lento o el juego puede no arrancar.",
+    belowRecommendedGame: "Por debajo de lo recomendado. El juego puede tener tirones o quedarse sin memoria.",
   },
 
   settings: {
@@ -1366,6 +1375,11 @@ export const es: Copy = {
     backup_not_found: { title: "Copia no encontrada", cause: "Ese punto de restauración ya no está.", action: "Actualiza la lista de copias." },
     upstream_unavailable: { title: "No se llega al servicio", cause: "El servicio de descargas no respondió.", action: "Revisa la conexión e inténtalo en un momento." },
     upstream_rejected: { title: "El servicio rechazó la petición", cause: "El servicio respondió con un error.", action: "Espera un minuto y vuelve a intentarlo." },
+    not_in_this_build: { title: "No está en esta versión", cause: "Esta versión de la app no incluye esa función.", action: "Usa la versión completa de Nebula Host o hazlo desde tu ordenador." },
+    not_in_this_build_loader: { title: "Los loaders de mods no están disponibles aquí", cause: "Esta versión de la app juega al juego oficial, sin Fabric, Forge ni NeoForge.", action: "Elige Vanilla o usa la versión completa de Nebula Host." },
+    not_in_this_build_content: { title: "No disponible en esta versión", cause: "Esta versión de la app solo añade resource packs: ni mods, ni modpacks, ni shaders.", action: "Añade un resource pack o usa la versión completa de Nebula Host." },
+    not_in_this_build_code_in_archive: { title: "Este archivo contiene código", cause: "{file} lleva archivos de programa, que esta versión de la app no instala.", action: "Elige un resource pack normal." },
+    not_in_this_build_hosting: { title: "Este teléfono no aloja servidores", cause: "Esta versión de la app gestiona los servidores de tus ordenadores, no del propio teléfono.", action: "Conéctate al ordenador que aloja tus servidores." },
   },
 
   game: {

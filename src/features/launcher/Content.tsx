@@ -7,6 +7,7 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useI18n } from "@/i18n";
+import { useDeviceBuild } from "@/lib/deviceBuild";
 import { launcherApi, toAppError } from "@/lib/ipc";
 import { Button, ErrorNotice, Icon, Segmented, Switch, type IconName } from "@/ui";
 import { type AddonView, useAddonView } from "@/features/server/panels/addons/util";
@@ -50,7 +51,11 @@ const KINDS: { id: Exclude<ContentKind, "modpack">; label: string }[] = [
 export function InstanceContent({ profile, onBrowse }: { profile: LauncherProfile; onBrowse: (kind: ContentKind) => void }) {
   const { t } = useI18n();
   const client = useQueryClient();
-  const [kind, setKind] = useState<Exclude<ContentKind, "modpack">>("mod");
+  const build = useDeviceBuild();
+  const kinds = KINDS.filter(item => build.contentKinds.includes(item.id));
+  const [chosen, setKind] = useState<Exclude<ContentKind, "modpack">>("mod");
+  // The Google Play build has no mods tab: start on the first kind it has.
+  const kind = kinds.some(item => item.id === chosen) ? chosen : kinds[0]?.id ?? "resourcepack";
   const [view, setView] = useAddonView();
   const key = ["launcher", "content", profile.id];
   const list = useQuery({ queryKey: key, queryFn: () => launcherApi.contentList(profile.id) });
@@ -107,7 +112,7 @@ export function InstanceContent({ profile, onBrowse }: { profile: LauncherProfil
       </div>
     </div>
     <div className="launcher-content-bar">
-      <Segmented<Exclude<ContentKind, "modpack">> size="sm" label={t("launcher.content")} value={kind} onChange={setKind} options={KINDS.map(item => ({ id: item.id, label: `${t(item.label)} ${counts(item.id)}` }))} />
+      <Segmented<Exclude<ContentKind, "modpack">> size="sm" label={t("launcher.content")} value={kind} onChange={setKind} options={kinds.map(item => ({ id: item.id, label: `${t(item.label)} ${counts(item.id)}` }))} />
       <Segmented<AddonView> size="sm" label={t("addons.viewLabel")} value={view} onChange={setView} options={[{ id: "cards", label: t("servers.densityCards") }, { id: "list", label: t("servers.densityList") }]} />
     </div>
     <div className="launcher-update-bar">

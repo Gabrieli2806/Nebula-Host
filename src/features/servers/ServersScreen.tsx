@@ -25,6 +25,7 @@ import { useI18n } from "@/i18n";
 import { formatMegabytes } from "@/lib/format";
 import type { InstanceStatus, InstanceView } from "@/types/api";
 import { PairDialog } from "@/app/NodeSwitcher";
+import { useDeviceBuild } from "@/lib/deviceBuild";
 import { IS_MOBILE } from "@/lib/web";
 import { isRemote } from "@/lib/connection";
 import { useManualOrder } from "@/lib/manualOrder";
@@ -156,6 +157,10 @@ export function ServersScreen() {
 
   const open = (instance: InstanceView) => navigate(`/servers/${instance.id}/overview`);
   const serverMenu = useServerMenu(instances ?? [], () => setCreating(true), moveTo);
+  // The Google Play build hosts nothing on the phone itself; another machine
+  // decides for itself.
+  const device = useDeviceBuild();
+  const canHost = isRemote() || device.hosting;
 
   return (
     <div
@@ -166,7 +171,7 @@ export function ServersScreen() {
       <Heading
         instances={instances}
         onCreate={() => setCreating(true)}
-        canCreate={!unreachable}
+        canCreate={!unreachable && canHost}
         density={density}
         onDensity={setOverride}
       />
@@ -194,7 +199,7 @@ export function ServersScreen() {
 
       {isLoading && !noData ? <LoadingServers density={density} /> : null}
 
-      {instances && instances.length === 0 ? <NoServers onCreate={() => setCreating(true)} /> : null}
+      {instances && instances.length === 0 ? <NoServers onCreate={canHost ? () => setCreating(true) : undefined} /> : null}
 
       {total > 0 && visible.length === 0 ? (
         <NoMatch
@@ -661,7 +666,9 @@ function Unreachable({ name }: { name: string }) {
   );
 }
 
-function NoServers({ onCreate }: { onCreate: () => void }) {
+/** No servers yet. Without `onCreate` (this build hosts nothing here), only
+ *  the way to another machine is offered. */
+function NoServers({ onCreate }: { onCreate?: () => void }) {
   const { t } = useI18n();
   const [pairing, setPairing] = useState(false);
   // On the phone, managing a computer comes first; hosting here second.
@@ -678,9 +685,11 @@ function NoServers({ onCreate }: { onCreate: () => void }) {
             <Button variant="primary" icon="link" onClick={() => setPairing(true)}>
               {t("phoneWelcome.connect")}
             </Button>
-            <Button icon="plus" onClick={onCreate}>
-              {t("phoneWelcome.host")}
-            </Button>
+            {onCreate ? (
+              <Button icon="plus" onClick={onCreate}>
+                {t("phoneWelcome.host")}
+              </Button>
+            ) : null}
           </div>
         </div>
         {pairing ? <PairDialog open onClose={() => setPairing(false)} /> : null}

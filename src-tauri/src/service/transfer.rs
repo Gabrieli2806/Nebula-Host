@@ -904,6 +904,11 @@ impl InstanceService {
         keep_both: bool,
         transfer_id: &str,
     ) -> AppResult<AdoptReport> {
+        // A server moved here would be one this build may not run.
+        if let Err(refused) = crate::flavor::Flavor::current().ensure_hosting() {
+            let _ = std::fs::remove_file(&archive);
+            return Err(refused);
+        }
         let result = self.adopt_inner(&archive, expected_sha256, keep_both, transfer_id).await;
         // The upload has done its job either way.
         let _ = std::fs::remove_file(&archive);
@@ -1171,7 +1176,9 @@ impl InstanceService {
     }
 }
 
-#[cfg(test)]
+// Moving servers in and out is hosting, which the Google Play build leaves
+// out (crate::flavor): these run in the full build only.
+#[cfg(all(test, not(feature = "play-store")))]
 mod tests {
     use super::*;
     use crate::game::BuildSelector;
@@ -1542,7 +1549,7 @@ mod tests {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "play-store")))]
 mod review {
     //! Regressions from the adversarial review: each test pins down one path
     //! that used to lose data.

@@ -31,6 +31,10 @@ desktop = [
     "dep:tauri-plugin-opener",
     "dep:tauri-plugin-single-instance",
 ]
+# The Google Play build: no mod loaders, mods, modpacks or shaders, no code
+# inside added archives, no servers hosted on the device (see src/flavor.rs
+# and docs/google-play-proposal.md). Off by default.
+play-store = []
 
 [build-dependencies]
 tauri-build = { version = "2", features = [], optional = true }

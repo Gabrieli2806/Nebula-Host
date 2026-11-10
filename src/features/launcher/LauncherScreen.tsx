@@ -10,13 +10,17 @@
  *   pinned to the bottom of the screen within thumb reach;
  * - a dual-screen device puts the list and the instance on either side of the
  *   hinge.
+ *
+ * The section, the open instance and its panel live in the URL's query
+ * (panels.ts), so the back button walks back to the library.
  */
 
-import { useEffect, useState } from "react";
-import { Navigate, useLocation, useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
+import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useI18n } from "@/i18n";
+import { useDeviceBuild } from "@/lib/deviceBuild";
 import { launcherApi, toAppError } from "@/lib/ipc";
 import { useLauncherEnabled } from "@/lib/launcherPref";
 import { IS_WEB } from "@/lib/web";
@@ -26,26 +30,33 @@ import { Browse } from "./Browse";
 import { useLauncherProfiles } from "./hooks";
 import { InstancePage } from "./InstancePage";
 import { InstanceRail, Library } from "./Library";
+import { LAUNCHER_SECTIONS, instanceUrl, isSection, sectionUrl, type LauncherSection } from "./panels";
 import { usePrimaryAccount } from "./primaryAccount";
 import { Screenshots } from "./Screenshots";
 import "./launcher.css";
-
-type Tab = "library" | "discover" | "screenshots" | "skin";
 
 export function LauncherScreen() {
   const [search] = useSearchParams();
   // A home-screen shortcut still opens it; otherwise it follows the setting.
   const enabled = useLauncherEnabled();
   if (!enabled && !search.get("instance")) return <Navigate to="/servers" replace />;
-  return <LauncherContent key={search.get("request") ?? "launcher"} />;
+  return <LauncherContent />;
 }
 
 function LauncherContent() {
   const { t } = useI18n();
   const [search] = useSearchParams();
   const location = useLocation();
-  const [tab, setTab] = useState<Tab>("library");
-  const [openId, setOpenId] = useState<string | null>(search.get("instance"));
+  const navigate = useNavigate();
+  const build = useDeviceBuild();
+  // No Modpacks section in the Google Play build (src-tauri/src/flavor.rs).
+  const sections = LAUNCHER_SECTIONS.filter((item) => item.id !== "discover" || build.contentKinds.includes("modpack"));
+  const asked = search.get("tab");
+  const tab: LauncherSection = isSection(asked) && sections.some((item) => item.id === asked) ? asked : "library";
+  const openId = search.get("instance");
+  // Each step is a new history entry, like a server's panels.
+  const setTab = (next: LauncherSection) => navigate(sectionUrl(next));
+  const setOpenId = (id: string | null) => navigate(id ? instanceUrl(id) : sectionUrl(tab));
   const profiles = useLauncherProfiles();
   const open = profiles.data?.find((profile) => profile.id === openId) ?? null;
   // Fetch the skin early so the Skin tab opens with it ready.
@@ -70,27 +81,22 @@ function LauncherContent() {
       {open ? (
         <div className="launcher-split">
           <InstanceRail current={open.id} onOpen={(profile) => setOpenId(profile.id)} />
-          <InstancePage key={open.id} profile={open} onBack={() => setOpenId(null)} onRemoved={() => setOpenId(null)} />
+          <InstancePage key={open.id} profile={open} onBack={() => setOpenId(null)} onRemoved={() => navigate("/launcher", { replace: true })} />
         </div>
       ) : (
         <>
-          <Tabs<Tab>
+          <Tabs<LauncherSection>
             label="Launcher"
             className="launcher-tabs"
             active={tab}
             onChange={setTab}
-            tabs={[
-              { id: "library", label: t("launcher.library"), icon: "servers" },
-              { id: "discover", label: t("launcher.modpacks"), icon: "search" },
-              { id: "screenshots", label: t("launcher.screenshots"), icon: "image" },
-              { id: "skin", label: t("launcher.skin"), icon: "users" },
-            ]}
+            tabs={sections.map((item) => ({ id: item.id, label: t(item.labelKey), icon: item.icon }))}
           />
           <div role="tabpanel" className="launcher-panel">
             {tab === "library" ? (
               <Library onOpen={(profile) => setOpenId(profile.id)} />
             ) : tab === "discover" ? (
-              <Browse modpacks onCreated={(profile) => { setTab("library"); setOpenId(profile.id); }} />
+              <Browse modpacks onCreated={(profile) => setOpenId(profile.id)} />
             ) : tab === "screenshots" ? (
               <Screenshots />
             ) : (

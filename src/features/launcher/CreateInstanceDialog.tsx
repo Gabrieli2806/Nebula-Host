@@ -6,6 +6,7 @@ import { Button, Dialog, ErrorNotice, LoaderIcon, Select, TextInput } from "@/ui
 import type { Loader, LauncherProfile } from "./types";
 import { LOADERS, loaderInfo } from "./loaderOptions";
 import { launcherKeys, useGameVersions, useLauncherCapabilities } from "./hooks";
+import { useDeviceBuild } from "@/lib/deviceBuild";
 
 export function CreateInstanceDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (profile: LauncherProfile) => void }) {
   const { t } = useI18n();
@@ -15,6 +16,7 @@ export function CreateInstanceDialog({ onClose, onCreated }: { onClose: () => vo
   const [version, setVersion] = useState("");
   const [loader, setLoader] = useState<Loader>("vanilla");
   const [memory, setMemory] = useState(2048);
+  const build = useDeviceBuild();
   const versions = useGameVersions();
   const caps = useLauncherCapabilities();
   const available = versions.data?.filter(v => caps.data?.can_launch ? v.client_supported : v.type === "release") ?? [];
@@ -40,7 +42,7 @@ export function CreateInstanceDialog({ onClose, onCreated }: { onClose: () => vo
       </section>
       <fieldset className="launcher-create-section" disabled={create.isPending}>
         <legend><span className="launcher-step">2</span>{t("launcher.chooseLoader")}</legend>
-        <div className="launcher-loader-options">{LOADERS.map(item => <label key={item.id} className="launcher-loader-option" data-selected={loader === item.id ? "" : undefined}>
+        <div className="launcher-loader-options">{LOADERS.filter(item => build.loaders.includes(item.id)).map(item => <label key={item.id} className="launcher-loader-option" data-selected={loader === item.id ? "" : undefined}>
           <input type="radio" name={`${formId}-loader`} value={item.id} checked={loader === item.id} disabled={item.id === "quilt"} onChange={() => setLoader(item.id)} />
           <LoaderIcon glyph={item.glyph} size={25} /><strong>{item.name}</strong><small>{t(item.id === "vanilla" ? "launcher.originalGame" : item.id === "quilt" ? "launcher.configOnly" : "launcher.modLoader")}</small>
         </label>)}</div>
@@ -50,7 +52,7 @@ export function CreateInstanceDialog({ onClose, onCreated }: { onClose: () => vo
       <section className="launcher-create-section">
         <h3><span className="launcher-step">3</span>{t("launcher.instanceDetails")}</h3>
         <label className="launcher-field"><span className="label">{t("launcher.instanceName")}</span><TextInput maxLength={64} value={name} onChange={e => setName(e.target.value)} placeholder={suggestedName} disabled={create.isPending} /></label>
-        <details className="launcher-advanced"><summary>{t("launcher.advancedSettings")}</summary><label><span className="label">{t("launcher.memory")}</span><TextInput type="number" required min={512} max={32768} step={256} value={memory} onChange={e => setMemory(e.target.valueAsNumber)} /></label></details>
+        <details className="launcher-advanced"><summary>{t("launcher.advancedSettings")}</summary><label><span className="label">{t("launcher.memoryMib")}</span><TextInput type="number" required min={512} max={32768} step={256} value={memory} onChange={e => setMemory(e.target.valueAsNumber)} /></label></details>
         <div className="launcher-create-summary"><LoaderIcon glyph={loaderInfo(loader).glyph} size={22} /><div><strong>{name.trim() || suggestedName}</strong><p>{selected} · {loaderInfo(loader).name} · {memory / 1024} GB RAM</p></div></div>
         <p className="launcher-muted">{t("launcher.creationNote")}</p>
       </section>

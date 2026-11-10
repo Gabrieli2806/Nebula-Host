@@ -40,9 +40,13 @@ field.
 
 ## Nodes
 
-The app manages a *list* of nodes. Today there is exactly one, this machine,
-with `NodeTransport::Local`. That single decision keeps two future features
-cheap:
+The app manages a *list* of nodes: this machine (`NodeTransport::Local`) and
+any machine paired with it over the LAN. A paired node is driven through its
+remote API (`src-tauri/src/remote/`: `/pair`, `/rpc` with the same commands as
+IPC, `/events`, and the web panel); the desktop keeps the list in
+`src/lib/connection.ts` and routes every query to the node being managed.
+Launcher commands are the exception: they always stay on this device.
+That decision keeps two features cheap:
 
 - The mobile app pairs with a node.
 - A rented box is a node whose hardware the user does not own — same UI, same
@@ -94,8 +98,9 @@ The LAN is the trust boundary, so:
   Absolute paths, `..`, drive prefixes and escaping symlinks are all refused.
 - Port forwarding is opt-in and leased, never permanent.
 - Pairing codes expire in five minutes and work once.
-- Remote access is not shipped. When it is, it needs real authentication —
-  pairing alone is not enough for an internet-exposed service.
+- The remote API is for the LAN: HTTP with a bearer token from pairing. It is
+  not meant to face the internet; that needs TLS and real authentication —
+  pairing alone is not enough (see `store-compliance-review.md`, 1.4).
 
 ## Things that were painful once
 

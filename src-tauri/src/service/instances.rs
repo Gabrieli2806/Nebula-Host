@@ -447,6 +447,8 @@ impl InstanceService {
     /// Create the instance record and its directory. Installing the files is a
     /// separate step so the UI can show real progress for it.
     pub async fn create(&self, request: CreateInstanceRequest) -> AppResult<Instance> {
+        // The Google Play build hosts nothing itself (crate::flavor).
+        crate::flavor::Flavor::current().ensure_hosting()?;
         let manifest = self.registry.manifest(&request.game)?;
         let name = validate_name(&request.name)?;
 
@@ -493,6 +495,7 @@ impl InstanceService {
 
     /// Download and lay out the server files, reporting each phase.
     pub async fn install(&self, instance_id: &str) -> AppResult<()> {
+        crate::flavor::Flavor::current().ensure_hosting()?;
         let instance = self.store.get(instance_id).await?;
         let adapter = self.registry.get(&instance.game)?;
 
@@ -579,6 +582,7 @@ impl InstanceService {
     // -- lifecycle ---------------------------------------------------------
 
     pub async fn start(self: &Arc<Self>, instance_id: &str) -> AppResult<()> {
+        crate::flavor::Flavor::current().ensure_hosting()?;
         let instance = self.store.get(instance_id).await?;
         self.ensure_playable(&instance).await?;
         self.ensure_agreement(&instance)?;

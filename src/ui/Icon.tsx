@@ -52,7 +52,8 @@ export type IconName =
   | "chat"
   | "power"
   | "image"
-  | "coffee";
+  | "coffee"
+  | "more";
 
 const PATHS: Record<IconName, string> = {
   servers: "M2.5 3.5h11v4h-11zM2.5 8.5h11v4h-11zM4.6 5.5h.01M4.6 10.5h.01",
@@ -105,6 +106,8 @@ const PATHS: Record<IconName, string> = {
   power: "M8 2.4v5M4.8 4.4a4.8 4.8 0 1 0 6.4 0",
   image: "M2.5 3.5h11v9h-11zM2.5 10.5l3-3 2.6 2.6 1.9-1.9 3 3M10.4 6h.01",
   coffee: "M3 6.2h8v3.6a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3zM11 7.2h1.2a1.4 1.4 0 0 1 0 2.8H11M5.4 2.6v1.6M8 2.6v1.6",
+  // Three dots: the rest of a list that did not fit.
+  more: "M3 8a1 1 0 1 0 2 0 1 1 0 1 0-2 0zM7 8a1 1 0 1 0 2 0 1 1 0 1 0-2 0zM11 8a1 1 0 1 0 2 0 1 1 0 1 0-2 0z",
 };
 
 /** Icons that read better as a filled shape than as an outline. */
