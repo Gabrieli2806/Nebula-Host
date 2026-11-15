@@ -66,7 +66,7 @@ sha1 = { workspace = true }
 # Transfers: the archive a node sends is verified end to end.
 sha2 = { workspace = true }
 sys-locale = "0.3"
-sysinfo = "0.33"
+sysinfo = "0.40"
 # Java runtimes ship as .tar.gz outside Windows.
 tar = "0.4"
 tokio = { workspace = true }
