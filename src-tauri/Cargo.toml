@@ -54,7 +54,7 @@ dirs = "7"
 flate2 = "1"
 futures-util = { workspace = true }
 hex = { workspace = true }
-if-addrs = "0.13"
+if-addrs = "0.15"
 # Server icons: decode whatever the user picks, write a 64x64 PNG.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "ico"] }
 igd-next = { version = "0.18", features = ["aio_tokio"] }
