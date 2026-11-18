@@ -501,6 +501,8 @@ fn summary(view: &InstanceView) -> Value {
         "uptime_seconds": view.state.uptime_seconds,
         "address": view.address,
         "installed": i.install.is_some(),
+        // While it is being set up: the install phase (`downloading`…) or `failed`.
+        "setup": view.setup.as_ref().and_then(|s| serde_json::to_value(s).ok()).and_then(|s| s.get("phase").cloned()),
     })
 }
 

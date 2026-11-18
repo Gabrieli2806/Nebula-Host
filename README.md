@@ -64,6 +64,11 @@ prompt in the agent's chat. The endpoint is `http://127.0.0.1:47391/mcp`
 
 Code: `src-tauri/src/mcp/` (tools in `tools.rs` and `launcher_tools.rs`).
 
+**VS Code extension** (optional, `extensions/vscode/`): a Servers view, build and
+deploy of the open plugin or mod to its test server (`Ctrl+Alt+D`), the console
+in the Output panel, and Nebula Host's tools offered to VS Code's own agents.
+It uses the same endpoint. See [its README](extensions/vscode/README.md).
+
 ## Layout
 
 | Path | What |

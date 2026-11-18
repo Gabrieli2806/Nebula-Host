@@ -1,0 +1,149 @@
+{
+  "name": "nebula-host",
+  "displayName": "Nebula Host",
+  "description": "Test Minecraft mods and plugins on your Nebula Host servers without leaving VS Code: build, deploy the jar, watch the console.",
+  "version": "0.1.0",
+  "publisher": "gabrieli2806",
+  "author": "Gabrieli2806",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/Gabrieli2806/Nebula-Host.git" },
+  "icon": "media/icon.png",
+  "engines": { "vscode": "^1.101.0" },
+  "categories": ["Other", "AI"],
+  "keywords": ["minecraft", "paper", "fabric", "forge", "neoforge", "plugin", "mod", "mcp"],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/plugin.yml",
+    "workspaceContains:**/paper-plugin.yml",
+    "workspaceContains:**/fabric.mod.json",
+    "workspaceContains:**/mods.toml",
+    "workspaceContains:**/neoforge.mods.toml",
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "mcpServerDefinitionProviders": [
+      { "id": "nebula-host.mcp", "label": "Nebula Host" }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "nebulaHost", "title": "Nebula Host", "icon": "media/nebula.svg" }
+      ]
+    },
+    "views": {
+      "nebulaHost": [
+        { "id": "nebulaHost.servers", "name": "Servers", "icon": "media/nebula.svg" }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "nebulaHost.servers",
+        "contents": "Nebula Host is not answering.\n\nOpen Nebula Host on this PC and turn on **Settings › AI agents › Allow agents to control Nebula Host**.\n\n[Try again](command:nebulaHost.refresh)\n\n[Change the address](command:nebulaHost.openSettings)",
+        "when": "nebulaHost.state == 'offline'"
+      },
+      {
+        "view": "nebulaHost.servers",
+        "contents": "No servers on this machine yet.\n\n[Create a test server](command:nebulaHost.createTestServer)",
+        "when": "nebulaHost.state == 'empty'"
+      }
+    ],
+    "commands": [
+      { "command": "nebulaHost.refresh", "title": "Refresh", "category": "Nebula Host", "icon": "$(refresh)" },
+      { "command": "nebulaHost.buildAndDeploy", "title": "Build and Deploy to Test Server", "category": "Nebula Host", "icon": "$(rocket)" },
+      { "command": "nebulaHost.deploy", "title": "Deploy Built Jar to Test Server", "category": "Nebula Host", "icon": "$(cloud-upload)" },
+      { "command": "nebulaHost.pickTestServer", "title": "Choose Test Server for This Project", "category": "Nebula Host" },
+      { "command": "nebulaHost.createTestServer", "title": "Create Test Server", "category": "Nebula Host", "icon": "$(add)" },
+      { "command": "nebulaHost.start", "title": "Start", "category": "Nebula Host", "icon": "$(play)" },
+      { "command": "nebulaHost.stop", "title": "Stop", "category": "Nebula Host", "icon": "$(debug-stop)" },
+      { "command": "nebulaHost.restart", "title": "Restart", "category": "Nebula Host", "icon": "$(debug-restart)" },
+      { "command": "nebulaHost.console", "title": "Open Console", "category": "Nebula Host", "icon": "$(terminal)" },
+      { "command": "nebulaHost.sendCommand", "title": "Run Console Command…", "category": "Nebula Host", "icon": "$(chevron-right)" },
+      { "command": "nebulaHost.diagnose", "title": "Diagnose", "category": "Nebula Host", "icon": "$(pulse)" },
+      { "command": "nebulaHost.openFolder", "title": "Open Server Folder", "category": "Nebula Host", "icon": "$(folder-opened)" },
+      { "command": "nebulaHost.copyAddress", "title": "Copy Address", "category": "Nebula Host", "icon": "$(copy)" },
+      { "command": "nebulaHost.deployHere", "title": "Deploy Built Jar Here", "category": "Nebula Host", "icon": "$(cloud-upload)" },
+      { "command": "nebulaHost.openSettings", "title": "Settings", "category": "Nebula Host", "icon": "$(gear)" }
+    ],
+    "menus": {
+      "view/title": [
+        { "command": "nebulaHost.buildAndDeploy", "when": "view == nebulaHost.servers && nebulaHost.project", "group": "navigation@1" },
+        { "command": "nebulaHost.createTestServer", "when": "view == nebulaHost.servers", "group": "navigation@2" },
+        { "command": "nebulaHost.refresh", "when": "view == nebulaHost.servers", "group": "navigation@3" },
+        { "command": "nebulaHost.openSettings", "when": "view == nebulaHost.servers", "group": "more" }
+      ],
+      "view/item/context": [
+        { "command": "nebulaHost.start", "when": "view == nebulaHost.servers && viewItem =~ /server-stopped/", "group": "inline@1" },
+        { "command": "nebulaHost.stop", "when": "view == nebulaHost.servers && viewItem =~ /server-running/", "group": "inline@1" },
+        { "command": "nebulaHost.console", "when": "view == nebulaHost.servers && viewItem =~ /server-/", "group": "inline@2" },
+        { "command": "nebulaHost.start", "when": "view == nebulaHost.servers && viewItem =~ /server-stopped/", "group": "1_run@1" },
+        { "command": "nebulaHost.stop", "when": "view == nebulaHost.servers && viewItem =~ /server-running/", "group": "1_run@1" },
+        { "command": "nebulaHost.restart", "when": "view == nebulaHost.servers && viewItem =~ /server-running/", "group": "1_run@2" },
+        { "command": "nebulaHost.deployHere", "when": "view == nebulaHost.servers && viewItem =~ /server-(stopped|running)/ && nebulaHost.project", "group": "2_dev@1" },
+        { "command": "nebulaHost.console", "when": "view == nebulaHost.servers && viewItem =~ /server-/", "group": "2_dev@2" },
+        { "command": "nebulaHost.sendCommand", "when": "view == nebulaHost.servers && viewItem =~ /server-running/", "group": "2_dev@3" },
+        { "command": "nebulaHost.diagnose", "when": "view == nebulaHost.servers && viewItem =~ /server-/", "group": "2_dev@4" },
+        { "command": "nebulaHost.copyAddress", "when": "view == nebulaHost.servers && viewItem =~ /server-/", "group": "3_info@1" },
+        { "command": "nebulaHost.openFolder", "when": "view == nebulaHost.servers && viewItem =~ /server-.*-local/", "group": "3_info@2" }
+      ],
+      "commandPalette": [
+        { "command": "nebulaHost.start", "when": "false" },
+        { "command": "nebulaHost.stop", "when": "false" },
+        { "command": "nebulaHost.restart", "when": "false" },
+        { "command": "nebulaHost.openFolder", "when": "false" },
+        { "command": "nebulaHost.copyAddress", "when": "false" },
+        { "command": "nebulaHost.deployHere", "when": "false" }
+      ]
+    },
+    "keybindings": [
+      { "command": "nebulaHost.buildAndDeploy", "key": "ctrl+alt+d", "mac": "cmd+alt+d", "when": "nebulaHost.project" }
+    ],
+    "configuration": {
+      "title": "Nebula Host",
+      "properties": {
+        "nebulaHost.endpoint": {
+          "type": "string",
+          "default": "http://127.0.0.1:47391/mcp",
+          "markdownDescription": "Address of Nebula Host's agent endpoint (Settings › AI agents › View details in the app)."
+        },
+        "nebulaHost.registerMcpServer": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Offer Nebula Host's tools to AI agents in VS Code (Copilot agent mode and other chat extensions)."
+        },
+        "nebulaHost.buildCommand": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Command that builds the jar. Empty: `gradlew build` when the project has a Gradle wrapper, `mvn -q package` for Maven."
+        },
+        "nebulaHost.followConsoleAfterDeploy": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Open the server console after a deploy and show the problems it logs while starting."
+        },
+        "nebulaHost.testServerMemoryMb": {
+          "type": "number",
+          "default": 2048,
+          "minimum": 512,
+          "markdownDescription": "Memory for test servers this extension creates, in MB."
+        },
+        "nebulaHost.refreshSeconds": {
+          "type": "number",
+          "default": 5,
+          "minimum": 2,
+          "markdownDescription": "How often the server list refreshes while it is visible."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "watch": "tsc -w -p .",
+    "package": "vsce package --skip-license --out nebula-host.vsix",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "~1.101.0",
+    "@vscode/vsce": "^3.6.0",
+    "typescript": "^5.9.3"
+  }
+}
