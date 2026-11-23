@@ -103,6 +103,85 @@ pub fn tail_bytes(text: &str, max: usize) -> String {
     format!("[…truncated, showing the last {} KB]\n{}", max / 1024, &text[cut..])
 }
 
+/// The first `max` bytes of `text`, cut at a line boundary.
+pub fn head_bytes(text: &str, max: usize) -> String {
+    if text.len() <= max {
+        return text.to_string();
+    }
+    let mut end = max;
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    let cut = text[..end].rfind('\n').unwrap_or(end);
+    format!("{}\n[…truncated, showing the first {} KB]", &text[..cut], max / 1024)
+}
+
+/// A text file an agent reads in parts. Short and asked for whole, it is
+/// returned as it is. Otherwise: from `start_line` on, or with no start its
+/// end (what matters in a log), as many lines as `budget` bytes and
+/// `max_lines` allow, under a first line that says which lines these are.
+pub fn page_lines(text: &str, start_line: Option<usize>, max_lines: Option<usize>, budget: usize) -> String {
+    if start_line.is_none() && max_lines.is_none() && text.len() <= budget {
+        return text.to_string();
+    }
+    let lines: Vec<&str> = text.lines().collect();
+    let total = lines.len();
+    if total == 0 {
+        return String::new();
+    }
+    let max_lines = max_lines.unwrap_or(usize::MAX).max(1);
+    let mut bytes = 0;
+    let (from, to) = match start_line {
+        Some(start) => {
+            let from = start.max(1) - 1;
+            if from >= total {
+                return format!("[The file has {total} lines: there is no line {start}. Omit start_line to read its end.]");
+            }
+            let mut to = from;
+            while to < total && to - from < max_lines && bytes + lines[to].len() < budget {
+                bytes += lines[to].len() + 1;
+                to += 1;
+            }
+            (from, to)
+        }
+        None => {
+            let mut from = total;
+            while from > 0 && total - from < max_lines && bytes + lines[from - 1].len() < budget {
+                bytes += lines[from - 1].len() + 1;
+                from -= 1;
+            }
+            (from, total)
+        }
+    };
+    if from == to {
+        // One line longer than a whole answer (a minified file): its start.
+        let index = from.min(total - 1);
+        let line = lines[index];
+        let mut end = budget.min(line.len());
+        while !line.is_char_boundary(end) {
+            end -= 1;
+        }
+        return format!(
+            "[Line {} of {total} is {} KB long: this is its first {} KB.]\n{}",
+            index + 1,
+            line.len() / 1024,
+            budget / 1024,
+            &line[..end]
+        );
+    }
+    if from == 0 && to == total {
+        return text.to_string();
+    }
+    let more = if to < total {
+        format!(" Pass start_line={} for what follows.", to + 1)
+    } else if start_line.is_none() {
+        " This is the end of the file: pass start_line to read earlier lines.".to_string()
+    } else {
+        String::new()
+    };
+    format!("[Lines {}-{to} of {total}.{more}]\n{}", from + 1, lines[from..to].join("\n"))
+}
+
 /// The command list our own silent `help` (console autocomplete) leaves in
 /// the log: `[..INFO]: /tp: A Mojang provided command.` — noise for a diagnosis.
 fn is_help_listing(line: &str) -> bool {
@@ -160,9 +239,11 @@ pub async fn report(service: &InstanceService, view: &InstanceView) -> AppResult
 
     let console = service.console_tail(&instance.id, 1000).await;
     let problems: Vec<String> = console.iter().filter(|l| is_problem(l)).map(format_line).collect();
-    let recent_problems = problems[problems.len().saturating_sub(60)..].join("\n");
+    // Each part has its share of the answer: a stack trace of very long
+    // lines must not push the rest out of what an agent can read.
+    let recent_problems = tail_bytes(&problems[problems.len().saturating_sub(60)..].join("\n"), 12 * 1024);
     let console_tail: Vec<String> = console.iter().rev().take(40).rev().map(format_line).collect();
-    let console_tail = console_tail.join("\n");
+    let console_tail = tail_bytes(&console_tail.join("\n"), 8 * 1024);
 
     // Blocking disk reads, off the async runtime.
     let files = tokio::task::spawn_blocking(move || {
@@ -183,9 +264,9 @@ pub async fn report(service: &InstanceService, view: &InstanceView) -> AppResult
     .unwrap_or((None, None, None));
     let (crash, latest_log, jvm_crash) = files;
 
-    let log_tail = latest_log.as_deref().map(|t| last_lines(t, 120)).unwrap_or_default();
-    let crash_head = crash.as_ref().map(|(_, _, t)| first_lines(t, 140)).unwrap_or_default();
-    let jvm_head = jvm_crash.as_ref().map(|(_, _, t)| first_lines(t, 40)).unwrap_or_default();
+    let log_tail = latest_log.as_deref().map(|t| tail_bytes(&last_lines(t, 120), 14 * 1024)).unwrap_or_default();
+    let crash_head = crash.as_ref().map(|(_, _, t)| head_bytes(&first_lines(t, 140), 20 * 1024)).unwrap_or_default();
+    let jvm_head = jvm_crash.as_ref().map(|(_, _, t)| head_bytes(&first_lines(t, 40), 6 * 1024)).unwrap_or_default();
 
     let hints = hints_for(&[&recent_problems, &console_tail, &log_tail, &crash_head, &jvm_head]);
 
@@ -263,5 +344,46 @@ mod tests {
         assert!(tail.ends_with("cccc\n"));
         assert!(!tail.contains("bb\n") || tail.contains("bbbb"));
         assert_eq!(tail_bytes("short", 100), "short");
+    }
+
+    #[test]
+    fn head_cuts_at_a_line_boundary() {
+        let head = head_bytes("aaaa\nbbbb\ncccc\n", 7);
+        assert!(head.starts_with("aaaa\n["), "{head}");
+        assert_eq!(head_bytes("short", 100), "short");
+        // Never inside a character.
+        assert!(head_bytes("ñññññ", 3).starts_with("ñ\n["));
+    }
+
+    #[test]
+    fn a_long_file_is_read_in_parts() {
+        let text: String = (1..=100).map(|n| format!("line {n}\n")).collect();
+
+        // Short enough and asked for whole: as it is.
+        assert_eq!(page_lines(&text, None, None, 10_000), text);
+        assert_eq!(page_lines("", Some(1), None, 100), "");
+
+        // Too long, no start: its end, and how to read the rest.
+        let end = page_lines(&text, None, None, 100);
+        assert!(end.starts_with("[Lines 89-100 of 100. This is the end of the file"), "{end}");
+        assert!(end.ends_with("line 99\nline 100"));
+        assert!(end.len() < 100 + 120);
+
+        // From a line on, as much as fits, and where to go on from.
+        let part = page_lines(&text, Some(1), None, 100);
+        assert!(part.starts_with("[Lines 1-13 of 100. Pass start_line=14 for what follows.]\nline 1\n"), "{part}");
+        assert!(part.ends_with("line 13"));
+        let part = page_lines(&text, Some(98), Some(2), 10_000);
+        assert_eq!(part, "[Lines 98-99 of 100. Pass start_line=100 for what follows.]\nline 98\nline 99");
+        let part = page_lines(&text, Some(99), None, 10_000);
+        assert_eq!(part, "[Lines 99-100 of 100.]\nline 99\nline 100");
+        assert_eq!(page_lines(&text, None, Some(1), 10_000).lines().last(), Some("line 100"));
+
+        // Past the end, and a line that alone is longer than an answer.
+        assert!(page_lines(&text, Some(101), None, 100).contains("no line 101"));
+        let long = format!("first\n{}\n", "x".repeat(5000));
+        let cut = page_lines(&long, None, None, 2048);
+        assert!(cut.starts_with("[Line 2 of 2 is 4 KB long: this is its first 2 KB.]\n"), "{cut}");
+        assert_eq!(cut.lines().nth(1).map(str::len), Some(2048));
     }
 }

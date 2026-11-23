@@ -44,7 +44,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const target = deployer.target(project);
     if (state === "offline") {
       status.text = "$(circle-slash) Nebula Host";
-      status.tooltip = "Nebula Host is not answering. Open the app and turn on Settings › AI agents.";
+      status.tooltip = "Nebula Host is not answering. Open the app and turn on Settings › AI agents (MCP).";
       status.command = "nebulaHost.refresh";
     } else {
       status.text = `$(rocket) ${target ? target.server : "Nebula Host"}`;
@@ -254,11 +254,11 @@ export function activate(context: vscode.ExtensionContext): void {
 /** An error the way a person should read it. */
 function friendly(error: unknown): string {
   if (error instanceof NebulaError && error.unreachable) {
-    return "Nebula Host is not answering. Open the app and turn on Settings › AI agents › Allow agents to control Nebula Host.";
+    return "Nebula Host is not answering. Open the app and turn on Settings › AI agents (MCP) › Let AI agents use Nebula Host.";
   }
   const text = error instanceof Error ? error.message : String(error);
   if (/agreement_required/.test(text)) return "This server needs the Minecraft EULA accepted in Nebula Host first (Settings › Servers, or on the server's page).";
-  if (/read-only|only look/i.test(text)) return "Nebula Host lets agents look but not change anything. Turn off View only in Settings › AI agents › View details.";
+  if (/read-only|only look/i.test(text)) return "Nebula Host lets agents look but not change anything. Turn off View only in Settings › AI agents (MCP) › View details.";
   return text;
 }
 

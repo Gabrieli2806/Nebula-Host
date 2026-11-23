@@ -4,7 +4,7 @@ Test Minecraft plugins and mods on your Nebula Host servers without leaving the 
 
 ## Requirements
 
-- Nebula Host running on this PC, with **Settings › AI agents › Allow agents to control Nebula Host** turned on.
+- Nebula Host running on this PC, with **Settings › AI agents (MCP) › Let AI agents use Nebula Host** turned on.
 - A Paper/Spigot plugin (`plugin.yml`) or a Fabric, Forge or NeoForge mod (`fabric.mod.json`, `mods.toml`, `neoforge.mods.toml`) built with Gradle or Maven.
 
 ## How it works

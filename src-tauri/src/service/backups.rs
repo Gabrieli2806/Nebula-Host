@@ -27,7 +27,15 @@ pub struct Backup {
     pub created_at: DateTime<Utc>,
     pub size_bytes: u64,
     pub path: PathBuf,
+    /// Files left out because the running server held them locked, relative
+    /// to the server folder. Known only for the backup just taken.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skipped: Vec<String>,
 }
+
+/// Files a backup never holds: the lock a running server keeps on an open
+/// world. It carries no data, and on Windows it cannot even be read.
+const NEVER_BACKED_UP: &[&str] = &["session.lock"];
 
 /// Take a backup. If the server is online, ask it to flush first so the copy
 /// is not missing the last few minutes of play.
@@ -102,16 +110,46 @@ async fn create_inner(
     let root = instance.path.clone();
     let archive_path = path.clone();
     let spec_for_task = spec.clone();
+    // A server with a process holds files open. One it has locked is left
+    // out and named; with no process, a file that cannot be read is a failure.
+    let running = status.expects_process();
 
     // Zipping is blocking work measured in gigabytes; keep it off the async
     // runtime's worker threads.
-    let size_bytes = tokio::task::spawn_blocking(move || {
-        write_archive(&root, &archive_path, &spec_for_task)
+    let (size_bytes, skipped) = tokio::task::spawn_blocking(move || {
+        write_backup(&root, &archive_path, &spec_for_task, running)
     })
     .await
     .map_err(|error| AppError::new(ErrorCode::BackupFailed).detail(error))??;
+    if !skipped.is_empty() {
+        tracing::warn!(instance_id, ?skipped, "backup taken without the files the running server holds locked");
+    }
 
-    Ok(Backup { id, instance_id: instance_id.to_string(), label, created_at, size_bytes, path })
+    Ok(Backup { id, instance_id: instance_id.to_string(), label, created_at, size_bytes, path, skipped })
+}
+
+/// Write the archive beside its final name and move it there only once it
+/// is whole: a backup that failed half way is never listed, and so never
+/// restored.
+fn write_backup(root: &Path, archive_path: &Path, spec: &BackupSpec, running: bool) -> AppResult<(u64, Vec<String>)> {
+    let mut partial = archive_path.as_os_str().to_owned();
+    partial.push(".part");
+    let partial = PathBuf::from(partial);
+    let written = write_archive(root, &partial, spec, running).and_then(|done| {
+        std::fs::rename(&partial, archive_path)?;
+        Ok(done)
+    });
+    if written.is_err() {
+        let _ = std::fs::remove_file(&partial);
+    }
+    written
+}
+
+/// Whether reading failed because another process holds the file (or part
+/// of it) locked, as a running server does with some of its own.
+fn is_locked(error: &std::io::Error) -> bool {
+    // Windows: ERROR_SHARING_VIOLATION (32), ERROR_LOCK_VIOLATION (33).
+    (cfg!(windows) && matches!(error.raw_os_error(), Some(32 | 33))) || error.kind() == std::io::ErrorKind::WouldBlock
 }
 
 pub fn list(instance_id: &str) -> AppResult<Vec<Backup>> {
@@ -132,6 +170,7 @@ pub fn list(instance_id: &str) -> AppResult<Vec<Backup>> {
             created_at: metadata.modified().ok().map(DateTime::<Utc>::from).unwrap_or_else(Utc::now),
             size_bytes: metadata.len(),
             path: entry.path(),
+            skipped: Vec::new(),
         });
     }
 
@@ -174,10 +213,16 @@ fn find(instance_id: &str, backup_id: &str) -> AppResult<Backup> {
         .ok_or_else(|| AppError::new(ErrorCode::BackupNotFound).with("backup", backup_id))
 }
 
-fn write_archive(root: &Path, archive_path: &Path, spec: &BackupSpec) -> AppResult<u64> {
+/// The archive's size, and the files left out because they were locked
+/// (only tolerated with `skip_locked`: while the server runs).
+fn write_archive(root: &Path, archive_path: &Path, spec: &BackupSpec, skip_locked: bool) -> AppResult<(u64, Vec<String>)> {
     let file = std::fs::File::create(archive_path)?;
-    let mut zip = zip::ZipWriter::new(file);
-    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    let mut writer = Archive {
+        zip: zip::ZipWriter::new(file),
+        options: SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated),
+        skip_locked,
+        skipped: Vec::new(),
+    };
 
     for include in &spec.include {
         let source = root.join(include);
@@ -185,48 +230,60 @@ fn write_archive(root: &Path, archive_path: &Path, spec: &BackupSpec) -> AppResu
             continue;
         }
         if source.is_dir() {
-            add_dir(&mut zip, root, &source, spec, options)?;
+            add_dir(&mut writer, root, &source, spec)?;
         } else {
-            add_file(&mut zip, root, &source, options)?;
+            add_file(&mut writer, root, &source)?;
         }
     }
 
-    zip.finish().map_err(|error| AppError::new(ErrorCode::BackupFailed).detail(error))?;
-    Ok(std::fs::metadata(archive_path)?.len())
+    writer.zip.finish().map_err(|error| AppError::new(ErrorCode::BackupFailed).detail(error))?;
+    Ok((std::fs::metadata(archive_path)?.len(), writer.skipped))
 }
 
-fn add_dir(
-    zip: &mut zip::ZipWriter<std::fs::File>,
-    root: &Path,
-    dir: &Path,
-    spec: &BackupSpec,
+struct Archive {
+    zip: zip::ZipWriter<std::fs::File>,
     options: SimpleFileOptions,
-) -> AppResult<()> {
+    skip_locked: bool,
+    skipped: Vec<String>,
+}
+
+fn add_dir(archive: &mut Archive, root: &Path, dir: &Path, spec: &BackupSpec) -> AppResult<()> {
     for entry in std::fs::read_dir(dir)?.flatten() {
         let path = entry.path();
         if is_excluded(root, &path, spec) {
             continue;
         }
         if path.is_dir() {
-            add_dir(zip, root, &path, spec, options)?;
+            add_dir(archive, root, &path, spec)?;
         } else {
-            add_file(zip, root, &path, options)?;
+            add_file(archive, root, &path)?;
         }
     }
     Ok(())
 }
 
-fn add_file(
-    zip: &mut zip::ZipWriter<std::fs::File>,
-    root: &Path,
-    path: &Path,
-    options: SimpleFileOptions,
-) -> AppResult<()> {
+fn add_file(archive: &mut Archive, root: &Path, path: &Path) -> AppResult<()> {
+    if path.file_name().and_then(|name| name.to_str()).is_some_and(|name| NEVER_BACKED_UP.contains(&name)) {
+        return Ok(());
+    }
     let relative = path.strip_prefix(root).unwrap_or(path).to_string_lossy().replace('\\', "/");
-    zip.start_file(relative, options)
+    // Read before the entry is opened: a file that cannot be read must not
+    // leave an empty one behind in the archive.
+    let bytes = match std::fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(error) if archive.skip_locked && is_locked(&error) => {
+            archive.skipped.push(relative);
+            return Ok(());
+        }
+        Err(error) => {
+            return Err(AppError::from(error).with("file", relative));
+        }
+    };
+    archive
+        .zip
+        .start_file(relative, archive.options)
         .map_err(|error| AppError::new(ErrorCode::BackupFailed).detail(error))?;
-    let bytes = std::fs::read(path)?;
-    zip.write_all(&bytes)?;
+    archive.zip.write_all(&bytes)?;
     Ok(())
 }
 
@@ -308,7 +365,7 @@ mod tests {
         std::fs::write(root.join("server.properties"), b"motd=hi").expect("props");
 
         let archive = root.join("backup.zip");
-        write_archive(&root, &archive, &spec()).expect("archive");
+        write_archive(&root, &archive, &spec(), false).expect("archive");
 
         std::fs::remove_file(root.join("world").join("level.dat")).expect("simulate loss");
         extract_archive(&archive, &root).expect("restore");
@@ -324,5 +381,86 @@ mod tests {
         );
 
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    fn names_in(archive: &Path) -> Vec<String> {
+        let mut zip = zip::ZipArchive::new(std::fs::File::open(archive).expect("open")).expect("a whole zip");
+        let mut names: Vec<String> = (0..zip.len()).map(|i| zip.by_index(i).expect("entry").name().to_string()).collect();
+        names.sort();
+        names
+    }
+
+    fn world() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir_all(dir.path().join("world").join("region")).expect("tree");
+        std::fs::write(dir.path().join("world").join("level.dat"), b"level").expect("level");
+        std::fs::write(dir.path().join("world").join("session.lock"), b"\xe2\x98\x83").expect("lock");
+        std::fs::write(dir.path().join("world").join("region").join("r.0.0.mca"), b"region").expect("region");
+        std::fs::write(dir.path().join("server.properties"), b"motd=hi").expect("props");
+        dir
+    }
+
+    #[test]
+    fn the_world_lock_is_never_in_a_backup() {
+        let server = world();
+        let out = tempfile::tempdir().expect("tempdir");
+        let archive = out.path().join("backup.zip");
+        let (size, skipped) = write_backup(server.path(), &archive, &spec(), false).expect("backup");
+        assert!(size > 0 && skipped.is_empty());
+        assert_eq!(names_in(&archive), ["server.properties", "world/level.dat", "world/region/r.0.0.mca"]);
+        assert!(!out.path().join("backup.zip.part").exists(), "nothing half written is left");
+    }
+
+    /// What a running Minecraft server does to `session.lock`, here done to
+    /// a file that matters: a byte-range lock, which lets the file be opened
+    /// and fails the read.
+    #[cfg(windows)]
+    #[test]
+    fn a_file_the_running_server_holds_locked_is_left_out_and_named() {
+        let server = world();
+        let region = server.path().join("world").join("region").join("r.0.0.mca");
+        let held = std::fs::OpenOptions::new().read(true).write(true).open(&region).expect("open");
+        held.lock().expect("lock");
+        assert!(std::fs::read(&region).is_err_and(|error| is_locked(&error)), "the read is what fails");
+
+        let out = tempfile::tempdir().expect("tempdir");
+        let archive = out.path().join("backup.zip");
+
+        // Running: the backup is whole but for that file, and says so.
+        let (_, skipped) = write_backup(server.path(), &archive, &spec(), true).expect("backup");
+        assert_eq!(skipped, ["world/region/r.0.0.mca"]);
+        assert_eq!(names_in(&archive), ["server.properties", "world/level.dat"], "no empty entry for the locked file");
+
+        // Stopped: nothing should be locked, so it is a failure, and no
+        // archive is left to be listed or restored, whole or partial.
+        std::fs::remove_file(&archive).expect("remove");
+        let error = write_backup(server.path(), &archive, &spec(), false).expect_err("refused");
+        assert_eq!(error.params.get("file").map(String::as_str), Some("world/region/r.0.0.mca"));
+        assert!(!archive.exists());
+        assert!(std::fs::read_dir(out.path()).expect("dir").next().is_none(), "the partial archive is removed");
+
+        held.unlock().expect("unlock");
+        let (_, skipped) = write_backup(server.path(), &archive, &spec(), false).expect("backup");
+        assert!(skipped.is_empty());
+        assert_eq!(names_in(&archive).len(), 3);
+    }
+
+    #[test]
+    fn a_backup_that_fails_leaves_no_archive() {
+        let server = world();
+        let out = tempfile::tempdir().expect("tempdir");
+        // The folder the archive goes in does not exist: it cannot be written.
+        let archive = out.path().join("missing").join("backup.zip");
+        assert!(write_backup(server.path(), &archive, &spec(), true).is_err());
+        assert!(std::fs::read_dir(out.path()).expect("dir").next().is_none());
+    }
+
+    #[test]
+    fn only_a_lock_counts_as_locked() {
+        assert!(!is_locked(&std::io::Error::from(std::io::ErrorKind::NotFound)));
+        assert!(!is_locked(&std::io::Error::from(std::io::ErrorKind::PermissionDenied)));
+        assert!(is_locked(&std::io::Error::from(std::io::ErrorKind::WouldBlock)));
+        assert_eq!(is_locked(&std::io::Error::from_raw_os_error(33)), cfg!(windows));
+        assert_eq!(is_locked(&std::io::Error::from_raw_os_error(32)), cfg!(windows));
     }
 }

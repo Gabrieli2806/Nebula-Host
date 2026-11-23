@@ -1,11 +1,14 @@
 /**
- * AI agents (MCP): lets Claude Code, Cursor or any MCP client manage this
+ * AI agents (MCP): lets Claude Code, Codex or any MCP client manage this
  * machine's servers and launcher, and those of the machines paired with it,
  * through an endpoint only programs on this PC can reach.
  *
- * The card is three rows: allow it, connect an agent (one prompt to paste in
- * its chat), and the details for whoever wants them (the address, manual
- * setup, what agents may do, and what they did last).
+ * The card is one row that stays folded: its name, its state and the switch.
+ * Opened, it shows how to connect an agent (one prompt to paste in its chat),
+ * the address, manual setup, what agents may do, and what they did last.
+ *
+ * The rows, their order and the per-client snippets are the same in every
+ * app of the author's: a shared contract, which `CLAUDE.md` points to.
  */
 
 import { useEffect, useId, useState } from "react";
@@ -17,24 +20,26 @@ import { remoteNodes, subscribeNodes } from "@/lib/connection";
 import { api } from "@/lib/ipc";
 import { DESKTOP_FEATURES } from "@/lib/web";
 import type { AppSettings, McpActivity, McpStatus } from "@/types/api";
-import { Button, Dialog, ErrorNotice, Icon, Panel, Segmented, Switch } from "@/ui";
+import { Button, ErrorNotice, Icon, Panel, Segmented, Switch } from "@/ui";
 
 import "./McpSettings.css";
 
 const KEY = ["mcp", "status"] as const;
 const NAME = "nebula-host";
 
-type Client = "claudeCode" | "claudeDesktop" | "other";
+type Client = "claudeCode" | "codex" | "claudeDesktop" | "other";
 
 /** What to type, or paste into a config file, per client. */
 function snippet(client: Client, url: string): string {
   switch (client) {
     case "claudeCode":
       return `claude mcp add --transport http --scope user ${NAME} ${url}`;
+    case "codex":
+      return `codex mcp add ${NAME} --url ${url}`;
     case "claudeDesktop":
-      return JSON.stringify({ mcpServers: { [NAME]: { command: "npx", args: ["-y", "mcp-remote", url] } } }, null, 2);
+      return JSON.stringify({ mcpServers: { [NAME]: { command: "npx", args: ["-y", "mcp-remote", url] } } });
     case "other":
-      return JSON.stringify({ mcpServers: { [NAME]: { type: "http", url } } }, null, 2);
+      return JSON.stringify({ mcpServers: { [NAME]: { type: "http", url } } });
   }
 }
 
@@ -47,7 +52,8 @@ function connectPrompt(url: string): string {
     `Add an MCP server named "${NAME}" with the Streamable HTTP transport at ${url}. It needs no token and no headers; it only answers programs on this PC.`,
     "",
     `- Claude Code: run \`${snippet("claudeCode", url)}\``,
-    `- Any other client: add this to its MCP configuration: ${JSON.stringify({ mcpServers: { [NAME]: { type: "http", url } } })}`,
+    `- Codex: run \`${snippet("codex", url)}\``,
+    `- Any other client: add this to its MCP configuration: ${snippet("other", url)}`,
     "",
     "If your client needs a reload to see new MCP servers, tell me. Once connected, call list_servers and list_machines and tell me what you can see.",
   ].join("\n");
@@ -85,15 +91,16 @@ export function useMachinesSync() {
 export function McpSettings() {
   const { t } = useI18n();
   const client = useQueryClient();
-  const [details, setDetails] = useState(false);
+  // Folded until asked for: one line with the name, the state and the switch.
+  const [open, setOpen] = useState(false);
   const status = useQuery({
     queryKey: KEY,
     queryFn: api.mcp.status,
-    // What agents are doing shows while the details are open.
-    refetchInterval: details ? 3000 : false,
+    // What agents are doing shows while the section is open.
+    refetchInterval: open ? 3000 : false,
   });
-  const { copied, copy } = useCopy();
   const helpId = useId();
+  const bodyId = useId();
 
   const set = (data: McpStatus) => client.setQueryData(KEY, data);
   const configure = useMutation({
@@ -112,15 +119,15 @@ export function McpSettings() {
     ? t("mcp.stateOff")
     : data.running
       ? data.readOnly
-        ? t("mcp.stateOnReadOnly")
-        : t("mcp.stateOn")
+        ? t("mcp.stateOnReadOnly", { url: data.url })
+        : t("mcp.stateOn", { url: data.url })
       : t("mcp.stateFailed", { error: data.error ?? "" });
 
   return (
     <Panel title={t("mcp.title")}>
       {status.error ? <ErrorNotice error={status.error} compact /> : null}
 
-      <div className="settings-row" data-switch="">
+      <div className="settings-row mcp-head" data-switch="">
         <label className="settings-row-hit">
           <span className="settings-row-text">
             <span className="settings-row-label">{t("mcp.enable")}</span>
@@ -143,64 +150,35 @@ export function McpSettings() {
             />
           </span>
         </label>
+        <button
+          type="button"
+          className="mcp-fold"
+          aria-expanded={open}
+          aria-controls={bodyId}
+          aria-label={t("mcp.details")}
+          title={t("mcp.details")}
+          onClick={() => setOpen((value) => !value)}
+        >
+          <Icon name={open ? "chevron-down" : "chevron-right"} size={14} />
+        </button>
       </div>
-
-      {data?.enabled ? (
-        <>
-          <div className="settings-row">
-            <span className="settings-row-text">
-              <span className="settings-row-label">{t("mcp.connect")}</span>
-              <span className="settings-row-help">{t("mcp.connectHelp")}</span>
-            </span>
-            <span className="settings-row-control">
-              <Button
-                icon={copied === "prompt" ? "check" : "copy"}
-                disabled={!data.running}
-                onClick={() => copy("prompt", connectPrompt(data.url))}
-              >
-                {copied === "prompt" ? t("common.copied") : t("mcp.copyPrompt")}
-              </Button>
-            </span>
-          </div>
-
-          <div className="settings-row">
-            <span className="settings-row-text">
-              <span className="settings-row-label">{t("mcp.details")}</span>
-              <span className="settings-row-help">{t("mcp.detailsHelp")}</span>
-            </span>
-            <span className="settings-row-control">
-              <Button variant="quiet" onClick={() => setDetails(true)}>
-                {t("mcp.viewDetails")}
-              </Button>
-            </span>
-          </div>
-        </>
-      ) : null}
 
       {configure.error ? <ErrorNotice error={configure.error} compact /> : null}
 
-      {data ? (
-        <McpDetails
-          open={details}
-          onClose={() => setDetails(false)}
-          data={data}
-          busy={configure.isPending}
-          onChange={(change) => configure.mutate(change)}
-        />
+      {data && open ? (
+        <div id={bodyId} className="mcp-body">
+          <McpDetails data={data} busy={configure.isPending} onChange={(change) => configure.mutate(change)} />
+        </div>
       ) : null}
     </Panel>
   );
 }
 
 function McpDetails({
-  open,
-  onClose,
   data,
   busy,
   onChange,
 }: {
-  open: boolean;
-  onClose: () => void;
   data: McpStatus;
   busy: boolean;
   onChange: (change: Partial<{ readOnly: boolean; launcherPlay: boolean; remote: boolean }>) => void;
@@ -210,8 +188,21 @@ function McpDetails({
   const { copied, copy } = useCopy();
 
   return (
-    <Dialog open={open} onClose={onClose} title={t("mcp.detailsTitle")} width={620}>
       <div className="mcp-details">
+        <section className="mcp-section">
+          <h3 className="label">{t("mcp.connect")}</h3>
+          <div className="mcp-line">
+            <p className="mcp-note mcp-note-grow">{t("mcp.connectHelp")}</p>
+            <Button
+              icon={copied === "prompt" ? "check" : "copy"}
+              disabled={!data.running}
+              onClick={() => copy("prompt", connectPrompt(data.url))}
+            >
+              {copied === "prompt" ? t("common.copied") : t("mcp.copyPrompt")}
+            </Button>
+          </div>
+        </section>
+
         <section className="mcp-section">
           <h3 className="label">{t("mcp.connection")}</h3>
           <div className="mcp-status" data-running={data.running ? "" : undefined}>
@@ -241,6 +232,7 @@ function McpDetails({
               onChange={setTarget}
               options={[
                 { id: "claudeCode", label: "Claude Code" },
+                { id: "codex", label: "Codex" },
                 { id: "claudeDesktop", label: "Claude Desktop" },
                 { id: "other", label: t("mcp.otherClients") },
               ]}
@@ -313,7 +305,6 @@ function McpDetails({
           <p>{t("mcp.toolsList")}</p>
         </details>
       </div>
-    </Dialog>
   );
 }
 

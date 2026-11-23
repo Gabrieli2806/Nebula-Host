@@ -4,6 +4,7 @@
 
 pub mod addons;
 pub mod backups;
+pub mod clone;
 pub mod completion;
 pub mod files;
 pub mod icon;

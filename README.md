@@ -40,11 +40,26 @@ See [docs/LAUNCHER.md](docs/LAUNCHER.md).
 
 ## AI agents (MCP)
 
-Settings › AI agents lets an agent (Claude Code, Cursor, any MCP client) manage
-the servers and the launcher: turn it on, press **Copy prompt** and paste the
-prompt in the agent's chat. The endpoint is `http://127.0.0.1:47391/mcp`
-(Streamable HTTP).
+Settings › AI agents (MCP) lets an agent (Claude Code, Codex, Claude Desktop,
+Cursor, any MCP client) manage the servers and the launcher: turn it on, press
+**Copy prompt** and paste the prompt in the agent's chat. The server is called
+`nebula-host` and its endpoint is `http://127.0.0.1:47391/mcp` (Streamable HTTP
+answered with plain JSON: no SSE, no sessions).
 
+To connect a client by hand (the same snippets are under *View details*):
+
+| Client | Setup |
+|---|---|
+| Claude Code | `claude mcp add --transport http --scope user nebula-host http://127.0.0.1:47391/mcp` |
+| Codex | `codex mcp add nebula-host --url http://127.0.0.1:47391/mcp` |
+| Claude Desktop | `{"mcpServers":{"nebula-host":{"command":"npx","args":["-y","mcp-remote","http://127.0.0.1:47391/mcp"]}}}` |
+| Others | `{"mcpServers":{"nebula-host":{"type":"http","url":"http://127.0.0.1:47391/mcp"}}}` |
+
+- **Protocol.** Revisions `2024-11-05`, `2025-03-26`, `2025-06-18` and
+  `2025-11-25` (they open with `initialize`), and the stateless `2026-07-28`
+  (no handshake: each request names its version in `_meta`, and
+  `server/discover` says what the server offers). A version it does not speak
+  gets HTTP 400 with JSON-RPC error `-32022` and the list of those it does.
 - **This PC only, no token.** It listens on loopback and refuses web pages (it
   checks `Host`, `Origin` and the content type). Any program run by this user
   can use it, so there is nothing to paste or rotate.
@@ -52,17 +67,35 @@ prompt in the agent's chat. The endpoint is `http://127.0.0.1:47391/mcp`
   paired machine (`POST /agent` on its remote API) and runs there with that
   machine's own rules. Its owner must turn on *Allow agents from paired
   machines* there.
+- **Tools.** Every tool says whether it only reads, deletes, can be repeated
+  and reaches the internet (the four MCP annotations). JSON answers also come
+  as `structuredContent`. Long answers come in parts: lists take `limit` and
+  `offset`, `read_file` takes `start_line`. A failed call says what to do next.
 - **Mod and plugin development.** `create_server` (with `settings` and
   `start`), `install_local_addon` (the jar a build produced, with `restart`),
-  `wait_for_server`, `get_console`, `diagnose_server`, `send_command`,
-  `write_file`, `delete_server`; `launcher_*` for a test game instance.
+  `wait_for_server`, `get_console`, `diagnose_server`, `send_command` (with
+  `wait_for`, it returns when the console prints the line that proves the
+  effect), `wait_for_console`, `write_file`, `delete_server`; `launcher_*` for
+  a test game instance.
+- **Testing without risk.** `clone_server` makes a stopped copy of a server
+  (world, settings, mods or plugins) on its own port. `restore_backup` puts a
+  backup back and first saves what it replaces, so it can be undone.
+- **Performance.** `profile_server` asks the server for its tick rate and tick
+  times (`tps`, `mspt`, `forge tps`, `tick query`, and spark when installed)
+  without printing in the console, and with `duration_seconds` runs a spark
+  profile and returns its report address. It says which sources answered.
+- **Prompts.** `test_plugin` (a built jar, optionally a server) and
+  `diagnose_crash` (optionally a server): Claude Code offers them as slash
+  commands.
 - **In the app.** A server an agent creates shows on its card as *Getting
-  ready* while it installs, and Settings › AI agents › View details lists what
-  agents did last.
+  ready* while it installs, and Settings › AI agents (MCP) › View details lists
+  what agents did last.
 - **EULA.** With *Accept the Minecraft EULA for every server* on (Settings ›
   Servers), servers an agent creates start without asking.
 
-Code: `src-tauri/src/mcp/` (tools in `tools.rs` and `launcher_tools.rs`).
+Code: `src-tauri/src/mcp/` (protocol and security in `mod.rs`, tools in
+`tools.rs` and `launcher_tools.rs`, prompts in `prompts.rs`). `cargo test -p nebula-host --lib mcp` runs
+its tests, which drive the endpoint over HTTP.
 
 **VS Code extension** (optional, `extensions/vscode/`): a Servers view, build and
 deploy of the open plugin or mod to its test server (`Ctrl+Alt+D`), the console

@@ -23,13 +23,16 @@ pub struct Tool {
 }
 
 fn instance_arg() -> Value {
-    json!({ "type": "string", "description": "Instance id or name (case-insensitive)." })
+    json!({ "type": "string", "description": "Instance id or name from launcher_list_instances (case-insensitive; a unique start of the name is enough)." })
 }
 fn kind_arg() -> Value {
-    json!({ "type": "string", "enum": ["mod", "resourcepack", "shader"], "description": "Content type (default mod)." })
+    json!({ "type": "string", "enum": ["mod", "resourcepack", "shader"], "default": "mod", "description": "What the file is: it decides the folder." })
 }
-fn loader_arg() -> Value {
-    json!({ "type": "string", "enum": ["vanilla", "fabric", "forge", "neoforge"] })
+fn loader_arg(default: &str) -> Value {
+    json!({ "type": "string", "enum": ["vanilla", "fabric", "forge", "neoforge"], "description": default })
+}
+fn file_arg() -> Value {
+    json!({ "type": "string", "description": "File name as launcher_list_content gives it (`file`), with `.disabled` when it is off." })
 }
 
 pub fn catalog() -> Vec<Tool> {
@@ -37,88 +40,99 @@ pub fn catalog() -> Vec<Tool> {
         Tool {
             name: "launcher_list_instances",
             title: "List game instances",
-            description: "Every Minecraft instance in the launcher on this device: name, Minecraft version, loader, memory and whether the game is running.",
+            description: "List every Minecraft instance in the launcher on this device: id, name, Minecraft version, loader, memory and state (stopped, installing, ready, running, stopping…). Call it first for anything about the game itself (not a server): the other launcher_* tools take an instance's id or name from here. Returns a JSON array, or a sentence when there are none.",
             schema: json!({ "type": "object", "properties": {} }),
             mutates: false,
         },
         Tool {
             name: "launcher_get_instance",
             title: "Instance details",
-            description: "One instance: version, loader and loader build, memory, state, installed content, and folders (game, mods, logs, crash reports).",
+            description: "One instance in full: version, loader and loader build, memory, state with install progress and last error, its folders (game, mods, logs, crash reports) and its installed content (the first 200 files; launcher_list_content has them all). Use it to follow an install or a start after launcher_launch. Returns a JSON object.",
             schema: json!({ "type": "object", "properties": { "instance": instance_arg() }, "required": ["instance"] }),
             mutates: false,
         },
         Tool {
             name: "launcher_list_versions",
             title: "Playable Minecraft versions",
-            description: "Minecraft releases the launcher can play, newest first; with `loader` and `version`, the builds of that loader for that version.",
-            schema: json!({ "type": "object", "properties": { "loader": loader_arg(), "version": { "type": "string" } } }),
+            description: "List the Minecraft releases the launcher can play, newest first (the newest 40): use it to pick `version` for launcher_create_instance or launcher_change_version. With both `loader` and `version`, lists instead the builds of that loader for that version (the newest 30). Returns a JSON object: `playable_versions`, or `loader`, `version`, `builds`.",
+            schema: json!({ "type": "object", "properties": {
+                "loader": loader_arg("With `version`: the loader whose builds to list."),
+                "version": { "type": "string", "description": "With `loader`: the Minecraft version whose loader builds to list, e.g. `1.21.4`." }
+            } }),
             mutates: false,
         },
         Tool {
             name: "launcher_search_content",
             title: "Search Modrinth (launcher)",
-            description: "Search Modrinth for mods, resource packs, shaders or modpacks. With `instance`, only results that fit its version and loader.",
+            description: "Search Modrinth for mods, resource packs, shaders or modpacks for the game. With `instance`, only results that fit its Minecraft version and loader. Use a hit's `project_id` or `slug` with launcher_install_content (launcher_install_modpack for a modpack). Returns a JSON object: `total`, `hits` (project_id, slug, title, author, downloads, description).",
             schema: json!({ "type": "object", "properties": {
-                "query": { "type": "string" },
-                "kind": { "type": "string", "enum": ["mod", "resourcepack", "shader", "modpack"] },
+                "query": { "type": "string", "description": "What to search for, e.g. `sodium`." },
+                "kind": { "type": "string", "enum": ["mod", "resourcepack", "shader", "modpack"], "default": "mod", "description": "What to search for." },
                 "instance": instance_arg(),
-                "limit": { "type": "integer", "minimum": 1, "maximum": 50 }
+                "limit": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10, "description": "How many hits to return." }
             }, "required": ["query"] }),
             mutates: false,
         },
         Tool {
             name: "launcher_list_content",
             title: "Installed content",
-            description: "What an instance has installed (file, type, on/off, Modrinth project when known).",
-            schema: json!({ "type": "object", "properties": { "instance": instance_arg() }, "required": ["instance"] }),
+            description: "List what an instance has installed: each file with its type (mod, resourcepack, shader), size, whether it is on, and its Modrinth project when Nebula Host installed it. Use a `file` from here with launcher_set_content_enabled, launcher_remove_content and launcher_update_content. Returns a JSON object: `content`, `total`, `offset` and, when there are more, `next_offset`.",
+            schema: json!({ "type": "object", "properties": {
+                "instance": instance_arg(),
+                "limit": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 200, "description": "How many to return." },
+                "offset": { "type": "integer", "minimum": 0, "default": 0, "description": "How many to skip: pass the `next_offset` of the previous answer for the next part." }
+            }, "required": ["instance"] }),
             mutates: false,
         },
         Tool {
             name: "launcher_check_updates",
             title: "Check content updates",
-            description: "Look up every installed file on Modrinth: its version, whether it is made for the instance's Minecraft version and loader, and a newer compatible file when there is one.",
-            schema: json!({ "type": "object", "properties": { "instance": instance_arg() }, "required": ["instance"] }),
+            description: "Check every installed file of an instance against Modrinth: its version, whether it is made for the instance's Minecraft version and loader (`compatible`), and a newer file that fits when there is one (`update`). Call it after launcher_change_version, or when the game crashes on start. Apply updates with launcher_update_content. Returns a JSON object: `content`, `total`, `offset` and, when there are more, `next_offset`.",
+            schema: json!({ "type": "object", "properties": {
+                "instance": instance_arg(),
+                "limit": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 100, "description": "How many to return." },
+                "offset": { "type": "integer", "minimum": 0, "default": 0, "description": "How many to skip: pass the `next_offset` of the previous answer for the next part." }
+            }, "required": ["instance"] }),
             mutates: false,
         },
         Tool {
             name: "launcher_read_log",
             title: "Read game log / crash report",
-            description: "The game's output for an instance (latest.log, or the captured output), or with source=crash the newest crash report. Use it to explain why the game crashed or a mod failed to load.",
+            description: "Read the end of the game's output for an instance (logs/latest.log, or the output captured at start), or with `source: \"crash\"` the newest crash report. Use it to explain why the game crashed or a mod failed to load. Returns plain text, at most about 60 KB (the newest lines are kept).",
             schema: json!({ "type": "object", "properties": {
                 "instance": instance_arg(),
-                "source": { "type": "string", "enum": ["log", "crash"] },
-                "lines": { "type": "integer", "minimum": 10, "maximum": 2000, "description": "Last N lines (default 200)." },
-                "errors_only": { "type": "boolean" }
+                "source": { "type": "string", "enum": ["log", "crash"], "default": "log", "description": "`log` for the game's output, `crash` for the newest crash report." },
+                "lines": { "type": "integer", "minimum": 10, "maximum": 2000, "default": 200, "description": "How many of the last lines to return." },
+                "errors_only": { "type": "boolean", "default": false, "description": "Only warnings, errors, exceptions and stack trace lines." }
             }, "required": ["instance"] }),
             mutates: false,
         },
         Tool {
             name: "launcher_list_accounts",
             title: "Signed-in accounts",
-            description: "Minecraft profile names signed in on this device (no tokens). Launching with an account needs one of these.",
+            description: "List the Minecraft profile names signed in on this device (names only, never tokens). launcher_launch needs one of them; signing in is something only the user does, in the app. Returns a JSON object: `accounts`, or a sentence when nobody is signed in.",
             schema: json!({ "type": "object", "properties": {} }),
             mutates: false,
         },
         Tool {
             name: "launcher_create_instance",
             title: "Create instance",
-            description: "Create a new instance. Loader builds are picked automatically (the newest for that version).",
+            description: "Create a new Minecraft instance in the launcher. The loader build is picked for you (the newest for that version). Then add content with launcher_install_content and start it with launcher_launch. Returns a sentence with the new instance's name and id.",
             schema: json!({ "type": "object", "properties": {
-                "name": { "type": "string" },
-                "version": { "type": "string", "description": "Minecraft version, e.g. 1.21.4." },
-                "loader": loader_arg(),
-                "memory_mb": { "type": "integer", "minimum": 512, "maximum": 32768 }
+                "name": { "type": "string", "description": "Name shown in the launcher. Omit for `<loader> <version>`." },
+                "version": { "type": "string", "description": "Minecraft version from launcher_list_versions, e.g. `1.21.4`." },
+                "loader": loader_arg("Mod loader. Omit for vanilla (no mods)."),
+                "memory_mb": { "type": "integer", "minimum": 512, "maximum": 32768, "default": 4096, "description": "RAM for the game in MB." }
             }, "required": ["version"] }),
             mutates: true,
         },
         Tool {
             name: "launcher_install_content",
             title: "Install from Modrinth",
-            description: "Install the newest compatible version of a Modrinth project into an instance, with its required mods.",
+            description: "Install a Modrinth project into an instance: the newest version that fits its Minecraft version and loader, together with the mods it requires. Find the project with launcher_search_content. Returns a sentence listing the files installed.",
             schema: json!({ "type": "object", "properties": {
                 "instance": instance_arg(),
-                "project_id": { "type": "string", "description": "Modrinth project id or slug." },
+                "project_id": { "type": "string", "description": "Modrinth project id or slug, from launcher_search_content." },
                 "kind": kind_arg()
             }, "required": ["instance", "project_id"] }),
             mutates: true,
@@ -126,10 +140,10 @@ pub fn catalog() -> Vec<Tool> {
         Tool {
             name: "launcher_install_local_file",
             title: "Install a local jar/zip",
-            description: "Copy a file from this PC into an instance (a mod .jar, or a resource pack / shader .zip). For mod development: point it at your build output (e.g. build/libs/mymod-1.0.jar); an existing file with the same name is replaced.",
+            description: "Copy a file from this PC into an instance: a mod .jar, or a resource pack or shader .zip. For mod development, point it at your build output (e.g. build/libs/mymod-1.0.jar); a file with the same name already there is replaced. Returns a sentence.",
             schema: json!({ "type": "object", "properties": {
                 "instance": instance_arg(),
-                "path": { "type": "string", "description": "Absolute path of the .jar or .zip." },
+                "path": { "type": "string", "description": "Absolute path of the .jar or .zip on this PC (the one this endpoint runs on)." },
                 "kind": kind_arg()
             }, "required": ["instance", "path"] }),
             mutates: true,
@@ -137,18 +151,20 @@ pub fn catalog() -> Vec<Tool> {
         Tool {
             name: "launcher_install_modpack",
             title: "Create instance from modpack",
-            description: "Create a new instance from a Modrinth modpack (version, loader, mods and configs from the pack).",
-            schema: json!({ "type": "object", "properties": { "project_id": { "type": "string" } }, "required": ["project_id"] }),
+            description: "Create a new instance from a Modrinth modpack: its Minecraft version, loader, mods and configs. Find the pack with launcher_search_content and `kind: \"modpack\"`. It downloads every mod of the pack, which can take minutes. Returns a sentence with the new instance's name and id.",
+            schema: json!({ "type": "object", "properties": {
+                "project_id": { "type": "string", "description": "Modrinth project id or slug of the modpack." }
+            }, "required": ["project_id"] }),
             mutates: true,
         },
         Tool {
             name: "launcher_set_content_enabled",
             title: "Turn content on/off",
-            description: "Switch an installed file on or off without deleting it (useful to bisect which mod breaks the game).",
+            description: "Switch an installed file of an instance on or off without deleting it: useful to bisect which mod breaks the game. It applies the next time the game starts. Returns a sentence.",
             schema: json!({ "type": "object", "properties": {
                 "instance": instance_arg(),
-                "file": { "type": "string" },
-                "enabled": { "type": "boolean" },
+                "file": file_arg(),
+                "enabled": { "type": "boolean", "description": "true to switch it on, false to switch it off." },
                 "kind": kind_arg()
             }, "required": ["instance", "file", "enabled"] }),
             mutates: true,
@@ -156,10 +172,10 @@ pub fn catalog() -> Vec<Tool> {
         Tool {
             name: "launcher_remove_content",
             title: "Remove content",
-            description: "Delete one installed file from an instance.",
+            description: "Delete one installed file (a mod, resource pack or shader) from an instance. To switch it off and keep it, use launcher_set_content_enabled instead. Returns a sentence.",
             schema: json!({ "type": "object", "properties": {
                 "instance": instance_arg(),
-                "file": { "type": "string" },
+                "file": file_arg(),
                 "kind": kind_arg()
             }, "required": ["instance", "file"] }),
             mutates: true,
@@ -167,47 +183,50 @@ pub fn catalog() -> Vec<Tool> {
         Tool {
             name: "launcher_update_content",
             title: "Update content",
-            description: "Update installed files to the newest version that fits the instance: one `file`, or all of them when omitted.",
-            schema: json!({ "type": "object", "properties": { "instance": instance_arg(), "file": { "type": "string" } }, "required": ["instance"] }),
+            description: "Update the installed files of an instance to the newest version that fits it, as launcher_check_updates reports: one `file`, or every file with an update when `file` is omitted. Returns the list of files updated, or a sentence when there was nothing to update.",
+            schema: json!({ "type": "object", "properties": {
+                "instance": instance_arg(),
+                "file": { "type": "string", "description": "File name to update, as launcher_list_content gives it. Omit to update everything." }
+            }, "required": ["instance"] }),
             mutates: true,
         },
         Tool {
             name: "launcher_change_version",
             title: "Change instance version",
-            description: "Move an instance to another Minecraft version and/or loader, keeping worlds and content. Run launcher_check_updates afterwards.",
+            description: "Move an instance to another Minecraft version, another loader, or both, keeping its worlds and content. Content made for the old version stays as it is: call launcher_check_updates afterwards, then launcher_update_content. Returns a sentence with the new version and loader.",
             schema: json!({ "type": "object", "properties": {
                 "instance": instance_arg(),
-                "version": { "type": "string" },
-                "loader": loader_arg(),
-                "loader_version": { "type": "string" }
+                "version": { "type": "string", "description": "Minecraft version to move to, from launcher_list_versions." },
+                "loader": loader_arg("Loader to move to. Omit to keep the instance's loader."),
+                "loader_version": { "type": "string", "description": "A loader build from launcher_list_versions. Omit for the newest." }
             }, "required": ["instance", "version"] }),
             mutates: true,
         },
         Tool {
             name: "launcher_set_memory",
             title: "Set instance memory",
-            description: "Memory for the game, in MB (512–32768). Applies on the next start.",
+            description: "Change how much RAM the game of an instance gets. It applies the next time the game starts. Returns a sentence.",
             schema: json!({ "type": "object", "properties": {
                 "instance": instance_arg(),
-                "memory_mb": { "type": "integer", "minimum": 512, "maximum": 32768 }
+                "memory_mb": { "type": "integer", "minimum": 512, "maximum": 32768, "description": "RAM in MB, e.g. 4096." }
             }, "required": ["instance", "memory_mb"] }),
             mutates: true,
         },
         Tool {
             name: "launcher_launch",
             title: "Start the game",
-            description: "Start an instance with a signed-in account (by profile name; the first one when omitted), or install/repair only with install_only. Poll launcher_get_instance for the state and read launcher_read_log on failure.",
+            description: "Start the game of an instance on this device, signed in with one of the user's accounts; or, with `install_only: true`, only download and repair its files. Starting the game needs the owner's permission in the app (off by default); `install_only` does not. Returns at once with a sentence: follow the state with launcher_get_instance and, if it fails, read launcher_read_log.",
             schema: json!({ "type": "object", "properties": {
                 "instance": instance_arg(),
-                "account": { "type": "string", "description": "Profile name of a signed-in account." },
-                "install_only": { "type": "boolean" }
+                "account": { "type": "string", "description": "Profile name of a signed-in account, from launcher_list_accounts. Omit for the first one." },
+                "install_only": { "type": "boolean", "default": false, "description": "Download and check the game's files without starting it." }
             }, "required": ["instance"] }),
             mutates: true,
         },
         Tool {
             name: "launcher_stop",
             title: "Stop the game",
-            description: "Close the running game (or cancel an install) of an instance.",
+            description: "Close the running game of an instance, or cancel its install. Unsaved progress in a single-player world may be lost: use it for test instances, or when the user asks. Returns a sentence.",
             schema: json!({ "type": "object", "properties": { "instance": instance_arg() }, "required": ["instance"] }),
             mutates: true,
         },
@@ -281,6 +300,7 @@ fn loader_word(loader: &Loader) -> &'static str {
     }
 }
 
+/// The last `lines` lines of a log, within what one answer carries.
 fn tail(text: &str, lines: usize, errors_only: bool) -> String {
     let all: Vec<&str> = text
         .lines()
@@ -289,7 +309,7 @@ fn tail(text: &str, lines: usize, errors_only: bool) -> String {
             u.contains("ERROR") || u.contains("WARN") || u.contains("EXCEPTION") || u.contains("CAUSED BY") || l.trim_start().starts_with("at ")
         })
         .collect();
-    all[all.len().saturating_sub(lines)..].join("\n")
+    super::diagnose::tail_bytes(&all[all.len().saturating_sub(lines)..].join("\n"), super::tools::TEXT_BUDGET)
 }
 
 pub async fn call(name: &str, args: &Value) -> AppResult<String> {
@@ -324,7 +344,8 @@ pub async fn call(name: &str, args: &Value) -> AppResult<String> {
                 "progress": state.as_ref().map(|s| json!({ "stage": s.stage, "completed": s.completed, "total": s.total })),
                 "error": state.as_ref().and_then(|s| s.error.as_ref()).map(|e| e.code.as_str()),
                 "folders": { "game": dir, "mods": dir.join("mods"), "logs": dir.join("logs"), "crash_reports": dir.join("crash-reports") },
-                "content": installed.iter().map(|i| json!({ "kind": i.kind, "file": i.file, "enabled": i.enabled })).collect::<Vec<_>>(),
+                "content_total": installed.len(),
+                "content": installed.iter().take(200).map(|i| json!({ "kind": i.kind, "file": i.file, "enabled": i.enabled })).collect::<Vec<_>>(),
             })))
         }
         "launcher_list_versions" => {
@@ -354,17 +375,30 @@ pub async fn call(name: &str, args: &Value) -> AppResult<String> {
         "launcher_list_content" => {
             let profile = resolve(args).await?;
             let installed = content::list(&profile)?;
-            Ok(pretty(&serde_json::to_value(installed).unwrap_or_default()))
+            let items = installed.iter().filter_map(|i| serde_json::to_value(i).ok()).collect();
+            Ok(pretty(&super::tools::paged("content", items, args, 200)))
         }
         "launcher_check_updates" => {
             let profile = resolve(args).await?;
             let report = content::check(&profile).await?;
-            Ok(pretty(&serde_json::to_value(report).unwrap_or_default()))
+            let items = report
+                .iter()
+                .filter_map(|status| serde_json::to_value(status).ok())
+                .map(|mut status| {
+                    // A picture's address is of no use to an agent.
+                    if let Some(fields) = status.as_object_mut() {
+                        fields.remove("icon_url");
+                    }
+                    status
+                })
+                .collect();
+            Ok(pretty(&super::tools::paged("content", items, args, 100)))
         }
         "launcher_read_log" => {
             let profile = resolve(args).await?;
             let lines = args.get("lines").and_then(Value::as_u64).unwrap_or(200).clamp(10, 2000) as usize;
-            let errors_only = args.get("errors_only").and_then(Value::as_bool).unwrap_or(false);
+            // `only_problems` is what get_console calls it: either is taken.
+            let errors_only = ["errors_only", "only_problems"].iter().any(|key| args.get(*key).and_then(Value::as_bool).unwrap_or(false));
             let dir = launcher::media::instance_folder(profile.id)?;
             if args.get("source").and_then(Value::as_str) == Some("crash") {
                 let newest = std::fs::read_dir(dir.join("crash-reports"))
@@ -496,7 +530,7 @@ pub async fn call(name: &str, args: &Value) -> AppResult<String> {
             // Playing with the account is a separate, opt-in permission.
             if !crate::store::settings::load().map(|s| s.mcp_launcher_play).unwrap_or(false) {
                 return Err(AppError::new(ErrorCode::InvalidInput).detail(
-                    "Starting the game with the user's account is off for assistants. The user can allow it in Settings → AI assistants (MCP) → \"Let assistants start the game\". install_only still works.",
+                    "Starting the game with the user's account is off for agents. Only the user can allow it, in the Nebula Host app: Settings > AI agents (MCP) > Details > What agents may do > Start the game. Tell them; `install_only: true` works without it.",
                 ));
             }
             let accounts = auth.accounts().await;
@@ -504,7 +538,7 @@ pub async fn call(name: &str, args: &Value) -> AppResult<String> {
                 Some(name) => accounts.iter().find(|a| a.name.eq_ignore_ascii_case(name)),
                 None => accounts.first(),
             }
-            .ok_or_else(|| invalid("No signed-in account matches. Ask the user to sign in from the launcher."))?;
+            .ok_or_else(|| invalid("No signed-in account matches: launcher_list_accounts gives the names. If there is none, ask the user to sign in from the launcher."))?;
             let credentials = auth.credentials(&account.id).await?;
             engine.start(profile.clone(), Some(credentials)).await?;
             Ok(format!("Starting `{}` as {}. Poll launcher_get_instance; on failure read launcher_read_log (source=crash too).", profile.name, account.name))

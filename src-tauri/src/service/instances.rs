@@ -136,6 +136,10 @@ pub struct InstanceService {
     node: RwLock<Node>,
     states: RwLock<HashMap<String, InstanceState>>,
     consoles: RwLock<HashMap<String, VecDeque<ConsoleLine>>>,
+    /// Per instance: how many console lines it ever printed. The buffer
+    /// forgets its oldest lines; this count is what lets a caller say "the
+    /// lines after this one" (see `console_since`).
+    console_totals: std::sync::RwLock<HashMap<String, u64>>,
     online_players: RwLock<HashMap<String, Vec<String>>>,
     /// Per instance: player name → account UUID, as announced on join.
     identities: RwLock<HashMap<String, HashMap<String, String>>>,
@@ -189,6 +193,7 @@ impl InstanceService {
             node: RwLock::new(node),
             states: RwLock::new(HashMap::new()),
             consoles: RwLock::new(HashMap::new()),
+            console_totals: std::sync::RwLock::new(HashMap::new()),
             online_players: RwLock::new(HashMap::new()),
             identities: RwLock::new(HashMap::new()),
             completions: RwLock::new(HashMap::new()),
@@ -316,6 +321,36 @@ impl InstanceService {
         let consoles = self.consoles.read().await;
         let Some(buffer) = consoles.get(instance_id) else { return Vec::new() };
         buffer.iter().rev().take(limit).rev().cloned().collect()
+    }
+
+    /// The place in this server's console right now: pass it to
+    /// `console_since` later for the lines printed in between.
+    pub async fn console_cursor(&self, instance_id: &str) -> u64 {
+        let _consoles = self.consoles.read().await;
+        self.console_totals.read().ok().and_then(|totals| totals.get(instance_id).copied()).unwrap_or(0)
+    }
+
+    /// The console lines printed after `cursor`, and the cursor after them.
+    /// Lines the buffer already dropped are gone: what is left is returned.
+    pub async fn console_since(&self, instance_id: &str, cursor: u64) -> (Vec<ConsoleLine>, u64) {
+        let consoles = self.consoles.read().await;
+        let total = self.console_totals.read().ok().and_then(|totals| totals.get(instance_id).copied()).unwrap_or(0);
+        let Some(buffer) = consoles.get(instance_id) else { return (Vec::new(), total) };
+        let skip = lines_to_skip(buffer.len(), total, cursor);
+        (buffer.iter().skip(skip).cloned().collect(), total)
+    }
+
+    /// Say where a server's setup is (an install, a copy), for its card and
+    /// for whoever waits on it. `Ready` clears it.
+    pub(crate) fn report_setup(&self, instance_id: &str, progress: InstallProgress) {
+        if let Ok(mut installs) = self.installs.write() {
+            if matches!(progress, InstallProgress::Ready) {
+                installs.remove(instance_id);
+            } else {
+                installs.insert(instance_id.to_string(), progress.clone());
+            }
+        }
+        self.emit(AppEvent::Install { instance_id: instance_id.to_string(), progress });
     }
 
     pub async fn online_players(&self, instance_id: &str) -> Vec<String> {
@@ -946,6 +981,9 @@ impl InstanceService {
         self.drop_pending_addons(instance_id).await;
         self.states.write().await.remove(instance_id);
         self.consoles.write().await.remove(instance_id);
+        if let Ok(mut totals) = self.console_totals.write() {
+            totals.remove(instance_id);
+        }
         if let Ok(mut installs) = self.installs.write() {
             installs.remove(instance_id);
         }
@@ -1144,9 +1182,24 @@ impl InstanceService {
                 buffer.pop_front();
             }
             buffer.push_back(line.clone());
+            if let Ok(mut totals) = self.console_totals.write() {
+                *totals.entry(instance_id.to_string()).or_default() += 1;
+            }
         }
         self.emit(AppEvent::Console { instance_id: instance_id.to_string(), line });
     }
+}
+
+/// How many lines of a console buffer of `buffered` lines come before
+/// `cursor`, when `total` lines were ever printed. A cursor from before the
+/// buffer's oldest line skips nothing; one from another run of the app
+/// (ahead of `total`) is treated the same, so nothing is hidden.
+fn lines_to_skip(buffered: usize, total: u64, cursor: u64) -> usize {
+    if cursor > total {
+        return 0;
+    }
+    let first = total.saturating_sub(buffered as u64);
+    usize::try_from(cursor.saturating_sub(first)).unwrap_or(buffered).min(buffered)
 }
 
 /// A server name becomes a directory name, so it has to be boring.
@@ -1193,6 +1246,20 @@ mod tests {
             assert!(validate_name(name).is_err(), "{name:?}");
         }
         assert_eq!(validate_name("  Survival  ").expect("ok"), "Survival");
+    }
+
+    #[test]
+    fn a_console_cursor_finds_the_lines_after_it() {
+        // 10 lines printed, all still buffered.
+        assert_eq!(lines_to_skip(10, 10, 0), 0);
+        assert_eq!(lines_to_skip(10, 10, 7), 7);
+        assert_eq!(lines_to_skip(10, 10, 10), 10);
+        // 2500 printed, the buffer holds the last 2000 (lines 500..2500).
+        assert_eq!(lines_to_skip(2000, 2500, 2400), 1900);
+        assert_eq!(lines_to_skip(2000, 2500, 100), 0, "older than the buffer: everything left");
+        // A cursor from another run of the app.
+        assert_eq!(lines_to_skip(5, 5, 900), 0);
+        assert_eq!(lines_to_skip(0, 0, 0), 0);
     }
 
     #[test]

@@ -37,7 +37,7 @@
     "viewsWelcome": [
       {
         "view": "nebulaHost.servers",
-        "contents": "Nebula Host is not answering.\n\nOpen Nebula Host on this PC and turn on **Settings › AI agents › Allow agents to control Nebula Host**.\n\n[Try again](command:nebulaHost.refresh)\n\n[Change the address](command:nebulaHost.openSettings)",
+        "contents": "Nebula Host is not answering.\n\nOpen Nebula Host on this PC and turn on **Settings › AI agents (MCP) › Let AI agents use Nebula Host**.\n\n[Try again](command:nebulaHost.refresh)\n\n[Change the address](command:nebulaHost.openSettings)",
         "when": "nebulaHost.state == 'offline'"
       },
       {
@@ -102,7 +102,7 @@
         "nebulaHost.endpoint": {
           "type": "string",
           "default": "http://127.0.0.1:47391/mcp",
-          "markdownDescription": "Address of Nebula Host's agent endpoint (Settings › AI agents › View details in the app)."
+          "markdownDescription": "Address of Nebula Host's agent endpoint (Settings › AI agents (MCP) › View details in the app)."
         },
         "nebulaHost.registerMcpServer": {
           "type": "boolean",

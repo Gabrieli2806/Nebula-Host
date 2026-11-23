@@ -25,11 +25,24 @@ pub fn min_java_version(mc_version: &str) -> u32 {
     }
 }
 
+const CONSOLE_ENCODING: &[&str] = &[
+    "-Dstdout.encoding=UTF-8",
+    "-Dstderr.encoding=UTF-8",
+    "-Dsun.stdout.encoding=UTF-8",
+    "-Dsun.stderr.encoding=UTF-8",
+];
+
 /// JVM arguments, in the order Java wants them.
 pub fn jvm_args(memory_mb: u32, extra: &[String]) -> Vec<String> {
     // Equal min and max heap: a server that grows its heap under load stutters
     // exactly when players notice.
     let mut args = vec![format!("-Xms{memory_mb}M"), format!("-Xmx{memory_mb}M")];
+    // The console is read as UTF-8. Without this Java writes it in the
+    // system's code page (on Windows), and anything outside it (Paper's
+    // `mspt` marks, a player's name, chat) arrives as `?`. Only the console
+    // streams: the default charset for files is left as the server expects.
+    // `sun.*` is what Java 17 and older read; they ignore the others.
+    args.extend(CONSOLE_ENCODING.iter().map(|arg| arg.to_string()));
     args.extend_from_slice(extra);
     args
 }
@@ -214,7 +227,9 @@ mod tests {
 
     #[test]
     fn heap_is_pinned_to_one_size() {
-        assert_eq!(jvm_args(4096, &[]), vec!["-Xms4096M", "-Xmx4096M"]);
+        let args = jvm_args(4096, &[]);
+        assert_eq!(args[..2], ["-Xms4096M", "-Xmx4096M"]);
+        assert_eq!(args[2..], *CONSOLE_ENCODING, "the console is written as UTF-8, which is how it is read");
     }
 
     #[test]

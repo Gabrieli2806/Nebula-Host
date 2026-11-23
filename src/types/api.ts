@@ -241,6 +241,8 @@ export interface Backup {
   createdAt: string;
   sizeBytes: number;
   path: string;
+  /** Files the running server held locked, left out of the backup just taken. */
+  skipped?: string[];
 }
 
 export interface PlayerEntry {

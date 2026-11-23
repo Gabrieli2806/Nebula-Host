@@ -1,7 +1,51 @@
-/* AI agents (MCP): the card in App Settings and its details dialog. */
+/* AI agents (MCP): the card in App Settings. One row until it is opened. */
 
 @layer components {
-  /* == the details dialog ================================================ */
+  /* == the folded row: name, state, switch, and the arrow that opens it === */
+
+  .settings-row.mcp-head[data-switch] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .mcp-head .settings-row-hit {
+    padding-right: var(--space-3);
+  }
+
+  .mcp-fold {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    margin-right: 14px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+
+  .mcp-fold:hover {
+    background: var(--surface-sunken);
+    color: var(--text);
+  }
+
+  .mcp-fold:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  /* == what opens under it ================================================ */
+
+  .mcp-body {
+    padding: var(--space-4) 20px 20px;
+    border-top: 1px solid var(--line);
+  }
+
+  .mcp-note-grow {
+    flex: 1 1 240px;
+  }
 
   .mcp-details {
     display: flex;
