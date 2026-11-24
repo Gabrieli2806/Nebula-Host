@@ -678,8 +678,10 @@
     cursor: not-allowed;
   }
 
+  /* Clearly lighter than typed text: an example must not pass for a value. */
   .field::placeholder {
     color: var(--text-faint);
+    opacity: 0.65;
   }
 
   .field-invalid,

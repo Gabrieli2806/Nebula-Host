@@ -325,9 +325,28 @@
 
   .backup-meta {
     display: flex;
-    gap: var(--space-3);
+    flex-wrap: wrap;
+    gap: 2px var(--space-3);
     font-size: var(--text-xs);
     color: var(--text-faint);
+  }
+
+  .backup-meta > * {
+    white-space: nowrap;
+  }
+
+  /* A phone: name and date on top, Restore and Delete on their own line,
+     apart from each other. */
+  @media (max-width: 560px) {
+    .backup-body {
+      flex-wrap: wrap;
+      gap: var(--space-2) var(--space-4);
+    }
+
+    .backup-body > :last-child {
+      width: 100%;
+      justify-content: space-between;
+    }
   }
 
   /* == server settings: preferences pane ============================== */
@@ -387,6 +406,19 @@
 
   .pref-control {
     width: 200px;
+  }
+
+  /* A phone: a field's label goes above it, at full width, instead of
+     being squeezed into a column a word wide. Switches keep their row. */
+  @media (max-width: 560px) {
+    .pref-row:not([data-control="switch"]) {
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 10px;
+    }
+
+    .pref-row:not([data-control="switch"]) .pref-control {
+      width: 100%;
+    }
   }
 
   /* A setting that only exists while its parent switch is on. It hangs

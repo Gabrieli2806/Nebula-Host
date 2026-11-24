@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useI18n } from "@/i18n";
 import { Icon } from "./Icon";
+import { copyText } from "@/lib/clipboard";
 
 const COPIED_FOR_MS = 1200;
 
@@ -46,7 +47,7 @@ export function CopyAddress({
   const copy = async () => {
     if (!value) return;
     try {
-      await navigator.clipboard.writeText(value);
+      await copyText(value);
     } catch {
       // Clipboard refused (permissions, unfocused window): say nothing rather
       // than claim a copy that did not happen.

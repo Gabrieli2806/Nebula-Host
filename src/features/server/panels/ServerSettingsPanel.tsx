@@ -19,7 +19,7 @@ import { keys, useGames, useInstalledAddons } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { api } from "@/lib/ipc";
 import type { InstanceView, SettingValue } from "@/types/api";
-import { Button, ErrorNotice, Icon, Panel, Select, Skeleton, Switch, TextInput } from "@/ui";
+import { ErrorNotice, Icon, Panel, Select, Skeleton, Switch, TextInput } from "@/ui";
 import { RamSlider } from "@/ui/RamSlider";
 
 import { JavaRuntimeCard } from "./settings/JavaRuntimeCard";
@@ -36,11 +36,12 @@ export function ServerSettingsPanel({ instance }: { instance: InstanceView }) {
   const accent = game?.distributions.find((candidate) => candidate.id === instance.build.distribution)?.accent;
   return (
     <div className="flex max-w-[880px] flex-col gap-4">
+      {/* What people come here for first: difficulty, game mode, who may join. */}
+      <GameSettings instance={instance} />
       <AutomationSettings instance={instance} />
       {game?.server_icon ? <ServerIconCard instance={instance} accent={accent} /> : null}
       {game?.runtime.kind === "java" ? <JavaRuntimeCard instance={instance} /> : null}
       {game?.wake && !IS_MOBILE ? <WorldImportCard instance={instance} /> : null}
-      <GameSettings instance={instance} />
     </div>
   );
 }
@@ -122,6 +123,60 @@ function PrefText({
   );
 }
 
+/**
+ * The port, typed and saved on Enter or when the field is left. The typed
+ * value stays while it saves; a refused one (in use, out of range) goes back
+ * to the saved port, with the reason under the card.
+ */
+function PortField({
+  id,
+  port,
+  saving,
+  onSave,
+}: {
+  id: string;
+  port: number;
+  saving: boolean;
+  onSave: (port: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(port));
+  const [shown, setShown] = useState(port);
+  // The saved port changed (a save went through, or elsewhere): show it.
+  if (shown !== port) {
+    setShown(port);
+    setDraft(String(port));
+  }
+  const commit = () => {
+    const next = Number(draft);
+    if (!Number.isInteger(next) || next < 1024 || next > 65535) {
+      setDraft(String(port));
+      return;
+    }
+    if (next !== port) onSave(next);
+  };
+  return (
+    <TextInput
+      id={id}
+      type="number"
+      inputMode="numeric"
+      min={1024}
+      max={65535}
+      className="pref-number"
+      value={draft}
+      aria-busy={saving || undefined}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          commit();
+          (event.target as HTMLInputElement).blur();
+        }
+      }}
+    />
+  );
+}
+
 /** The faint tick an autosaving card shows after each save. */
 function SavedTick({ show }: { show: boolean }) {
   const { t } = useI18n();
@@ -162,6 +217,7 @@ function AutomationSettings({ instance }: { instance: InstanceView }) {
       api.instances.update(instance.id, values),
     onSuccess: () => {
       flashSaved();
+      // Also refreshes this server's own record (["instances", id]).
       return client.invalidateQueries({ queryKey: keys.instances });
     },
   });
@@ -256,14 +312,11 @@ function AutomationSettings({ instance }: { instance: InstanceView }) {
 
         <FieldRow label={t("create.port")} help={t("settings.portHelp")}>
           {(id) => (
-            <TextInput
+            <PortField
               id={id}
-              type="number"
-              min={1024}
-              max={65535}
-              className="pref-number"
-              defaultValue={Object.values(instance.ports)[0] ?? 25565}
-              onBlur={(event) => patch.mutate({ port: Number(event.target.value) })}
+              port={Object.values(instance.ports)[0] ?? 25565}
+              saving={patch.isPending}
+              onSave={(port) => patch.mutate({ port })}
             />
           )}
         </FieldRow>
@@ -350,7 +403,6 @@ function MemoryRow({
 function GameSettings({ instance }: { instance: InstanceView }) {
   const { t } = useI18n();
   const client = useQueryClient();
-  const { data: games } = useGames();
   const [edits, setEdits] = useState<Record<string, string>>({});
 
   const settings = useQuery({
@@ -358,13 +410,28 @@ function GameSettings({ instance }: { instance: InstanceView }) {
     queryFn: () => api.settings.instanceGet(instance.id),
   });
 
+  const [saved, flashSaved] = useSavedFlash();
   const save = useMutation({
     mutationFn: (values: Record<string, string>) => api.settings.instanceSet(instance.id, values),
-    onSuccess: () => {
-      setEdits({});
+    onSuccess: (_, values) => {
+      // Keep what was typed while this save was on its way.
+      setEdits((current) =>
+        Object.fromEntries(Object.entries(current).filter(([key, value]) => values[key] !== value)),
+      );
+      flashSaved();
       void client.invalidateQueries({ queryKey: keys.instanceSettings(instance.id) });
     },
   });
+
+  // Saved as you change them, like every other card on this page: a moment
+  // after the last change, so typing a message saves once.
+  useEffect(() => {
+    if (!Object.keys(edits).length) return;
+    const timer = window.setTimeout(() => save.mutate(edits), 700);
+    return () => window.clearTimeout(timer);
+    // `save` is stable enough: a new one each render would restart the wait.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edits]);
 
   const groups = useMemo(() => {
     const map = new Map<string, SettingValue[]>();
@@ -383,24 +450,8 @@ function GameSettings({ instance }: { instance: InstanceView }) {
   return (
     <Panel
       className="props-card"
-      title={games?.find((game) => game.id === instance.game)?.name ?? instance.game}
-      actions={
-        <>
-          {dirty ? (
-            <span className="tag" data-tone="warn">
-              {t("files.unsaved")}
-            </span>
-          ) : null}
-          <Button
-            size="sm"
-            variant="primary"
-            disabled={!dirty || save.isPending}
-            onClick={() => save.mutate(edits)}
-          >
-            {save.isSuccess && !dirty ? t("actions.saved") : t("actions.save")}
-          </Button>
-        </>
-      }
+      title={t("settings.groupGame")}
+      actions={dirty || save.isPending ? <span className="saved-tick" data-show="">{t("settings.saving")}</span> : <SavedTick show={saved} />}
     >
       {settings.error ? (
         <div className="p-4">

@@ -62,6 +62,11 @@ export function InstalledTab({
 
   const kind = context.project_type === "plugin" ? "plugin" : "mod";
 
+  // Nothing installed yet, but something on its way: the queue says it all.
+  if (addons.length === 0 && pending.length > 0) {
+    return <PendingChanges instance={instance} pending={pending} />;
+  }
+
   if (addons.length === 0) {
     return (
       <div className="flex flex-col gap-3">

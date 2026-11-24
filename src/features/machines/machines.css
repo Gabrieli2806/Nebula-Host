@@ -46,6 +46,59 @@
 
   /* == machine cards ==================================================== */
 
+  /* A phone: each server is a small card (name; machine and status;
+     players and memory) instead of a table that runs off the screen. */
+  @media (max-width: 640px) {
+    .fleet-table thead {
+      display: none;
+    }
+
+    .fleet-table,
+    .fleet-table tbody {
+      display: block;
+    }
+
+    .fleet-table tr {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 6px 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .fleet-table td {
+      display: block;
+      padding: 0;
+      border: 0;
+      text-align: left;
+    }
+
+    .fleet-table td:first-child {
+      grid-column: 1 / -1;
+    }
+
+    /* The table's own narrow rules hide numeric cells; here they show. */
+    .fleet-table td[data-cell] {
+      display: block;
+    }
+
+    .fleet-table td[data-col="cpu"],
+    .fleet-table td[data-col="uptime"],
+    .fleet-table td[data-col="address"] {
+      display: none;
+    }
+
+    .fleet-table td[data-label]::before {
+      content: attr(data-label) " ";
+      color: var(--text-faint);
+      font-family: var(--font-sans);
+    }
+
+    .fleet-table td[data-cell="memory"] {
+      text-align: right;
+    }
+  }
+
   .fleet-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

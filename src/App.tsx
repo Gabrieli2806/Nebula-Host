@@ -16,6 +16,7 @@ import { LauncherShortcutListener } from "@/features/launcher/LauncherShortcutLi
 import { useSuppressNativeContextMenu } from "@/ui/ContextMenu";
 import { errorActions } from "@/ui";
 import { JavaInstallButton } from "@/features/java/JavaInstall";
+import { UseFreePortButton } from "@/features/servers/UseFreePort";
 import { I18nProvider } from "@/i18n";
 import { WebPair } from "@/features/web/WebPair";
 import { IS_WEB, webSession } from "@/lib/web";
@@ -23,6 +24,11 @@ import { IS_WEB, webSession } from "@/lib/web";
 // A missing Java says which one; offer to install it right there.
 errorActions.java_not_found = (error) =>
   error.params.major ? <JavaInstallButton major={Number(error.params.major)} /> : null;
+// A taken port names a free one: move there and start.
+errorActions.port_in_use = (error) =>
+  error.params.instance && error.params.suggested ? (
+    <UseFreePortButton instanceId={error.params.instance} port={Number(error.params.suggested)} />
+  ) : null;
 
 const client = new QueryClient({
   defaultOptions: {

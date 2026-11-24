@@ -7,7 +7,7 @@
  * item cancellable, with any change that failed to apply and why.
  */
 
-import { usePendingAddonMutations } from "@/hooks/useBackend";
+import { useInstanceActions, usePendingAddonMutations } from "@/hooks/useBackend";
 import type { InstanceView, PendingAddonChange } from "@/types/api";
 import { Button, ErrorNotice, Icon } from "@/ui";
 
@@ -16,6 +16,7 @@ import { useAddonCopy } from "./util";
 export function PendingChanges({ instance, pending }: { instance: InstanceView; pending: PendingAddonChange[] }) {
   const { t, tc } = useAddonCopy();
   const { cancel, apply } = usePendingAddonMutations(instance.id);
+  const actions = useInstanceActions();
 
   if (pending.length === 0) return null;
 
@@ -40,6 +41,11 @@ export function PendingChanges({ instance, pending }: { instance: InstanceView; 
         {!running ? (
           <Button size="sm" icon="refresh" disabled={apply.isPending} onClick={() => apply.mutate()}>
             {t("addons.pendingRetry")}
+          </Button>
+        ) : instance.status === "online" ? (
+          // The restart is what applies them: offer it right here.
+          <Button size="sm" variant="primary" icon="restart" disabled={actions.restart.isPending} onClick={() => actions.restart.mutate(instance.id)}>
+            {t("addons.restartNow")}
           </Button>
         ) : null}
       </header>

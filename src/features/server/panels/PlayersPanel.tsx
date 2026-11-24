@@ -27,6 +27,7 @@ import {
   PlayerHead,
   Skeleton,
   StatusDot,
+  Switch,
   Tabs,
   TextInput,
 } from "@/ui";
@@ -203,6 +204,8 @@ export function PlayersPanel({ instance }: { instance: InstanceView }) {
             />
             <span className="readout panel-count">{lists.data[active]?.length ?? 0}</span>
           </header>
+          {/* The list only counts while the whitelist is on: say which. */}
+          {active === "allowed" ? <WhitelistSwitch instance={instance} running={isOnline} /> : null}
           <PlayerList
             key={active}
             list={active}
@@ -310,6 +313,39 @@ function ActionDialog({
         </form>
       ) : null}
     </Dialog>
+  );
+}
+
+/**
+ * Whether the whitelist is on, at the top of its own tab, with the switch.
+ * On a running server the console command applies it at once too.
+ */
+function WhitelistSwitch({ instance, running }: { instance: InstanceView; running: boolean }) {
+  const { t } = useI18n();
+  const client = useQueryClient();
+  const settings = useQuery({
+    queryKey: keys.instanceSettings(instance.id),
+    queryFn: () => api.settings.instanceGet(instance.id),
+  });
+  const field = settings.data?.find((setting) => setting.key === "white-list");
+  const toggle = useMutation({
+    mutationFn: async (on: boolean) => {
+      // Running: the server switches it and writes the file itself.
+      if (running) await api.instances.command(instance.id, on ? "whitelist on" : "whitelist off");
+      await api.settings.instanceSet(instance.id, { "white-list": String(on) });
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: keys.instanceSettings(instance.id) }),
+  });
+  if (!field) return null;
+  const on = field.value === "true";
+  return (
+    <label className="players-whitelist" data-on={on ? "" : undefined}>
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className="players-whitelist-title">{on ? t("players.whitelistOn") : t("players.whitelistOff")}</span>
+        <span className="players-whitelist-help">{on ? t("players.whitelistOnHelp") : t("players.whitelistOffHelp")}</span>
+      </span>
+      <Switch checked={on} disabled={toggle.isPending} onChange={(next) => toggle.mutate(next)} label={t("players.allowed")} />
+    </label>
   );
 }
 

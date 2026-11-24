@@ -37,6 +37,7 @@ import {
   isIdle,
   statusHint,
 } from "@/ui";
+import { copyText } from "@/lib/clipboard";
 
 /** Allocated memory the way it was chosen: "4 GB", not "4.0 GB". */
 function formatAllocation(mb: number): string {
@@ -67,7 +68,8 @@ export function ServerCard({ instance, onOpen, drag }: { instance: InstanceView;
   const cpu = Math.min(100, Math.max(0, instance.cpu_percent));
   const allocated = instance.resources.memory_mb;
   // The last start/stop that failed, shown under the address.
-  const failure = actions.start.error ?? actions.stop.error;
+  // An old start refusal goes once the server runs (its port was fixed).
+  const failure = (instance.status === "offline" || instance.status === "crashed" ? actions.start.error : null) ?? actions.stop.error;
 
   const start = () => {
     actions.stop.reset();
@@ -165,7 +167,8 @@ export function ServerCard({ instance, onOpen, drag }: { instance: InstanceView;
             label={t("servers.memory")}
             value={instance.memory_used_mb ? formatMegabytes(instance.memory_used_mb) : "—"}
             of={formatAllocation(allocated)}
-            share={allocated > 0 ? (instance.memory_used_mb / allocated) * 100 : 0}
+            // Java takes memory on top of the game's allocation: 1.3x is normal.
+            share={allocated > 0 ? (instance.memory_used_mb / (allocated * 1.3)) * 100 : 0}
           />
         </div>
       ) : null}
@@ -239,7 +242,7 @@ function AddressChip({ address, local, emptyText }: { address?: string | null; l
   if (!address) return <span className="server-card-addr" data-empty="">{emptyText}</span>;
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(address);
+      await copyText(address);
     } catch {
       return;
     }

@@ -81,6 +81,12 @@ export function SettingsScreen() {
   const client = useQueryClient();
   const { data: node } = useNode();
   const { data: settings } = useAppSettings();
+  // `?section=network` (from "Let friends elsewhere join"): open there.
+  const loaded = Boolean(settings);
+  useEffect(() => {
+    if (!loaded || !window.location.hash.includes("section=network")) return;
+    document.getElementById("settings-network")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [loaded]);
   const { data: games } = useGames();
   const save = useSaveSettings();
   const [theme, setTheme] = useThemePreference();
@@ -327,6 +333,7 @@ export function SettingsScreen() {
       </Panel>
       )}
 
+      <div id="settings-network" aria-hidden="true" style={{ scrollMarginTop: 80 }} />
       <Panel title={t("settings.networkTitle")}>
         <SwitchRow
           label={t("settings.allowUpnp")}

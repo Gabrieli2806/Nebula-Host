@@ -49,10 +49,7 @@ pub async fn instance_settings_set(
     instance_id: String,
     values: BTreeMap<String, String>,
 ) -> AppResult<()> {
-    state.ensure_not_transferring(&instance_id).await?;
-    let instance = state.store.get(&instance_id).await?;
-    let manifest = state.registry.manifest(&instance.game)?;
-    properties::write(&instance.path, &manifest, &values)
+    state.write_game_settings(&instance_id, &values).await
 }
 
 /// Check a Java path the user typed, and report what it actually is.

@@ -149,6 +149,10 @@ pub struct InstanceService {
     /// time) without holding up the other servers.
     completion_fetch: Mutex<HashMap<String, Arc<Mutex<()>>>>,
     disk_usage: RwLock<HashMap<String, DiskUsage>>,
+    /// Per instance: game settings changed while it ran. The game keeps its
+    /// own copy in memory and writes it back over the file (a `whitelist on`
+    /// does), so these are written again before its next start.
+    settings_while_running: Mutex<HashMap<String, std::collections::BTreeMap<String, String>>>,
     /// Per instance: where its install is, until it is ready. A failed
     /// install stays here so the server's card can say so.
     installs: Arc<std::sync::RwLock<HashMap<String, InstallProgress>>>,
@@ -199,6 +203,7 @@ impl InstanceService {
             completions: RwLock::new(HashMap::new()),
             completion_fetch: Mutex::new(HashMap::new()),
             disk_usage: RwLock::new(HashMap::new()),
+            settings_while_running: Mutex::new(HashMap::new()),
             installs: Arc::new(std::sync::RwLock::new(HashMap::new())),
             addon_index: RwLock::new(HashMap::new()),
             events,
@@ -297,6 +302,29 @@ impl InstanceService {
                 InstanceView { instance, state, address, public_address, icon_url, setup }
             })
             .collect())
+    }
+
+    /// Change the game's own settings (server.properties). On a running
+    /// server they are also kept, to be written again before the next start:
+    /// the game would otherwise put its old values back.
+    pub async fn write_game_settings(
+        &self,
+        instance_id: &str,
+        values: &std::collections::BTreeMap<String, String>,
+    ) -> AppResult<()> {
+        self.ensure_not_transferring(instance_id).await?;
+        let instance = self.store.get(instance_id).await?;
+        let manifest = self.registry.manifest(&instance.game)?;
+        crate::service::properties::write(&instance.path, &manifest, values)?;
+        if self.processes.is_running(instance_id).await {
+            self.settings_while_running
+                .lock()
+                .await
+                .entry(instance_id.to_string())
+                .or_default()
+                .extend(values.clone());
+        }
+        Ok(())
     }
 
     pub async fn view(&self, instance_id: &str) -> AppResult<InstanceView> {
@@ -688,6 +716,22 @@ impl InstanceService {
         let adapter = self.registry.get(&instance.game)?;
         let install = instance.install.clone().unwrap_or_default();
 
+        // Something else holds the port (another server, another app): say
+        // so now, with a free one to switch to, instead of a crash whose
+        // reason is buried in the game's log.
+        if manifest.primary_port().is_some() {
+            let port = instance.primary_port(&manifest);
+            if !crate::net::ports::is_free(port) {
+                let mut error = AppError::new(ErrorCode::PortInUse)
+                    .with("port", port)
+                    .with("instance", instance_id);
+                if let Some(free) = crate::net::ports::first_free_from(port.saturating_add(1)) {
+                    error = error.with("suggested", free);
+                }
+                return Err(error);
+            }
+        }
+
         // The record is the source of truth for the port (the sleep proxy and
         // the UI use it); make sure the game's own config says the same before
         // it starts, so a port changed elsewhere can never silently diverge.
@@ -698,6 +742,14 @@ impl InstanceService {
                 if let Err(error) = crate::service::properties::set_internal(&instance.path, &spec.key, &port) {
                     tracing::warn!(%instance_id, %error, "could not sync the port into the game config");
                 }
+            }
+        }
+
+        // Settings changed while it last ran: the game may have written its
+        // old values back on top of them.
+        if let Some(values) = self.settings_while_running.lock().await.remove(instance_id) {
+            if let Err(error) = crate::service::properties::write(&instance.path, &manifest, &values) {
+                warn!(instance_id, %error, "settings changed while running were not written again");
             }
         }
 

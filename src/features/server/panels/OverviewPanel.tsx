@@ -14,14 +14,17 @@ import { Link, useNavigate } from "react-router-dom";
 
 import {
   keys,
+  useConsole,
   useDiskUsage,
   useDistribution,
   useInstanceActions,
 } from "@/hooks/useBackend";
+import { copyText } from "@/lib/clipboard";
+import { crashCause } from "./crashCause";
 import { useI18n } from "@/i18n";
 import { api } from "@/lib/ipc";
 import { isRemote } from "@/lib/connection";
-import { DESKTOP_FEATURES, IS_WEB } from "@/lib/web";
+import { DESKTOP_FEATURES, IS_MOBILE, IS_WEB } from "@/lib/web";
 import {
   formatBytes,
   formatCount,
@@ -72,6 +75,22 @@ function splitUnit(text: string): [string, string | undefined] {
   return [value ?? text, unit];
 }
 
+/** Java itself takes memory on top of what the game is given: a process at
+ *  1.3x its allocation is normal, not a server running out. */
+const JVM_OVERHEAD = 1.3;
+
+/** A touch screen: "tap", not "click". */
+const TOUCH = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+
+/** The phone's share sheet (WhatsApp, Messages…), else a copy. */
+async function shareAddress(name: string, address: string) {
+  try {
+    await navigator.share({ title: name, text: address });
+  } catch {
+    await copyText(address).catch(() => undefined);
+  }
+}
+
 export function OverviewPanel({ instance }: { instance: InstanceView }) {
   const { t, language } = useI18n();
   const client = useQueryClient();
@@ -97,8 +116,16 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
   const hint = statusHint(instance.status);
   const automation = instance.automation;
   const crashed = instance.status === "crashed";
+  // After a crash, the console usually says why in a line a newcomer cannot
+  // read. The usual causes get a sentence and a way out.
+  const consoleLines = useConsole(instance.id).data;
+  const cause = crashed ? crashCause(consoleLines) : null;
   const identity = identityProps(distribution?.accent);
-  const actionError = backup.error ?? openFolder.error;
+  // A start or stop pressed here that failed (a taken port…) says why here:
+  // on a phone this is the only place those keys are.
+  // Once it runs, an old start refusal (the taken port, since fixed) is gone.
+  const stopped = instance.status === "offline" || instance.status === "crashed";
+  const actionError = (stopped ? actions.start.error : null) ?? actions.stop.error ?? backup.error ?? openFolder.error;
   const port = Object.values(instance.ports)[0];
   const automationParts = [
     automation.sleep_when_empty
@@ -106,6 +133,11 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
       : null,
     automation.wake_on_join ? t("overview.automationWake") : null,
     automation.restart_after_crash ? t("overview.automationRestart") : null,
+    automation.auto_backup_hours
+      ? automation.auto_backup_hours % 24 === 0
+        ? t("overview.automationBackupDays", { days: automation.auto_backup_hours / 24, keep: automation.auto_backup_keep ?? 3 })
+        : t("overview.automationBackupHours", { hours: automation.auto_backup_hours, keep: automation.auto_backup_keep ?? 3 })
+      : null,
     automation.schedules.length
       ? t("overview.automationSchedules", { count: automation.schedules.length })
       : null,
@@ -161,8 +193,11 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
                 size="sm"
                 icon="stop"
                 className="narrow-only"
-                disabled={instance.status === "starting" || actions.stop.isPending}
-                onClick={() => actions.stop.mutate(instance.id)}
+                disabled={actions.stop.isPending}
+                onClick={() => {
+                  actions.start.reset();
+                  actions.stop.mutate(instance.id);
+                }}
               >
                 {t("actions.stop")}
               </Button>
@@ -173,7 +208,10 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
                 icon="play"
                 className="narrow-only"
                 disabled={instance.status === "stopping" || actions.start.isPending}
-                onClick={() => actions.start.mutate(instance.id)}
+                onClick={() => {
+                  actions.stop.reset();
+                  actions.start.mutate(instance.id);
+                }}
               >
                 {instance.status === "sleeping" ? t("actions.wake") : t("actions.start")}
               </Button>
@@ -212,12 +250,38 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
 
         {hint || crashed ? (
           <div className="overview-head-note">
-            <p className="min-w-0 max-w-[60ch]">{hint ? t(hint) : null}</p>
+            <p className="min-w-0 max-w-[60ch]">
+              {cause ? (
+                <>
+                  <strong className="overview-cause">{t(`overview.cause_${cause}`)}</strong>{" "}
+                  {t(`overview.causeFix_${cause}`)}
+                </>
+              ) : hint ? (
+                t(hint)
+              ) : null}
+            </p>
             {/* After a crash the console says why; Start is in the sidebar. */}
             {crashed ? (
-              <Button size="sm" icon="terminal" onClick={() => navigate(`/servers/${instance.id}/console`)}>
-                {t("overview.openConsole")}
-              </Button>
+              <span className="flex flex-wrap gap-2">
+                {cause === "port" ? (
+                  <Button size="sm" icon="sliders" onClick={() => navigate(`/servers/${instance.id}/settings`)}>
+                    {t("overview.changePort")}
+                  </Button>
+                ) : null}
+                {cause === "java" ? (
+                  <Button size="sm" icon="coffee" onClick={() => navigate(`/servers/${instance.id}/settings`)}>
+                    {t("overview.changeJava")}
+                  </Button>
+                ) : null}
+                {cause === "memory" ? (
+                  <Button size="sm" icon="sliders" onClick={() => navigate(`/servers/${instance.id}/settings`)}>
+                    {t("overview.changeMemory")}
+                  </Button>
+                ) : null}
+                <Button size="sm" icon="terminal" onClick={() => navigate(`/servers/${instance.id}/console`)}>
+                  {t("overview.openConsole")}
+                </Button>
+              </span>
             ) : null}
           </div>
         ) : null}
@@ -233,10 +297,27 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
             size="lg"
             value={instance.address}
             label={t("overview.address")}
-            hint={t("overview.copyHint")}
+            hint={t(TOUCH ? "overview.tapHint" : "overview.copyHint")}
             emptyText={t("overview.noAddress")}
           />
         )}
+        {/* The LAN address only reaches players at home: say so, and where
+            the way in for everyone else is. */}
+        {!olderCopy && instance.address && !instance.public_address ? (
+          <div className="overview-lan-note">
+            <p>
+              {t("overview.lanOnly")}{" "}
+              {/* The UPnP switch is in Settings › Network, here as on the PC.
+                  A phone hosting itself is for the same Wi-Fi only. */}
+              {IS_MOBILE && !isRemote() ? null : <Link to="/settings?section=network">{t("overview.lanOnlyFix")}</Link>}
+            </p>
+            {TOUCH && typeof navigator.share === "function" ? (
+              <Button size="sm" icon="send" onClick={() => void shareAddress(instance.name, instance.address ?? "")}>
+                {t("overview.share")}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         {/* The sentence about UPnP sits under the well: as the well's hint it
             pushed the address itself out of view. */}
         {!olderCopy && instance.public_address ? (
@@ -244,9 +325,14 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
             <CopyAddress
               value={instance.public_address}
               label={t("overview.publicAddress")}
-              hint={t("overview.copyHint")}
+              hint={t(TOUCH ? "overview.tapHint" : "overview.copyHint")}
             />
             <p className="overview-public-address-note">{t("overview.publicAddressHint")}</p>
+            {TOUCH && typeof navigator.share === "function" ? (
+              <Button size="sm" icon="send" onClick={() => void shareAddress(instance.name, instance.public_address ?? "")}>
+                {t("overview.share")}
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </header>
@@ -365,7 +451,7 @@ function Resources({ instance }: { instance: InstanceView }) {
   const online = instance.status === "online";
   const allocated = instance.resources.memory_mb;
   const memoryUsed = live && instance.memory_used_mb > 0 ? instance.memory_used_mb : null;
-  const memoryShare = memoryUsed && allocated > 0 ? (memoryUsed / allocated) * 100 : 0;
+  const memoryShare = memoryUsed && allocated > 0 ? (memoryUsed / (allocated * JVM_OVERHEAD)) * 100 : 0;
   const cpu = live ? Math.max(0, Math.min(100, instance.cpu_percent)) : null;
   const ticks = online && instance.tick_rate ? instance.tick_rate : null;
   const slowTicks = Boolean(ticks && ticks < TICK_RATE_WARN);

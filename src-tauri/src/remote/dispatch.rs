@@ -355,10 +355,8 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             ok(properties::read(&instance.path, &manifest)?)
         }
         "instance_settings_set" => {
-            let instance = service.store.get(&id()?).await?;
-            let manifest = service.registry.manifest(&instance.game)?;
             let values: BTreeMap<String, String> = arg(args, "values")?;
-            ok(properties::write(&instance.path, &manifest, &values)?)
+            ok(service.write_game_settings(&id()?, &values).await?)
         }
         "java_probe" => ok(java::probe(std::path::Path::new(&arg::<String>(args, "path")?))?),
         "java_runtimes" => {

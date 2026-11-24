@@ -9,6 +9,8 @@
  */
 
 import { useState } from "react";
+
+import { useBackDismiss } from "@/lib/backDismiss";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { useI18n } from "@/i18n";
@@ -42,6 +44,7 @@ function ServerTabs({ instanceId }: { instanceId: string }) {
   const { t } = useI18n();
   const { pathname } = useLocation();
   const [more, setMore] = useState(false);
+  useBackDismiss(more, () => setMore(false));
   const base = `/servers/${instanceId}`;
   const extra = SERVER_PANELS.filter((panel) => !PRIMARY.includes(panel.id));
 
@@ -74,6 +77,9 @@ function ServerTabs({ instanceId }: { instanceId: string }) {
                 key={panel.id}
                 to={`${base}/${panel.id}`}
                 role="menuitem"
+                // In place of the sheet's own history entry, so back
+                // returns to where the sheet was opened.
+                replace
                 className="mobile-sheet-item"
                 onClick={() => setMore(false)}
               >

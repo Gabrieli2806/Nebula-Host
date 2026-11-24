@@ -121,7 +121,7 @@ function AllServers({ fleet }: { fleet: FleetEntry[] }) {
                       {t(`status.${instance.status}`)}
                     </span>
                   </td>
-                  <td className="readout server-row-num" data-numeric="">
+                  <td className="readout server-row-num" data-numeric="" data-cell="players" data-label={t("servers.players")}>
                     {instance.status === "online"
                       ? `${instance.players_online}${instance.players_max ? `/${instance.players_max}` : ""}`
                       : "—"}
@@ -129,7 +129,7 @@ function AllServers({ fleet }: { fleet: FleetEntry[] }) {
                   <td className="readout server-row-num" data-numeric="" data-col="cpu">
                     {live ? `${Math.round(Math.min(100, Math.max(0, instance.cpu_percent)))}%` : "—"}
                   </td>
-                  <td className="readout server-row-num" data-numeric="">
+                  <td className="readout server-row-num" data-numeric="" data-cell="memory" data-label={t("node.memory")}>
                     {live && instance.memory_used_mb ? formatMegabytes(instance.memory_used_mb) : "—"}
                   </td>
                   <td className="readout server-row-num" data-numeric="" data-col="uptime">

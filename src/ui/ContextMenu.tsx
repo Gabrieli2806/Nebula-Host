@@ -7,6 +7,7 @@
  * arrows move, Enter activates, Escape closes; clicking outside closes.
  */
 
+import { useBackDismiss } from "@/lib/backDismiss";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
 import { Icon, type IconName } from "./Icon";
@@ -30,6 +31,7 @@ export function useContextMenu() {
 }
 
 function Menu({ x, y, items, onClose }: { x: number; y: number; items: MenuItem[]; onClose: () => void }) {
+  useBackDismiss(true, onClose);
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: x, top: y });
 

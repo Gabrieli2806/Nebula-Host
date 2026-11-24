@@ -146,6 +146,9 @@ export function setActiveNode(id: string | "local") {
 
 export function switchTo(id: string | "local") {
   write(ACTIVE_KEY, id);
+  // A server's page belongs to the machine being left: the other machine has
+  // no such server. Land on its list instead of "Server not found".
+  if (window.location.hash.startsWith("#/servers/")) window.location.hash = "#/servers";
   window.location.reload();
 }
 

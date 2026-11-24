@@ -16,7 +16,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { InstallProgressPanel } from "./InstallProgressPanel";
 import { AgreementConsent } from "@/features/server/agreement/Agreement";
-import { keys, useAppSettings, useGames } from "@/hooks/useBackend";
+import { keys, useAppSettings, useGames, useInstallProgress, useInstanceActions } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { api } from "@/lib/ipc";
 import type { Distribution } from "@/types/api";
@@ -75,6 +75,10 @@ export function CreateServerDialog({
   // The game's agreement (the Minecraft EULA). Unticked until the user ticks
   // it, every time the dialog opens; without it the server cannot be created.
   const [agreed, setAgreed] = useState(false);
+  // Release candidates and snapshots stay out of the list unless asked for.
+  const [testVersions, setTestVersions] = useState(false);
+  const actions = useInstanceActions();
+  const progress = useInstallProgress(instanceId);
   const distributionLabelId = useId();
   const distributionHelpId = useId();
 
@@ -113,10 +117,14 @@ export function CreateServerDialog({
 
   // Newest version unless the user picked another; a picked version that this
   // distribution does not offer falls back rather than sticking.
+  const shownVersions = versions.data?.filter((candidate) => testVersions || candidate.stable || candidate.id === chosenVersion);
   const version =
-    versions.data?.find((candidate) => candidate.id === chosenVersion)?.id ??
-    versions.data?.[0]?.id ??
+    shownVersions?.find((candidate) => candidate.id === chosenVersion)?.id ??
+    shownVersions?.[0]?.id ??
     "";
+  // An empty name takes this one; the placeholder shows it, so it is honest.
+  const defaultName = t("create.defaultName", { type: distribution?.name ?? "" });
+  const finalName = name.trim() || defaultName;
 
   const loaderVersions = useQuery({
     queryKey: ["loaders", gameId, distributionId, version],
@@ -128,7 +136,7 @@ export function CreateServerDialog({
     mutationFn: async () => {
       const instance = await api.instances.create({
         game: gameId,
-        name,
+        name: finalName,
         build: {
           distribution: distributionId,
           version,
@@ -153,7 +161,9 @@ export function CreateServerDialog({
     setLoaderVersion("");
     setChosenMemoryMb(null);
     setAgreed(false);
+    setTestVersions(false);
     create.reset();
+    actions.start.reset();
   };
 
   const close = () => {
@@ -161,8 +171,8 @@ export function CreateServerDialog({
     onClose();
   };
 
-  const canCreate =
-    Boolean(name.trim() && version) && (!agreement || agreed) && !create.isPending;
+  const canCreate = Boolean(version) && (!agreement || agreed) && !create.isPending;
+  const ready = progress?.phase === "ready";
 
   const footer =
     step === "build" ? (
@@ -193,23 +203,51 @@ export function CreateServerDialog({
         </Button>
       </>
     ) : (
-      <Button
-        variant="primary"
-        disabled={create.isPending}
-        onClick={() => {
-          if (instanceId) onCreated(instanceId);
-          reset();
-        }}
-      >
-        {t("actions.done")}
-      </Button>
+      <>
+        <Button
+          variant={ready ? "quiet" : "primary"}
+          disabled={create.isPending && !ready}
+          onClick={() => {
+            if (instanceId) onCreated(instanceId);
+            reset();
+          }}
+        >
+          {ready ? t("actions.close") : t("actions.done")}
+        </Button>
+        {/* The next thing anyone does with a new server. */}
+        {ready && instanceId ? (
+          <Button
+            variant="primary"
+            icon="play"
+            disabled={actions.start.isPending}
+            onClick={() =>
+              // Close only once it is on its way: a refusal (a taken port)
+              // stays here, with its fix.
+              actions.start.mutate(instanceId, {
+                onSuccess: () => {
+                  onCreated(instanceId);
+                  reset();
+                },
+              })
+            }
+          >
+            {t("create.startNow")}
+          </Button>
+        ) : null}
+      </>
     );
 
   return (
     <Dialog
       open={open}
       onClose={close}
-      title={step === "installing" ? t("install.title", { name }) : t("create.title")}
+      title={
+        step === "installing"
+          ? ready
+            ? t("install.readyTitle", { name: finalName })
+            : t("install.title", { name: finalName })
+          : t("create.title")
+      }
       width={560}
       header={
         step === "installing" ? undefined : <StepHeader current={step} gameName={game?.name} />
@@ -274,12 +312,18 @@ export function CreateServerDialog({
                   setLoaderVersion("");
                 }}
               >
-                {versions.data?.map((candidate) => (
+                {shownVersions?.map((candidate) => (
                   <option key={candidate.id} value={candidate.id}>
-                    {candidate.id}
+                    {candidate.stable ? candidate.id : `${candidate.id} (${t("create.testVersion")})`}
                   </option>
                 ))}
               </Select>
+              {versions.data?.some((candidate) => !candidate.stable) ? (
+                <label className="create-test-versions">
+                  <input type="checkbox" checked={testVersions} onChange={(event) => setTestVersions(event.target.checked)} />
+                  <span>{t("create.showTestVersions")}</span>
+                </label>
+              ) : null}
             </Field>
 
             {distribution?.has_loader_version ? (
@@ -309,7 +353,7 @@ export function CreateServerDialog({
           <Field label={t("create.name")}>
             <TextInput
               value={name}
-              placeholder={t("create.namePlaceholder")}
+              placeholder={defaultName}
               onChange={(event) => setName(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" && canCreate) create.mutate();
@@ -358,7 +402,14 @@ export function CreateServerDialog({
           {create.error ? <ErrorNotice error={create.error} /> : null}
         </div>
       ) : (
-        <InstallProgressPanel instanceId={instanceId} error={create.error} />
+        <div className="flex flex-col gap-4">
+          <InstallProgressPanel
+            instanceId={instanceId}
+            error={create.error}
+            withLoader={distribution?.addon_project_type === "mod"}
+          />
+          {actions.start.error ? <ErrorNotice error={actions.start.error} /> : null}
+        </div>
       )}
     </Dialog>
   );

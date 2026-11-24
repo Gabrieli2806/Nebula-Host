@@ -13,6 +13,7 @@ import { isRemote } from "@/lib/connection";
 import { api } from "@/lib/ipc";
 import type { InstanceView } from "@/types/api";
 import { useContextMenu, type MenuItem } from "@/ui/ContextMenu";
+import { copyText } from "@/lib/clipboard";
 
 export function useServerMenu(
   instances: InstanceView[],
@@ -55,11 +56,11 @@ export function useServerMenu(
     );
     if (instance.address) {
       const address = instance.address;
-      items.push({ kind: "separator" }, { label: t("menu.copyAddress"), icon: "copy", onSelect: () => void navigator.clipboard.writeText(address) });
+      items.push({ kind: "separator" }, { label: t("menu.copyAddress"), icon: "copy", onSelect: () => void copyText(address) });
     }
     if (instance.public_address) {
       const publicAddress = instance.public_address;
-      items.push({ label: t("menu.copyPublicAddress"), icon: "copy", onSelect: () => void navigator.clipboard.writeText(publicAddress) });
+      items.push({ label: t("menu.copyPublicAddress"), icon: "copy", onSelect: () => void copyText(publicAddress) });
     }
     if (moveTo) {
       items.push(

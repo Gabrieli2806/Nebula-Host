@@ -350,7 +350,8 @@ function ServerControl({
   const latest = [actions.start, actions.stop, actions.restart].reduce((a, b) =>
     b.submittedAt > a.submittedAt ? b : a,
   );
-  const failure = latest.error;
+  // A start refusal (a taken port, since fixed) goes once the server runs.
+  const failure = latest === actions.start && !(instance.status === "offline" || instance.status === "crashed") ? null : latest.error;
 
   const startLabel = instance.status === "sleeping" ? t("actions.wake") : t("actions.start");
   // An older copy left behind by a transfer starts only from its overview

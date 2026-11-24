@@ -17,6 +17,7 @@ import { Button, Dialog, ErrorNotice, Icon, Mark, type IconName } from "@/ui";
 import { openTour } from "@/features/onboarding/tourEvents";
 import { LICENCE_GROUPS } from "./licences";
 import "./AboutSettings.css";
+import { copyText } from "@/lib/clipboard";
 
 const DISCORD_URL = "https://discord.com/invite/s5w2HEGvdX";
 const SITE_URL = "https://g2806.net/apps";
@@ -82,7 +83,7 @@ function LogDialog({ onClose }: { onClose: () => void }) {
             icon={copied ? "check" : "copy"}
             disabled={!log.data}
             onClick={() => {
-              void navigator.clipboard.writeText(header + (log.data?.text ?? "")).then(() => {
+              void copyText(header + (log.data?.text ?? "")).then(() => {
                 setCopied(true);
                 window.setTimeout(() => setCopied(false), 1500);
               });

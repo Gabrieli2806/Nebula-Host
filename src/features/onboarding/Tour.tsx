@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useInstances } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { useLauncherEnabled } from "@/lib/launcherPref";
+import { DESKTOP_FEATURES, IS_WEB } from "@/lib/web";
 import { Button, Dialog, Icon, type IconName } from "@/ui";
 
 import { OPEN_TOUR } from "./tourEvents";
@@ -64,9 +65,38 @@ const STEPS: Step[] = [
   },
 ];
 
+/** Phones and the web panel are touched, not clicked, and have no sidebar or tray. */
+const TOUCH =
+  !DESKTOP_FEATURES && typeof window !== "undefined" && (window.matchMedia?.("(pointer: coarse)").matches ?? true);
+
+/** The words of a step's line, in the touch version where it has one. */
+const TOUCH_TEXT: Record<string, string> = {
+  "servers.lead": "tour.touch.serversLead",
+  "servers.control.text": "tour.touch.control",
+  "servers.menu.title": "tour.touch.menuTitle",
+  "servers.menu.text": "tour.touch.menu",
+  "server.lead": "tour.touch.serverLead",
+  "machines.pair.text": "tour.touch.pair",
+  "settings.options.text": "tour.touch.options",
+};
+
+function key(path: string): string {
+  // No tray in a browser, mouse or not.
+  if (path === "settings.options.text" && !DESKTOP_FEATURES) return "tour.touch.options";
+  return (TOUCH && TOUCH_TEXT[path]) || `tour.${path}`;
+}
+
+/** Another dialog is up (creating a server, the EULA): the tour waits. */
+function otherDialogOpen(): boolean {
+  return typeof document !== "undefined" && document.querySelector(".dialog-scrim") !== null;
+}
+
 function wantsTour(hasServers: boolean): boolean {
   try {
-    const setUp = localStorage.getItem("nebula.firstRunDone") === "1" || hasServers;
+    // The desktop shows it after its first-run screen; phones and the web
+    // panel have none, so there it greets a first visit, before anything
+    // else is opened on top of it.
+    const setUp = localStorage.getItem("nebula.firstRunDone") === "1" || hasServers || !DESKTOP_FEATURES;
     return setUp && localStorage.getItem(TOUR_KEY) !== "1";
   } catch {
     return false;
@@ -92,8 +122,21 @@ export function Tour() {
 
   // Once, after first-run setup is done (or for someone who already has
   // servers): never on top of the first-run screen itself.
-  const automatic = isSuccess && !closed && wantsTour(instances.length > 0);
-  const open = manual || automatic;
+  const installing = instances?.some((instance) => instance.setup) ?? false;
+  const [blocked, setBlocked] = useState(true);
+  const candidate = isSuccess && !closed && !installing && wantsTour(instances.length > 0);
+  // Never on top of another dialog: wait until none is open.
+  useEffect(() => {
+    if (!candidate) return;
+    const check = () => setBlocked(otherDialogOpen());
+    check();
+    const timer = window.setInterval(check, 600);
+    return () => window.clearInterval(timer);
+  }, [candidate]);
+  const automatic = candidate && !blocked;
+  const [shown, setShown] = useState(false);
+  if (automatic && !shown) setShown(true);
+  const open = manual || automatic || (shown && !closed);
 
   const close = useCallback(() => {
     try {
@@ -105,8 +148,9 @@ export function Tour() {
     setManual(false);
   }, []);
 
-  // The launcher does not exist in the browser panel.
-  const steps = launcher ? STEPS : STEPS.filter((step) => step.id !== "launcher");
+  // The launcher does not exist in the browser panel, and the browser panel
+  // manages only the machine that served it.
+  const steps = STEPS.filter((step) => (step.id !== "launcher" || launcher) && (step.id !== "machines" || !IS_WEB));
   const step = steps[Math.min(index, steps.length - 1)] ?? WELCOME;
   const last = index >= steps.length - 1;
 
@@ -138,7 +182,7 @@ export function Tour() {
       }
     >
       <div className="tour-body">
-        <p className="tour-lead">{t(`tour.${step.id}.lead`)}</p>
+        <p className="tour-lead">{t(key(`${step.id}.lead`))}</p>
         {step.items.length ? (
           <ul className="tour-items">
             {step.items.map((item) => (
@@ -147,8 +191,8 @@ export function Tour() {
                   <Icon name={item.icon} size={16} />
                 </span>
                 <span className="flex min-w-0 flex-col gap-0.5">
-                  <span className="tour-item-title">{t(`tour.${step.id}.${item.key}.title`)}</span>
-                  <span className="tour-item-text">{t(`tour.${step.id}.${item.key}.text`)}</span>
+                  <span className="tour-item-title">{t(key(`${step.id}.${item.key}.title`))}</span>
+                  <span className="tour-item-text">{t(key(`${step.id}.${item.key}.text`))}</span>
                 </span>
               </li>
             ))}

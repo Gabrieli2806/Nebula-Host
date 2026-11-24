@@ -6,7 +6,7 @@
  * newest marker is lit in the accent; older ones are outlined.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { keys } from "@/hooks/useBackend";
@@ -33,6 +33,17 @@ export function BackupsPanel({ instance }: { instance: InstanceView }) {
     mutationFn: () => api.backups.create(instance.id),
     onSuccess: invalidate,
   });
+  // "Backup made", for a moment, where the button was pressed.
+  const [made, setMade] = useState(false);
+  useEffect(() => {
+    if (!create.isSuccess) return;
+    const show = window.setTimeout(() => setMade(true), 0);
+    const hide = window.setTimeout(() => setMade(false), 2500);
+    return () => {
+      window.clearTimeout(show);
+      window.clearTimeout(hide);
+    };
+  }, [create.isSuccess, create.data]);
   const remove = useMutation({
     mutationFn: (backupId: string) => api.backups.remove(instance.id, backupId),
     onSuccess: () => {
@@ -68,8 +79,8 @@ export function BackupsPanel({ instance }: { instance: InstanceView }) {
         ) : undefined
       }
       actions={
-        <Button size="sm" icon="archive" disabled={create.isPending} onClick={() => create.mutate()}>
-          {create.isPending ? t("backups.creating") : t("backups.create")}
+        <Button size="sm" icon={made ? "check" : "archive"} disabled={create.isPending} onClick={() => create.mutate()}>
+          {create.isPending ? t("backups.creating") : made ? t("backups.made") : t("backups.create")}
         </Button>
       }
     >
@@ -120,6 +131,12 @@ export function BackupsPanel({ instance }: { instance: InstanceView }) {
                     {index === 0 ? (
                       <span className="tag" data-tone="accent">
                         {t("backups.latest")}
+                      </span>
+                    ) : null}
+                    {/* A few KB: taken before the world existed. */}
+                    {backup.sizeBytes < 16 * 1024 ? (
+                      <span className="tag" data-tone="warn" title={t("backups.emptyTagHint")}>
+                        {t("backups.emptyTag")}
                       </span>
                     ) : null}
                   </p>

@@ -19,6 +19,7 @@ import type { LogSource, SharedLog } from "@/types/api";
 import { Button, Dialog, ErrorNotice, Icon } from "@/ui";
 
 import { openExternal, relativeDate } from "../addons/util";
+import { copyText } from "@/lib/clipboard";
 
 const SKIP_CONFIRM_KEY = "nebula.mclogsNoConfirm";
 
@@ -271,7 +272,7 @@ function MenuItem({
 /** Copy to the clipboard; false when the webview refuses. */
 async function copy(text: string): Promise<boolean> {
   try {
-    await navigator.clipboard.writeText(text);
+    await copyText(text);
     return true;
   } catch {
     return false;

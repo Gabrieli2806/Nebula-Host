@@ -128,6 +128,36 @@
     background: var(--line);
   }
 
+  /* On a phone the menu is a sheet from the bottom edge, full width, so
+     every row (and its Forget button) is on screen and in thumb reach. */
+  @media (max-width: 760px) {
+    .node-switcher-menu {
+      position: fixed;
+      top: auto;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 70;
+      min-width: 0;
+      max-width: none;
+      padding: 10px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+      border-bottom: 0;
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      /* The scrim behind the sheet, without another element. */
+      box-shadow: 0 0 0 100vmax var(--scrim);
+    }
+
+    .node-switcher-item {
+      min-height: 48px;
+      padding: 8px 12px;
+    }
+
+    .node-switcher-forget {
+      width: 44px;
+      height: 44px;
+    }
+  }
+
   .node-switcher-add {
     color: var(--accent-ink, var(--accent));
     font-size: var(--text-sm);

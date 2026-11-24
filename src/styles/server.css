@@ -94,6 +94,33 @@
     gap: var(--space-2);
   }
 
+  /* Under the LAN address: who it reaches, and the share button. */
+  .overview-lan-note {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 12px;
+    margin-top: -6px;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+  }
+
+  .overview-lan-note p {
+    margin: 0;
+    max-width: 62ch;
+  }
+
+  .overview-lan-note a {
+    color: var(--accent-ink, var(--accent));
+    font-weight: var(--weight-control, 600);
+  }
+
+  .overview-cause {
+    color: var(--text);
+  }
+
   /* The state hint (sleeping, starting, crashed), with the crash actions. */
   .overview-head-note {
     display: flex;

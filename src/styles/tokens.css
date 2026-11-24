@@ -247,6 +247,18 @@
   --gutter: 20px;
 }
 
+/* -- touch -------------------------------------------------------------- */
+/* Room for a finger (44px, the platform guideline), whatever the density.
+   Here, outside any layer: a layered :root rule never beats the ones above. */
+@media (pointer: coarse) {
+  :root,
+  :root[data-density="compact"] {
+    --control-height: 44px;
+    --control-height-sm: 40px;
+    --row-height: 48px;
+  }
+}
+
 /* -- accents ------------------------------------------------------------ */
 /* Stamped on <html> by AccentSync and on individual swatches by the picker.
    Retuned for the navy ground; ids are unchanged. Each keeps clear of the

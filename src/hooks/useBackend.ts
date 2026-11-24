@@ -137,6 +137,9 @@ function applyEvent(client: QueryClient, event: AppEvent) {
       // leaves the cache untouched; the first fetch brings the line with it.
       client.setQueryData<ConsoleLine[]>(keys.console(event.instanceId), (lines) => {
         if (!lines) return lines;
+        // The same line twice (two deliveries of one event): keep one.
+        const last = lines[lines.length - 1];
+        if (last && last.timestamp === event.line.timestamp && last.message === event.line.message) return lines;
         const next = [...lines, event.line];
         return next.length > CONSOLE_LIMIT ? next.slice(next.length - CONSOLE_LIMIT) : next;
       });

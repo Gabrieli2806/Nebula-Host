@@ -4,6 +4,8 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+
+import { useBackDismiss } from "@/lib/backDismiss";
 import { createPortal } from "react-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -14,6 +16,7 @@ import { Button, Dialog, ErrorNotice, Icon, Panel, PlayerHead, Segmented } from 
 import { SkinViewer } from "skinview3d";
 import type { DeviceLogin, LauncherAccount } from "./types";
 import { setPrimaryAccount, usePrimaryAccount } from "./primaryAccount";
+import { copyText } from "@/lib/clipboard";
 
 const ROOT = ["launcher"];
 
@@ -31,6 +34,7 @@ export function AccountMenu({ placement = "down", compact = false }: { placement
   const { accounts, primary } = usePrimaryAccount();
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
+  useBackDismiss(open, () => setOpen(false));
   const box = useRef<HTMLDivElement>(null);
   const pop = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -186,7 +190,7 @@ function DeviceFlow({ login, onClose }: { login: DeviceLogin; onClose: () => voi
   }, [done, client, onClose]);
   useEffect(() => () => { void launcherApi.cancel(login.id).catch(() => {}); }, [login.id]);
 
-  const copy = () => navigator.clipboard.writeText(login.user_code).then(() => setCopied(true), () => {});
+  const copy = () => copyText(login.user_code).then(() => setCopied(true), () => {});
   const open = () => {
     void copy();
     void openExternal(login.verification_uri).then((ok) => setOpenError(!ok));

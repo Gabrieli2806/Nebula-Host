@@ -20,6 +20,7 @@ import {
 } from "react";
 
 import { useI18n } from "@/i18n";
+import { useBackDismiss } from "@/lib/backDismiss";
 import { toAppError, type AppError } from "@/lib/ipc";
 import { Icon, type IconName } from "./Icon";
 
@@ -373,6 +374,9 @@ export function Dialog({
     onCloseRef.current = onClose;
     dismissableRef.current = dismissable;
   }, [onClose, dismissable]);
+
+  // The back button closes the dialog before it leaves the screen.
+  useBackDismiss(open, () => onCloseRef.current(), dismissable);
 
   useEffect(() => {
     if (!open) return;

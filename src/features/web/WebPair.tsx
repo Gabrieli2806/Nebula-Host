@@ -10,7 +10,7 @@ import { useI18n } from "@/i18n";
 import { pairWeb, probe, type NodeInfo } from "@/lib/connection";
 import { webApiHost } from "@/lib/web";
 import { toAppError } from "@/lib/ipc";
-import { Button, ErrorNotice, Field, Icon, Mark, TextInput } from "@/ui";
+import { Button, ErrorNotice, Field, Icon, Mark, Segmented, TextInput } from "@/ui";
 
 import "./WebPair.css";
 
@@ -43,7 +43,7 @@ function guessDeviceName(fallback: string): string {
 }
 
 export function WebPair() {
-  const { t } = useI18n();
+  const { t, language, setLanguage } = useI18n();
   const [info, setInfo] = useState<NodeInfo | null>(null);
   const [code, setCode] = useState("");
   const [deviceName, setDeviceName] = useState(() => guessDeviceName(t("web.deviceNameDefault")));
@@ -80,6 +80,19 @@ export function WebPair() {
             void submit();
           }}
         >
+          {/* Before anything else: read it all in your own language. */}
+          <div className="web-pair-language">
+            <Segmented<"en" | "es">
+              size="sm"
+              label={t("settings.language")}
+              value={language}
+              onChange={setLanguage}
+              options={[
+                { id: "en", label: "English" },
+                { id: "es", label: "Español" },
+              ]}
+            />
+          </div>
           <Mark size={36} />
           <h1 className="web-pair-title">
             {info ? t("web.pairTitle", { name: info.nodeName }) : t("web.pairTitleGeneric")}

@@ -30,9 +30,12 @@ type RowState = "done" | "active" | "failed" | "pending";
 export function InstallProgressPanel({
   instanceId,
   error,
+  withLoader = true,
 }: {
   instanceId: string | null;
   error?: unknown;
+  /** Only modded servers (Fabric, Forge, NeoForge) install a mod loader. */
+  withLoader?: boolean;
 }) {
   const { t } = useI18n();
   const progress = useInstallProgress(instanceId);
@@ -60,14 +63,15 @@ export function InstallProgressPanel({
       : progress?.phase === "failed"
         ? "resolving"
         : ((progress?.phase ?? "resolving") as Phase);
-  const currentIndex = PHASES.indexOf(current);
+  const phases: readonly Phase[] = withLoader ? PHASES : PHASES.filter((phase) => phase !== "installing_loader");
+  const currentIndex = Math.max(0, phases.indexOf(current === "installing_loader" && !withLoader ? "configuring" : current));
   const failed = progress?.phase === "failed" || Boolean(error);
   const ready = progress?.phase === "ready";
 
   return (
     <div className="flex flex-col gap-4">
       <ol className="install-phases">
-        {PHASES.map((phase, index) => {
+        {phases.map((phase, index) => {
           const state: RowState =
             index < currentIndex || ready
               ? "done"

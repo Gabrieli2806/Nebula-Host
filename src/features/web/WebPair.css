@@ -72,3 +72,12 @@
     color: var(--text);
   }
 }
+
+@layer components {
+  .web-pair-language {
+    display: flex;
+    justify-content: flex-end;
+    align-self: stretch;
+    margin-bottom: -8px;
+  }
+}

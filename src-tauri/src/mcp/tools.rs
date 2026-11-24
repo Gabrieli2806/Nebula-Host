@@ -1163,7 +1163,7 @@ async fn run(service: &Arc<InstanceService>, read_only: bool, name: &str, args: 
                     unknown.join(", ")
                 )));
             }
-            properties::write(&view.instance.path, &manifest, &edits)?;
+            service.write_game_settings(&view.instance.id, &edits).await?;
             let mut text = format!(
                 "Saved on {}: {}. Call restart_server for most to apply.",
                 view.instance.name,

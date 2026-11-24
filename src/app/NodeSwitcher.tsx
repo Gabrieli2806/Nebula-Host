@@ -6,6 +6,8 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+
+import { useBackDismiss } from "@/lib/backDismiss";
 import { useQuery } from "@tanstack/react-query";
 
 import { useI18n } from "@/i18n";
@@ -37,6 +39,7 @@ export function NodeSwitcher() {
   const active = activeRemote();
   const nodes = remoteNodes();
   const menuRef = useRef<HTMLDivElement>(null);
+  useBackDismiss(open, () => setOpen(false));
 
   useEffect(() => {
     if (!open) return;

@@ -159,6 +159,23 @@ fn auto_in_flight() -> &'static std::sync::Mutex<std::collections::HashSet<Strin
     SET.get_or_init(|| std::sync::Mutex::new(std::collections::HashSet::new()))
 }
 
+/// Whether the server has a world worth backing up. Minecraft: its
+/// `level.dat`, in the folder `level-name` names (`world` by default).
+fn has_world(instance: &crate::model::Instance) -> bool {
+    if instance.game != crate::game::MINECRAFT {
+        return instance.last_started_at.is_some();
+    }
+    let level = crate::service::properties::get(&instance.path, "level-name")
+        .ok()
+        .flatten()
+        .map(|name| name.trim().to_string())
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| "world".to_string());
+    crate::store::paths::resolve_inside(&instance.path, &level)
+        .map(|dir| dir.join("level.dat").is_file())
+        .unwrap_or(false)
+}
+
 /// "Back up every N hours, keep K": take one when due, then drop the oldest
 /// automatic backups beyond K. A stopped server that has not run since its
 /// last automatic backup is skipped — its world has not changed.
@@ -167,6 +184,11 @@ async fn run_auto_backups(service: &Arc<InstanceService>) {
     for view in service.list().await.unwrap_or_default() {
         let automation = &view.instance.automation;
         if automation.auto_backup_hours == 0 || view.instance.install.is_none() {
+            continue;
+        }
+        // Nothing to keep yet: a server that never made its world would get
+        // an empty backup that looks like a restore point.
+        if !has_world(&view.instance) {
             continue;
         }
         let id = view.instance.id.clone();

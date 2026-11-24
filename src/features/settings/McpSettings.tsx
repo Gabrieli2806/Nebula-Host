@@ -23,6 +23,7 @@ import type { AppSettings, McpActivity, McpStatus } from "@/types/api";
 import { Button, ErrorNotice, Icon, Panel, Segmented, Switch } from "@/ui";
 
 import "./McpSettings.css";
+import { copyText } from "@/lib/clipboard";
 
 const KEY = ["mcp", "status"] as const;
 const NAME = "nebula-host";
@@ -67,7 +68,7 @@ function useCopy() {
     return () => window.clearTimeout(timer);
   }, [copied]);
   const copy = (id: string, text: string) => {
-    void navigator.clipboard.writeText(text).then(() => setCopied(id));
+    void copyText(text).then(() => setCopied(id));
   };
   return { copied, copy };
 }
