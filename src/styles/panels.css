@@ -458,27 +458,15 @@
     color: var(--status-starting);
   }
 
-  /* Under the game settings of a running server: restart to apply. It
-     sticks to the bottom of the screen while the card is in view, so it is
-     seen from the row that was changed. */
+  /* In the game card's header: saved, restart to apply. */
   .pref-restart {
-    position: sticky;
-    bottom: calc(12px + var(--tabs-height, 0px));
-    z-index: 5;
-    box-shadow: var(--shadow-pop);
-    display: flex;
+    display: inline-flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px 16px;
-    margin: 0 var(--pref-pad) 16px;
-    padding: 10px 14px;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius);
-    /* Solid: it floats over the rows below. */
-    background: linear-gradient(var(--accent-wash), var(--accent-wash)), var(--surface-raised);
-    font-size: var(--text-sm);
-    color: var(--text);
+    justify-content: flex-end;
+    gap: 6px 10px;
+    font-size: var(--text-xs);
+    color: var(--text-muted);
   }
 
   /* An edited (unsaved) row in the game card: a faint accent tint. */

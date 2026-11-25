@@ -30,6 +30,10 @@ import "./settings/settings-cards.css";
 
 const SAVED_TICK_MS = 1200;
 
+/** Per server: the run whose settings changed and want a restart. Lives as
+ *  long as the window, so the note survives leaving Settings. */
+const RESTART_PENDING = new Map<string, string>();
+
 /** Game settings a running server takes at once, without a restart. */
 const APPLIED_LIVE = new Set(["difficulty", "white-list"]);
 
@@ -435,10 +439,19 @@ function GameSettings({ instance }: { instance: InstanceView }) {
 
   const [saved, flashSaved] = useSavedFlash();
   const running = instance.status === "online" || instance.status === "starting";
-  const [needsRestart, setNeedsRestart] = useState(false);
+  // Remembered per run of the server, so leaving the page does not lose it;
+  // a new run (a restart) has the settings in.
+  const run = instance.last_started_at ?? "";
+  const [pendingFor, setPendingFor] = useState<string | null>(() =>
+    RESTART_PENDING.get(instance.id) === run && running ? run : null,
+  );
+  const needsRestart = running && pendingFor === run;
+  const setNeedsRestart = (on: boolean) => {
+    if (on) RESTART_PENDING.set(instance.id, run);
+    else RESTART_PENDING.delete(instance.id);
+    setPendingFor(on ? run : null);
+  };
   const actions = useInstanceActions();
-  // Once it has restarted (or stopped), the new settings are in.
-  if (needsRestart && !running && instance.status !== "stopping") setNeedsRestart(false);
   const save = useMutation({
     mutationFn: (values: Record<string, string>) => api.settings.instanceSet(instance.id, values),
     onSuccess: (_, values) => {
@@ -482,7 +495,28 @@ function GameSettings({ instance }: { instance: InstanceView }) {
     <Panel
       className="props-card"
       title={t("settings.groupGame")}
-      actions={dirty || save.isPending ? <span className="saved-tick" data-show="">{t("settings.saving")}</span> : <SavedTick show={saved} />}
+      actions={
+        dirty || save.isPending ? (
+          <span className="saved-tick" data-show="">{t("settings.saving")}</span>
+        ) : needsRestart ? (
+          // In the card's header, which stays at the top while scrolling:
+          // seen from any row, and covering none.
+          <span className="pref-restart">
+            <span>{t("settings.restartToApplyShort")}</span>
+            <Button
+              size="sm"
+              variant="primary"
+              icon="restart"
+              disabled={actions.restart.isPending}
+              onClick={() => actions.restart.mutate(instance.id, { onSuccess: () => setNeedsRestart(false) })}
+            >
+              {t("addons.restartNow")}
+            </Button>
+          </span>
+        ) : (
+          <SavedTick show={saved} />
+        )
+      }
     >
       {settings.error ? (
         <div className="p-4">
@@ -516,20 +550,6 @@ function GameSettings({ instance }: { instance: InstanceView }) {
         </section>
       ))}
 
-      {needsRestart ? (
-        <div className="pref-restart">
-          <span>{t("settings.restartToApply")}</span>
-          <Button
-            size="sm"
-            variant="primary"
-            icon="restart"
-            disabled={actions.restart.isPending}
-            onClick={() => actions.restart.mutate(instance.id, { onSuccess: () => setNeedsRestart(false) })}
-          >
-            {t("addons.restartNow")}
-          </Button>
-        </div>
-      ) : null}
 
       {save.error ? (
         <div className="px-5 pb-4">

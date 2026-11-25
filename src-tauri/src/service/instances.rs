@@ -338,6 +338,37 @@ impl InstanceService {
             .collect())
     }
 
+    /// The server (other than `except`) that has `port` as its own, even if
+    /// it is stopped now: two servers on one port cannot both run.
+    pub async fn port_owner(&self, port: u16, except: Option<&str>) -> Option<String> {
+        for instance in self.store.list().await {
+            if Some(instance.id.as_str()) == except {
+                continue;
+            }
+            let Ok(manifest) = self.registry.manifest(&instance.game) else { continue };
+            if manifest.primary_port().is_some() && instance.primary_port(&manifest) == port {
+                return Some(instance.name);
+            }
+        }
+        None
+    }
+
+    /// The first port at or after `start` that is free now and no other
+    /// server has.
+    pub async fn free_port_from(&self, start: u16, except: Option<&str>) -> Option<u16> {
+        let mut port = start;
+        for _ in 0..200 {
+            if port >= crate::net::ports::MIN_USER_PORT
+                && crate::net::ports::is_free(port)
+                && self.port_owner(port, except).await.is_none()
+            {
+                return Some(port);
+            }
+            port = port.checked_add(1)?;
+        }
+        None
+    }
+
     /// Drop the settings kept to be written again at the next start (a
     /// backup was restored: its own settings are the ones that count).
     pub async fn forget_settings_while_running(&self, instance_id: &str) {
@@ -366,6 +397,15 @@ impl InstanceService {
                 let command = if on.trim() == "true" { "whitelist on" } else { "whitelist off" };
                 if let Err(error) = self.send_command(instance_id, command).await {
                     warn!(instance_id, %error, "whitelist switch not sent to the running server");
+                }
+                // The game answers by saving server.properties from its own
+                // memory, which still has the old values of everything else
+                // changed while it runs: write those back over it.
+                tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+                let mut again = self.settings_while_running.lock().await.get(instance_id).cloned().unwrap_or_default();
+                again.extend(values.clone());
+                if let Err(error) = crate::service::properties::write(&instance.path, &manifest, &again) {
+                    warn!(instance_id, %error, "settings not written again after the whitelist switch");
                 }
             }
         }
@@ -712,7 +752,7 @@ impl InstanceService {
                     ports::validate(port)?;
                     port
                 }
-                None => ports::first_free_from(spec.default).unwrap_or(spec.default),
+                None => self.free_port_from(spec.default, None).await.unwrap_or(spec.default),
             };
             instance.ports.insert(spec.key.clone(), port);
         }
@@ -1407,6 +1447,22 @@ impl InstanceService {
         if !force && self.difficulty_applied.lock().await.get(instance_id) == Some(&wanted) {
             return;
         }
+        // At start nobody asked: send it quietly, its answer kept out of the
+        // console ("did not change" on every start is noise).
+        if !force {
+            let answer = regex::Regex::new(r"(?i)difficulty (did not change|has been set)|The difficulty is").ok();
+            if let Some(answer) = answer {
+                if let Ok(mut capture) = self.processes.capture(instance_id, vec![answer]) {
+                    if self.processes.send_internal_command(instance_id, &format!("difficulty {wanted}")).await.is_ok() {
+                        let _ = capture
+                            .collect(std::time::Duration::from_secs(3), std::time::Duration::from_millis(300), std::time::Duration::from_secs(4))
+                            .await;
+                        self.difficulty_applied.lock().await.insert(instance_id.to_string(), wanted);
+                        return;
+                    }
+                }
+            }
+        }
         match self.send_command(instance_id, &format!("difficulty {wanted}")).await {
             Ok(()) => {
                 self.difficulty_applied.lock().await.insert(instance_id.to_string(), wanted);
@@ -1562,16 +1618,33 @@ impl InstanceService {
     // Validate before touching the stored record: a rejected port must not
     // leave a half-applied edit behind.
     if let Some(port) = patch.port {
-        crate::net::ports::validate(port).map_err(|error| {
-            if error.code != ErrorCode::PortInUse {
-                return error;
+        let current = self.store.get(instance_id).await?;
+        let unchanged = self
+            .registry
+            .manifest(&current.game)
+            .map(|manifest| current.primary_port(&manifest) == port)
+            .unwrap_or(false);
+        if !unchanged {
+            // Another server's port, running or not: name it.
+            let owner = self.port_owner(port, Some(instance_id)).await;
+            let check = match &owner {
+                Some(name) => Err(AppError::new(ErrorCode::PortInUse)
+                    .with("port", port)
+                    .with("reason", "assigned")
+                    .with("server", name)),
+                None => crate::net::ports::validate(port),
+            };
+            if let Err(error) = check {
+                if error.code != ErrorCode::PortInUse {
+                    return Err(error);
+                }
+                let mut error = error.with("instance", instance_id).with("move", "true");
+                if let Some(free) = self.free_port_from(port.saturating_add(1), Some(instance_id)).await {
+                    error = error.with("suggested", free);
+                }
+                return Err(error);
             }
-            let mut error = error.with("instance", instance_id).with("move", "true");
-            if let Some(free) = crate::net::ports::first_free_from(port.saturating_add(1)) {
-                error = error.with("suggested", free);
-            }
-            error
-        })?;
+        }
     }
 
     let manifest = {

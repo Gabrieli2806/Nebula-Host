@@ -219,13 +219,9 @@ export function PlayersPanel({ instance }: { instance: InstanceView }) {
             entries={lists.data[active] ?? []}
             uuidOf={uuidOf}
             saving={write.isPending}
-            onChange={(next) => write.mutate({ list: active, entries: next })}
+            onChange={(next) => write.mutateAsync({ list: active, entries: next })}
+            error={write.error}
           />
-          {write.error ? (
-            <div className="px-4 pb-4">
-              <ErrorNotice error={write.error} compact />
-            </div>
-          ) : null}
         </section>
       ) : null}
 
@@ -360,13 +356,16 @@ function PlayerList({
   uuidOf,
   saving,
   onChange,
+  error,
 }: {
   list: string;
   title: string;
   entries: PlayerEntry[];
   uuidOf: (name: string, fallback?: string | null) => string | undefined | null;
   saving: boolean;
-  onChange: (entries: PlayerEntry[]) => void;
+  onChange: (entries: PlayerEntry[]) => Promise<unknown>;
+  /** Why the last change was refused, shown right under the field. */
+  error?: unknown;
 }) {
   const { t: tr } = useI18n();
   const [name, setName] = useState("");
@@ -390,9 +389,15 @@ function PlayerList({
     const entry: PlayerEntry = { name: trimmed };
     const why = reason.trim();
     if (takesReason && why) entry.reason = why;
-    onChange([...entries, entry]);
-    setName("");
-    setReason("");
+    // The name stays until it is accepted: a refused one (no such
+    // account) can be corrected instead of typed again.
+    onChange([...entries, entry]).then(
+      () => {
+        setName("");
+        setReason("");
+      },
+      () => undefined,
+    );
   };
 
   return (
@@ -470,6 +475,11 @@ function PlayerList({
           <p id="players-add-problem" className="players-add-problem" role="alert">
             {problem}
           </p>
+        ) : null}
+        {error ? (
+          <div ref={(node) => node?.scrollIntoView({ block: "nearest", behavior: "smooth" })}>
+            <ErrorNotice error={error} compact />
+          </div>
         ) : null}
       </form>
 

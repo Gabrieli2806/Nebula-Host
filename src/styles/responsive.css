@@ -68,6 +68,7 @@
 
     .server-card-addr,
     .agreement-link,
+    .overview-lan-note a,
     .node-switcher-button,
     .server-card-open,
     .server-row-open,
@@ -82,6 +83,7 @@
 
     .files-name,
     .server-row-open,
+    .overview-lan-note a,
     summary {
       display: inline-flex;
       align-items: center;

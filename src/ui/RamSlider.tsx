@@ -401,10 +401,15 @@ export function RamSlider({
             </span>
           ) : null}
         </span>
-        {value !== plan.recommendedMb ? (
+        {/* Always there, hidden when it has nothing to do: appearing would
+            push down what is under it (the EULA box) under a finger. */}
+        {
           <button
             type="button"
             className="btn btn-sm ram-use"
+            style={value === plan.recommendedMb ? { visibility: "hidden" } : undefined}
+            aria-hidden={value === plan.recommendedMb || undefined}
+            tabIndex={value === plan.recommendedMb ? -1 : undefined}
             disabled={disabled}
             onClick={() => {
               set(plan.recommendedMb);
@@ -413,7 +418,7 @@ export function RamSlider({
           >
             {copy("ram.useRecommended", { value: format.withUnit(plan.recommendedMb) })}
           </button>
-        ) : null}
+        }
       </div>
 
       {over ? (

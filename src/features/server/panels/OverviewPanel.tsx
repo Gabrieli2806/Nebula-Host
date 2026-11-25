@@ -220,6 +220,17 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
               >
                 {t("actions.stop")}
               </Button>
+            ) : null}
+            {olderCopy ? null : instance.status === "online" || instance.status === "starting" ? (
+              <Button
+                size="sm"
+                icon="restart"
+                className="narrow-only"
+                disabled={actions.restart.isPending || instance.status !== "online"}
+                onClick={() => actions.restart.mutate(instance.id)}
+              >
+                {t("actions.restart")}
+              </Button>
             ) : (
               <Button
                 size="sm"
@@ -349,6 +360,7 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
                   ip: instance.address.split(":")[0] ?? "",
                 })}
               </li>
+              <li>{t("overview.forwardStep5", { ip: instance.address.split(":")[0] ?? "" })}</li>
               <li>{t("overview.forwardStep4", { port: instance.address.split(":").pop() ?? "" })}</li>
             </ol>
           </details>

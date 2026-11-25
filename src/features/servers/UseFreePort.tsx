@@ -30,7 +30,7 @@ export function UseFreePortButton({
     onSettled: () => client.invalidateQueries({ queryKey: keys.instances }),
   });
   return (
-    <Button size="sm" variant="primary" icon="play" disabled={move.isPending || move.isSuccess} onClick={() => move.mutate()}>
+    <Button size="sm" variant="primary" icon={start ? "play" : undefined} disabled={move.isPending || move.isSuccess} onClick={() => move.mutate()}>
       {start ? t("errors.usePort", { port }) : t("errors.usePortOnly", { port })}
     </Button>
   );

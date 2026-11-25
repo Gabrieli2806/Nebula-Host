@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { keys } from "@/hooks/useBackend";
+import { keys, useInstanceActions } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { api } from "@/lib/ipc";
 import { formatBytes, formatDateTime } from "@/lib/format";
@@ -53,6 +53,7 @@ export function BackupsPanel({ instance }: { instance: InstanceView }) {
   });
   const running = instance.status === "online" || instance.status === "starting" || instance.status === "stopping";
   const [restored, setRestored] = useState(false);
+  const startNow = useInstanceActions().start;
   const restore = useMutation({
     mutationFn: async (backupId: string) => {
       // A running server holds its world open: stop it first, and wait.
@@ -69,7 +70,6 @@ export function BackupsPanel({ instance }: { instance: InstanceView }) {
     onSuccess: () => {
       setRestoring(null);
       setRestored(true);
-      window.setTimeout(() => setRestored(false), 4000);
       // The folder is now the backup's: its size, its files and its addons.
       void client.invalidateQueries({ queryKey: keys.diskUsage(instance.id) });
       void client.invalidateQueries({ queryKey: ["files", instance.id] });
@@ -99,11 +99,14 @@ export function BackupsPanel({ instance }: { instance: InstanceView }) {
         </Button>
       }
     >
-      {restored ? (
-        <p className="backups-restored" role="status">
+      {restored && (instance.status === "offline" || instance.status === "crashed") ? (
+        <div className="backups-restored" role="status">
           <Icon name="check" size={14} />
-          {t("backups.restored")}
-        </p>
+          <span className="flex-1">{t("backups.restored")}</span>
+          <Button size="sm" variant="primary" icon="play" disabled={startNow.isPending} onClick={() => startNow.mutate(instance.id)}>
+            {t("actions.start")}
+          </Button>
+        </div>
       ) : null}
 
       {create.error ? (

@@ -650,7 +650,9 @@ impl LineSink {
                 timestamp: Utc::now(),
                 level: reading.level,
                 message: reading.text,
-                body: reading.body,
+                // Vanilla 26.x prints command answers as "System chat: …";
+                // in a console that is noise.
+                body: reading.body.map(|body| body.strip_prefix("System chat: ").map(str::to_string).unwrap_or(body)),
                 speaker,
             });
         }
