@@ -487,9 +487,14 @@ function SavedTick({ visible }: { visible: boolean }) {
   const { t } = useI18n();
   return (
     <>
+      {/* Only while it is true: a hidden "Saved" on every row is still read. */}
       <span className="settings-saved" data-visible={visible ? "" : undefined} aria-hidden="true">
-        <Icon name="check" size={12} />
-        {t("common.saved")}
+        {visible ? (
+          <>
+            <Icon name="check" size={12} />
+            {t("common.saved")}
+          </>
+        ) : null}
       </span>
       <span className="sr-only" role="status">
         {visible ? t("common.saved") : ""}

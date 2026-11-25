@@ -442,6 +442,32 @@
     letter-spacing: var(--tracking-readout);
   }
 
+  .pref-warn {
+    color: var(--status-starting);
+  }
+
+  /* Under the game settings of a running server: restart to apply. It
+     sticks to the bottom of the screen while the card is in view, so it is
+     seen from the row that was changed. */
+  .pref-restart {
+    position: sticky;
+    bottom: calc(12px + var(--tabs-height, 0px));
+    z-index: 5;
+    box-shadow: var(--shadow-pop);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 16px;
+    margin: 0 var(--pref-pad) 16px;
+    padding: 10px 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--accent-wash);
+    font-size: var(--text-sm);
+    color: var(--text);
+  }
+
   /* An edited (unsaved) row in the game card: a faint accent tint. */
   [data-edited] > .pref-item {
     background-color: var(--accent-wash);

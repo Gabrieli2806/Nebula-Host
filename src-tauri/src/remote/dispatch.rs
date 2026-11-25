@@ -287,10 +287,8 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             ok(players::read_lists(&instance.path, &manifest.players)?)
         }
         "players_write_list" => {
-            let instance = service.store.get(&id()?).await?;
-            let manifest = service.registry.manifest(&instance.game)?;
             let entries: Vec<PlayerEntry> = arg(args, "entries")?;
-            ok(players::write_list(&instance.path, &manifest.players, &arg::<String>(args, "list")?, &entries)?)
+            ok(service.write_player_list(&id()?, &arg::<String>(args, "list")?, entries).await?)
         }
         "players_identities" => ok::<HashMap<String, String>>(service.player_identities(&id()?).await?),
 
@@ -337,7 +335,11 @@ pub async fn dispatch(service: &Arc<InstanceService>, command: &str, args: &Valu
             next.remote_enabled = current.remote_enabled;
             next.remote_port = current.remote_port;
             next.web_panel = current.web_panel;
+            let upnp_on = next.allow_upnp && !current.allow_upnp;
             settings_store::save(&next)?;
+            if upnp_on {
+                service.forward_running().await;
+            }
             ok(settings_store::load()?)
         }
         // The one agent setting a paired device may change: whether agents

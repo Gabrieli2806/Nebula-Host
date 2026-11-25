@@ -105,6 +105,22 @@ pub enum AppEvent {
     },
 }
 
+/// A player's account UUID, from Mojang. None when the name has no account
+/// or Mojang does not answer.
+async fn mojang_uuid(name: &str) -> Option<String> {
+    let response = crate::game::http_client()
+        .get(format!("https://api.mojang.com/users/profiles/minecraft/{name}"))
+        .timeout(std::time::Duration::from_secs(6))
+        .send()
+        .await
+        .ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    let body: serde_json::Value = response.json().await.ok()?;
+    crate::service::players::hyphenate(body.get("id")?.as_str()?)
+}
+
 /// What the UI sends when the user creates a server.
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -316,6 +332,10 @@ impl InstanceService {
         let instance = self.store.get(instance_id).await?;
         let manifest = self.registry.manifest(&instance.game)?;
         crate::service::properties::write(&instance.path, &manifest, values)?;
+        // Difficulty can change right now, without a restart.
+        if values.contains_key("difficulty") && self.processes.is_running(instance_id).await {
+            self.sync_difficulty(instance_id).await;
+        }
         if self.processes.is_running(instance_id).await {
             self.settings_while_running
                 .lock()
@@ -325,6 +345,100 @@ impl InstanceService {
                 .extend(values.clone());
         }
         Ok(())
+    }
+
+    /// Write one of the game's player lists (whitelist, operators, bans).
+    /// Every entry gets the UUID the game matches on: looked up at Mojang in
+    /// online mode, the game's own name-based one in offline mode; without
+    /// it Minecraft ignores the entry. A running server keeps its lists in
+    /// memory and writes them back, so it is also told by command.
+    pub async fn write_player_list(
+        self: &Arc<Self>,
+        instance_id: &str,
+        list: &str,
+        entries: Vec<crate::service::players::PlayerEntry>,
+    ) -> AppResult<()> {
+        use crate::service::players;
+        self.ensure_not_transferring(instance_id).await?;
+        let instance = self.store.get(instance_id).await?;
+        let manifest = self.registry.manifest(&instance.game)?;
+        let minecraft = instance.game == crate::game::MINECRAFT;
+        let before = players::read_lists(&instance.path, &manifest.players)
+            .ok()
+            .and_then(|lists| lists.get(list).cloned())
+            .unwrap_or_default();
+
+        let mut entries = entries;
+        if minecraft {
+            let offline = crate::service::properties::get(&instance.path, "online-mode")
+                .ok()
+                .flatten()
+                .is_some_and(|value| value.trim() == "false");
+            let known = players::read_identities(&instance.path, &manifest.players);
+            for entry in entries.iter_mut().filter(|entry| entry.uuid.is_none()) {
+                entry.uuid = if offline {
+                    Some(players::offline_uuid(&entry.name))
+                } else if let Some(uuid) = known.iter().find(|(name, _)| name.eq_ignore_ascii_case(&entry.name)).map(|(_, uuid)| uuid.clone()) {
+                    Some(uuid)
+                } else {
+                    mojang_uuid(&entry.name).await
+                };
+            }
+        }
+        players::write_list(&instance.path, &manifest.players, list, &entries)?;
+
+        if minecraft && self.processes.is_running(instance_id).await {
+            let has = |set: &[players::PlayerEntry], name: &str| set.iter().any(|e| e.name.eq_ignore_ascii_case(name));
+            // An entry the file had without a UUID never reached the game:
+            // tell it about those too, or its next save drops them.
+            let known_to_game = |name: &str| before.iter().any(|e| e.name.eq_ignore_ascii_case(name) && e.uuid.is_some());
+            let added: Vec<&players::PlayerEntry> = entries.iter().filter(|e| !known_to_game(&e.name)).collect();
+            let removed: Vec<&players::PlayerEntry> = before.iter().filter(|e| !has(&entries, &e.name)).collect();
+            let mut commands: Vec<String> = Vec::new();
+            match list {
+                "allowed" => {
+                    commands.extend(added.iter().map(|e| format!("whitelist add {}", e.name)));
+                    commands.extend(removed.iter().map(|e| format!("whitelist remove {}", e.name)));
+                }
+                "operators" => {
+                    commands.extend(added.iter().map(|e| format!("op {}", e.name)));
+                    commands.extend(removed.iter().map(|e| format!("deop {}", e.name)));
+                }
+                "banned" => {
+                    commands.extend(added.iter().map(|e| match &e.reason {
+                        Some(reason) => format!("ban {} {reason}", e.name),
+                        None => format!("ban {}", e.name),
+                    }));
+                    commands.extend(removed.iter().map(|e| format!("pardon {}", e.name)));
+                }
+                _ => {}
+            }
+            for command in commands {
+                if let Err(error) = self.send_command(instance_id, &command).await {
+                    warn!(instance_id, %error, command, "player list change not sent to the running server");
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Give every entry of the player lists the UUID the game needs (lists
+    /// written before Nebula Host added them). Before a start: the game then
+    /// loads them all.
+    async fn fill_player_uuids(self: &Arc<Self>, instance_id: &str) {
+        let Ok(instance) = self.store.get(instance_id).await else { return };
+        if instance.game != crate::game::MINECRAFT {
+            return;
+        }
+        let Ok(manifest) = self.registry.manifest(&instance.game) else { return };
+        let Ok(lists) = crate::service::players::read_lists(&instance.path, &manifest.players) else { return };
+        for (list, entries) in lists {
+            if entries.iter().any(|entry| entry.uuid.is_none()) {
+                if let Err(error) = self.write_player_list(instance_id, &list, entries).await {
+                    warn!(instance_id, %error, list, "player list UUIDs not filled in");
+                }
+            }
+        }
     }
 
     pub async fn view(&self, instance_id: &str) -> AppResult<InstanceView> {
@@ -745,6 +859,10 @@ impl InstanceService {
             }
         }
 
+        // Player lists from before UUIDs were written: complete them, or the
+        // game ignores those players.
+        self.fill_player_uuids(instance_id).await;
+
         // Settings changed while it last ran: the game may have written its
         // old values back on top of them.
         if let Some(values) = self.settings_while_running.lock().await.remove(instance_id) {
@@ -911,10 +1029,26 @@ impl InstanceService {
                 Ok(()) => {
                     let external = crate::net::upnp::external_address().await.ok();
                     info!(instance_id = %id, port, ?external, "port forwarded with UPnP");
+                    // The internet address exists now: show it without a wait.
+                    service.emit(AppEvent::Instances);
                 }
                 Err(error) => warn!(instance_id = %id, port, %error, "UPnP port forwarding failed"),
             }
         });
+    }
+
+    /// UPnP was just allowed: open the ports of the servers already running,
+    /// instead of waiting for their next start.
+    pub async fn forward_running(self: &Arc<Self>) {
+        let Ok(manifests) = self.list().await else { return };
+        for view in manifests {
+            if !view.state.status.expects_process() {
+                continue;
+            }
+            if let Ok(manifest) = self.registry.manifest(&view.instance.game) {
+                self.auto_forward(&view.instance, view.instance.primary_port(&manifest));
+            }
+        }
     }
 
     pub async fn stop(&self, instance_id: &str) -> AppResult<()> {
@@ -1175,10 +1309,12 @@ impl InstanceService {
 
     /// The one place status is written.
     pub async fn set_status(&self, instance_id: &str, status: InstanceStatus) {
+        let came_online;
         {
             let mut states = self.states.write().await;
             let state = states.entry(instance_id.to_string()).or_default();
             let previous = state.status;
+            came_online = status == InstanceStatus::Online && previous != InstanceStatus::Online;
             state.status = status;
             // Every fresh start gets a full idle grace period. Keeping the
             // timestamp from the previous run made sleep-when-empty stop a
@@ -1201,6 +1337,28 @@ impl InstanceService {
             // the states changed: a measurement taken before this change can
             // never reach a listener after it.
             self.emit(AppEvent::Status { instance_id: instance_id.to_string(), status });
+        }
+        if came_online {
+            self.sync_difficulty(instance_id).await;
+        }
+    }
+
+    /// Minecraft keeps a world's difficulty in the world itself and only
+    /// reads server.properties for a new one: a difficulty chosen later
+    /// never applies. Set it by command, as the game's own admins do.
+    async fn sync_difficulty(&self, instance_id: &str) {
+        let Ok(instance) = self.store.get(instance_id).await else { return };
+        if instance.game != crate::game::MINECRAFT {
+            return;
+        }
+        let wanted = crate::service::properties::get(&instance.path, "difficulty").ok().flatten();
+        let Some(wanted) = wanted.map(|value| value.trim().to_lowercase()).filter(|value| {
+            matches!(value.as_str(), "peaceful" | "easy" | "normal" | "hard")
+        }) else {
+            return;
+        };
+        if let Err(error) = self.send_command(instance_id, &format!("difficulty {wanted}")).await {
+            warn!(instance_id, %error, "difficulty not applied to the running server");
         }
     }
 

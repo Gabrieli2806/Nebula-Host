@@ -126,7 +126,7 @@ export function BackupsPanel({ instance }: { instance: InstanceView }) {
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <p className="flex min-w-0 items-center gap-2">
                     <span className="backup-when truncate">
-                      {backup.label === "auto" ? t("backups.auto") : (backup.label ?? formatDateTime(backup.createdAt, language))}
+                      {backup.label === "auto" ? t("backups.auto") : (backup.label ?? t("backups.manual"))}
                     </span>
                     {index === 0 ? (
                       <span className="tag" data-tone="accent">
@@ -141,7 +141,7 @@ export function BackupsPanel({ instance }: { instance: InstanceView }) {
                     ) : null}
                   </p>
                   <p className="backup-meta">
-                    {backup.label ? <span>{formatDateTime(backup.createdAt, language)}</span> : null}
+                    <span>{formatDateTime(backup.createdAt, language)}</span>
                     <span className="mono">{formatBytes(backup.sizeBytes)}</span>
                   </p>
                 </div>

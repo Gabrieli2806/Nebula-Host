@@ -39,6 +39,12 @@
     accent-color: var(--accent);
   }
 
+  .agreement-all {
+    margin-top: 6px;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+  }
+
   .agreement-link {
     display: inline-flex;
     align-items: center;

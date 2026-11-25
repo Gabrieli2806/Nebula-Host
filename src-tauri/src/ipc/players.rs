@@ -25,10 +25,7 @@ pub async fn players_write_list(
     list: String,
     entries: Vec<PlayerEntry>,
 ) -> AppResult<()> {
-    state.ensure_not_transferring(&instance_id).await?;
-    let instance = state.store.get(&instance_id).await?;
-    let manifest = state.registry.manifest(&instance.game)?;
-    players::write_list(&instance.path, &manifest.players, &list, &entries)
+    state.inner().write_player_list(&instance_id, &list, entries).await
 }
 
 /// Name to UUID for every player this server knows, for faces. Names keep

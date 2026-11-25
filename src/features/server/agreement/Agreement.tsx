@@ -25,11 +25,16 @@ export function AgreementConsent({
   url,
   checked,
   onChange,
+  forAll,
+  onForAllChange,
 }: {
   gameName: string;
   url: string;
   checked: boolean;
   onChange: (value: boolean) => void;
+  /** Offered only where it may be set (this PC's own window). */
+  forAll?: boolean;
+  onForAllChange?: (value: boolean) => void;
 }) {
   const { t } = useI18n();
   return (
@@ -45,6 +50,13 @@ export function AgreementConsent({
           <Icon name="external" size={12} />
         </button>
       </div>
+      {/* Once, for every server here: no more asking for each new one. */}
+      {onForAllChange && checked ? (
+        <label className="agreement-check agreement-all">
+          <input type="checkbox" checked={forAll ?? false} onChange={(event) => onForAllChange(event.target.checked)} />
+          <span>{t("agreement.acceptAll")}</span>
+        </label>
+      ) : null}
     </div>
   );
 }

@@ -485,6 +485,7 @@ export const es: Copy = {
   },
 
   agreement: {
+    acceptAll: "Aceptarlo también para todos los servidores que cree en este equipo (Ajustes › Servidores)",
     intro: "Los servidores de {game} solo se ejecutan cuando quien los aloja acepta el Acuerdo de Licencia para el Usuario Final (EULA) del juego. Nebula Host nunca lo acepta por ti.",
     accept: "He leído y acepto el EULA",
     read: "Leer el EULA",
@@ -865,7 +866,7 @@ export const es: Copy = {
     storage: "Almacenamiento",
     storageEmpty: "Esta carpeta está vacía",
     cpuOfMachine: "Porcentaje del equipo",
-    memoryOf: "de {total} asignados",
+    memoryOf: "{total} para el juego, más Java",
     diskFiles: "{count} archivos",
     diskFolder: "Carpeta del servidor",
     playersNow: "Conectados ahora",
@@ -984,6 +985,7 @@ export const es: Copy = {
     taken: "Hecha",
     latest: "La más reciente",
     made: "Copia hecha",
+    manual: "Copia manual",
     emptyTag: "Vacía",
     emptyTagHint: "Se hizo antes de que existiera el mundo: no tiene nada que restaurar.",
     deleteConfirm: "¿Eliminar la copia del {date}?",
@@ -1258,6 +1260,8 @@ export const es: Copy = {
     groupPerformance: "Rendimiento",
     groupAutomation: "Automatización",
     groupGame: "Ajustes de la partida",
+    offlineWarning: "Cualquiera puede entrar con cualquier nombre, también el de un operador. Activa la lista blanca (Jugadores) para que solo entren tus amigos.",
+    restartToApply: "Guardado. El servidor está en marcha: reinícialo para aplicar los cambios.",
     saving: "Guardando…",
     groupAdvanced: "Avanzado",
     restartRequired: "Se aplica al reiniciar",

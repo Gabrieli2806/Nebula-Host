@@ -210,7 +210,12 @@ export function RamSlider({
   // recommended band never move under the thumb. A value above it (typed, or
   // an older setting) pins the thumb at the end and the warning says why.
   const min = MIN_MB;
-  const max = Math.max(plan.safeMaxMb, min + 2048);
+  // On a big machine the whole safe range (to 76 GB) leaves the amounts
+  // people pick (2 to 8 GB) a sliver at the left. The track goes to three
+  // times the recommendation, at least 16 GB; the number field still takes
+  // anything up to the safe ceiling.
+  const roomy = Math.max(16 * MB_PER_GB, Math.ceil((plan.recommendedMb * 3) / (4 * MB_PER_GB)) * 4 * MB_PER_GB);
+  const max = Math.max(Math.min(plan.safeMaxMb, roomy), min + 2048);
   // Where this server plus the others would pass CAUTION_SHARE of the machine.
   const cautionMb =
     plan.totalMb !== null
@@ -399,7 +404,7 @@ export function RamSlider({
         {value !== plan.recommendedMb ? (
           <button
             type="button"
-            className="btn btn-quiet btn-sm ram-use"
+            className="btn btn-sm ram-use"
             disabled={disabled}
             onClick={() => {
               set(plan.recommendedMb);

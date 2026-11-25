@@ -63,11 +63,16 @@ export function useBackDismiss(open: boolean, onClose: () => void, enabled = tru
       const index = stack.findIndex((entry) => entry.id === id);
       if (index < 0) return; // Back already took it, and its entry.
       stack.splice(index, 1);
-      // Closed some other way: take our entry back off, if it is on top.
-      if (window.history.state?.[MARK] === id) {
-        ownPops += 1;
-        window.history.back();
-      }
+      // Closed some other way: take our entry back off, if it is still on
+      // top a moment later. Not at once: an overlay that mounts twice (React
+      // in development) pushes its next entry first, and stepping back under
+      // it would move the page instead.
+      window.setTimeout(() => {
+        if (window.history.state?.[MARK] === id) {
+          ownPops += 1;
+          window.history.back();
+        }
+      }, 0);
     };
   }, [open, enabled]);
 }

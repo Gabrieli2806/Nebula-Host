@@ -215,12 +215,11 @@
 
   .resource-detail {
     min-height: 1.35em;
-    overflow: hidden;
-    text-overflow: ellipsis;
     font-size: var(--text-xs);
     line-height: 1.35;
     color: var(--text-muted);
-    white-space: nowrap;
+    /* Wraps on a narrow tile rather than losing its end. */
+    text-wrap: balance;
   }
 
   /* A thin sunken track under the numbers that have a ceiling. */

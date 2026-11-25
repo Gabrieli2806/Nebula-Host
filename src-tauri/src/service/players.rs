@@ -89,6 +89,20 @@ pub fn write_list(root: &Path, source: &PlayerSource, list: &str, entries: &[Pla
             if let Some(reason) = &entry.reason {
                 object.insert("reason".into(), Value::String(reason.clone()));
             }
+            // What the game itself writes; without them it may skip the entry.
+            match list {
+                "operators" => {
+                    object.entry("level").or_insert(Value::Number(4.into()));
+                    object.insert("bypassesPlayerLimit".into(), Value::Bool(false));
+                }
+                "banned" => {
+                    object.insert("created".into(), Value::String(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S +0000").to_string()));
+                    object.insert("source".into(), Value::String("Nebula Host".into()));
+                    object.insert("expires".into(), Value::String("forever".into()));
+                    object.entry("reason").or_insert(Value::String("Banned by an operator.".into()));
+                }
+                _ => {}
+            }
             Value::Object(object)
         })
         .collect();
@@ -97,6 +111,96 @@ pub fn write_list(root: &Path, source: &PlayerSource, list: &str, entries: &[Pla
     std::fs::write(&temp, serde_json::to_vec_pretty(&json)?)?;
     std::fs::rename(&temp, &path)?;
     Ok(())
+}
+
+/// The UUID Minecraft gives a player on a server in offline mode: a name-based
+/// (MD5, version 3) UUID of `OfflinePlayer:<name>`.
+pub fn offline_uuid(name: &str) -> String {
+    let digest = md5_of(format!("OfflinePlayer:{name}").as_bytes());
+    let mut bytes = digest;
+    bytes[6] = (bytes[6] & 0x0f) | 0x30;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    uuid::Uuid::from_bytes(bytes).hyphenated().to_string()
+}
+
+fn md5_of(data: &[u8]) -> [u8; 16] {
+    // uuid's v3 hashes the namespace in too; Minecraft hashes the name alone.
+    let mut state = Md5::new();
+    state.update(data);
+    state.finish()
+}
+
+/// A small MD5, enough for offline UUIDs (no crate for one hash).
+struct Md5 {
+    state: [u32; 4],
+    buffer: Vec<u8>,
+    length: u64,
+}
+
+impl Md5 {
+    fn new() -> Self {
+        Self { state: [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476], buffer: Vec::new(), length: 0 }
+    }
+
+    fn update(&mut self, data: &[u8]) {
+        self.length += data.len() as u64;
+        self.buffer.extend_from_slice(data);
+        while self.buffer.len() >= 64 {
+            let block: Vec<u8> = self.buffer.drain(..64).collect();
+            self.block(&block);
+        }
+    }
+
+    fn finish(mut self) -> [u8; 16] {
+        let bits = self.length.wrapping_mul(8);
+        let mut tail = std::mem::take(&mut self.buffer);
+        tail.push(0x80);
+        while tail.len() % 64 != 56 {
+            tail.push(0);
+        }
+        tail.extend_from_slice(&bits.to_le_bytes());
+        for block in tail.chunks(64) {
+            self.block(block);
+        }
+        let mut out = [0u8; 16];
+        for (i, word) in self.state.iter().enumerate() {
+            out[i * 4..i * 4 + 4].copy_from_slice(&word.to_le_bytes());
+        }
+        out
+    }
+
+    fn block(&mut self, block: &[u8]) {
+        const S: [u32; 64] = [
+            7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9,
+            14, 20, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15,
+            21, 6, 10, 15, 21,
+        ];
+        let k: Vec<u32> = (0..64).map(|i| ((i as f64 + 1.0).sin().abs() * 4294967296.0) as u32).collect();
+        let m: Vec<u32> = block.chunks(4).map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect();
+        let [mut a, mut b, mut c, mut d] = self.state;
+        for i in 0..64 {
+            let (f, g) = match i {
+                0..=15 => ((b & c) | (!b & d), i),
+                16..=31 => ((d & b) | (!d & c), (5 * i + 1) % 16),
+                32..=47 => (b ^ c ^ d, (3 * i + 5) % 16),
+                _ => (c ^ (b | !d), (7 * i) % 16),
+            };
+            let next = d;
+            d = c;
+            c = b;
+            b = b.wrapping_add(a.wrapping_add(f).wrapping_add(k[i]).wrapping_add(m[g]).rotate_left(S[i]));
+            a = next;
+        }
+        self.state[0] = self.state[0].wrapping_add(a);
+        self.state[1] = self.state[1].wrapping_add(b);
+        self.state[2] = self.state[2].wrapping_add(c);
+        self.state[3] = self.state[3].wrapping_add(d);
+    }
+}
+
+/// `069a79f444e94726a5befca90e38aaf5` → `069a79f4-44e9-4726-a5be-fca90e38aaf5`.
+pub fn hyphenate(id: &str) -> Option<String> {
+    uuid::Uuid::parse_str(id.trim()).ok().map(|u| u.hyphenated().to_string())
 }
 
 /// Name → UUID from everything the game keeps on disk: its lists and, when
@@ -151,6 +255,14 @@ pub fn is_offline_uuid(uuid: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn offline_uuids_match_the_game() {
+        // What a vanilla server in offline mode gives these names.
+        assert_eq!(offline_uuid("Notch"), "b50ad385-829d-3141-a216-7e7d7539ba7f");
+        assert_eq!(offline_uuid("Steve"), "5627dd98-e6be-3c21-b8a8-e92344183641");
+        assert!(is_offline_uuid(&offline_uuid("anyone")));
+    }
 
     #[test]
     fn offline_uuids_are_recognised_by_their_version_nibble() {

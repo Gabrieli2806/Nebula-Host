@@ -359,7 +359,8 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
                     : t("servers.never")
                 }
               />
-              <Row label={t("overview.folder")} value={instance.path} face="mono" />
+              {/* A path on the PC means nothing in a phone's browser or app. */}
+              {IS_WEB || IS_MOBILE ? null : <Row label={t("overview.folder")} value={instance.path} face="mono" />}
               {/* Settings owns the automation switches; this is one quiet
                   line that says what is on and leads there. */}
               <div className="overview-fact">

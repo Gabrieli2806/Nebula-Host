@@ -485,6 +485,7 @@ export const en = {
   },
 
   agreement: {
+    acceptAll: "Also accept it for every server I create on this machine (Settings › Servers)",
     intro: "{game} servers only run after their operator accepts the game's End User License Agreement (EULA). Nebula Host never accepts it for you.",
     accept: "I have read and accept the EULA",
     read: "Read the EULA",
@@ -865,7 +866,7 @@ export const en = {
     storage: "Storage",
     storageEmpty: "This folder is empty",
     cpuOfMachine: "Share of this machine",
-    memoryOf: "of {total} allocated",
+    memoryOf: "{total} for the game, plus Java",
     diskFiles: "{count} files",
     diskFolder: "Server folder",
     playersNow: "Connected now",
@@ -984,6 +985,7 @@ export const en = {
     taken: "Taken",
     latest: "Latest",
     made: "Backup made",
+    manual: "Manual backup",
     emptyTag: "Empty",
     emptyTagHint: "Taken before the world existed: it has nothing to restore.",
     deleteConfirm: "Delete the restore point from {date}?",
@@ -1258,6 +1260,8 @@ export const en = {
     groupPerformance: "Performance",
     groupAutomation: "Automation",
     groupGame: "Game settings",
+    offlineWarning: "Anyone can join under any name, an operator's too. Turn on the whitelist (Players) so only your friends get in.",
+    restartToApply: "Saved. The server is running: restart it to apply the changes.",
     saving: "Saving…",
     groupAdvanced: "Advanced",
     restartRequired: "Takes effect after a restart",

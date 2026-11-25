@@ -15,11 +15,11 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { keys, useGames, useInstalledAddons } from "@/hooks/useBackend";
+import { keys, useGames, useInstalledAddons, useInstanceActions } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { api } from "@/lib/ipc";
 import type { InstanceView, SettingValue } from "@/types/api";
-import { ErrorNotice, Icon, Panel, Select, Skeleton, Switch, TextInput } from "@/ui";
+import { Button, ErrorNotice, Icon, Panel, Select, Skeleton, Switch, TextInput } from "@/ui";
 import { RamSlider } from "@/ui/RamSlider";
 
 import { JavaRuntimeCard } from "./settings/JavaRuntimeCard";
@@ -411,6 +411,11 @@ function GameSettings({ instance }: { instance: InstanceView }) {
   });
 
   const [saved, flashSaved] = useSavedFlash();
+  const running = instance.status === "online" || instance.status === "starting";
+  const [needsRestart, setNeedsRestart] = useState(false);
+  const actions = useInstanceActions();
+  // Once it has restarted (or stopped), the new settings are in.
+  if (needsRestart && !running && instance.status !== "stopping") setNeedsRestart(false);
   const save = useMutation({
     mutationFn: (values: Record<string, string>) => api.settings.instanceSet(instance.id, values),
     onSuccess: (_, values) => {
@@ -419,6 +424,8 @@ function GameSettings({ instance }: { instance: InstanceView }) {
         Object.fromEntries(Object.entries(current).filter(([key, value]) => values[key] !== value)),
       );
       flashSaved();
+      // A running server reads its settings when it starts.
+      if (running) setNeedsRestart(true);
       void client.invalidateQueries({ queryKey: keys.instanceSettings(instance.id) });
     },
   });
@@ -484,6 +491,21 @@ function GameSettings({ instance }: { instance: InstanceView }) {
         </section>
       ))}
 
+      {needsRestart ? (
+        <div className="pref-restart">
+          <span>{t("settings.restartToApply")}</span>
+          <Button
+            size="sm"
+            variant="primary"
+            icon="restart"
+            disabled={actions.restart.isPending}
+            onClick={() => actions.restart.mutate(instance.id, { onSuccess: () => setNeedsRestart(false) })}
+          >
+            {t("addons.restartNow")}
+          </Button>
+        </div>
+      ) : null}
+
       {save.error ? (
         <div className="px-5 pb-4">
           <ErrorNotice error={save.error} />
@@ -507,12 +529,27 @@ function SettingControl({
   const { t } = useI18n();
   const label = t(setting.label_key);
   const help = setting.help_key ? t(setting.help_key) : undefined;
-  const hint = setting.restart_required ? (
+  const restartHint = setting.restart_required ? (
     <span className="pref-hint">
       <Icon name="restart" size={12} />
       {t("settings.restartRequired")}
     </span>
   ) : undefined;
+  // Offline mode lets anyone in under any name, an operator's included.
+  const offlineWarning =
+    setting.key === "online-mode" && value === "false" ? (
+      <span className="pref-hint pref-warn">
+        <Icon name="warning" size={12} />
+        {t("settings.offlineWarning")}
+      </span>
+    ) : undefined;
+  const hint =
+    restartHint || offlineWarning ? (
+      <>
+        {restartHint}
+        {offlineWarning}
+      </>
+    ) : undefined;
 
   const row = (() => {
     if (setting.type === "bool") {

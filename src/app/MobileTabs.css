@@ -52,6 +52,11 @@
   }
 
   /* Room under the content for the bar (and a future banner above it). */
+  /* For things that stick to the bottom edge, above the tab bar. */
+  html[data-tabs] {
+    --tabs-height: calc(68px + env(safe-area-inset-bottom, 0px));
+  }
+
   html[data-tabs] .app-main {
     padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px) + var(--ad-slot));
   }

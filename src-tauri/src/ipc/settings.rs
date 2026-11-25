@@ -15,7 +15,7 @@ pub async fn settings_get() -> AppResult<AppSettings> {
 }
 
 #[tauri::command]
-pub async fn settings_set(mut settings: AppSettings) -> AppResult<AppSettings> {
+pub async fn settings_set(state: State<'_>, mut settings: AppSettings) -> AppResult<AppSettings> {
     // The MCP endpoint is configured through its own commands (it has a live
     // server behind it); a general settings save must never switch it off
     // just because the UI did not send them.
@@ -27,7 +27,11 @@ pub async fn settings_set(mut settings: AppSettings) -> AppResult<AppSettings> {
     settings.mcp_launcher_play = current.mcp_launcher_play;
     settings.remote_enabled = current.remote_enabled;
     settings.remote_port = current.remote_port;
+    let upnp_on = settings.allow_upnp && !current.allow_upnp;
     store::save(&settings)?;
+    if upnp_on {
+        state.inner().forward_running().await;
+    }
     store::load()
 }
 

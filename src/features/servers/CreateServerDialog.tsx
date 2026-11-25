@@ -35,7 +35,7 @@ import {
 import { RamSlider, useRamPlan } from "@/ui/RamSlider";
 import { PhoneHostingNotice } from "@/features/onboarding/PhoneWelcome";
 import { isRemote } from "@/lib/connection";
-import { IS_MOBILE } from "@/lib/web";
+import { IS_MOBILE, IS_WEB } from "@/lib/web";
 
 type Step = "build" | "details" | "installing";
 
@@ -75,6 +75,8 @@ export function CreateServerDialog({
   // The game's agreement (the Minecraft EULA). Unticked until the user ticks
   // it, every time the dialog opens; without it the server cannot be created.
   const [agreed, setAgreed] = useState(false);
+  // "And for every server on this PC": the Settings switch, from here.
+  const [agreedForAll, setAgreedForAll] = useState(false);
   // Release candidates and snapshots stay out of the list unless asked for.
   const [testVersions, setTestVersions] = useState(false);
   const actions = useInstanceActions();
@@ -147,6 +149,10 @@ export function CreateServerDialog({
       });
       setInstanceId(instance.id);
       setStep("installing");
+      if (agreement && agreed && agreedForAll && settings) {
+        await api.settings.set({ ...settings, acceptAgreements: true }).catch(() => undefined);
+        void client.invalidateQueries({ queryKey: keys.settings });
+      }
       await api.instances.install(instance.id);
       return instance;
     },
@@ -161,6 +167,7 @@ export function CreateServerDialog({
     setLoaderVersion("");
     setChosenMemoryMb(null);
     setAgreed(false);
+    setAgreedForAll(false);
     setTestVersions(false);
     create.reset();
     actions.start.reset();
@@ -396,6 +403,9 @@ export function CreateServerDialog({
               url={agreement.url}
               checked={agreed}
               onChange={setAgreed}
+              forAll={agreedForAll}
+              // Only this PC's own window may accept for every server.
+              onForAllChange={isRemote() || IS_WEB ? undefined : setAgreedForAll}
             />
           ) : null}
 
