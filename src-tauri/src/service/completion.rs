@@ -354,6 +354,11 @@ mod tests {
         assert!(hidden("[12:00:00 INFO]: Use /help [n] to get page n of help."));
         assert!(hidden("[12:00:00 INFO]: /ban: Prevents the specified player"));
         assert!(hidden("[12:00:00] [Server thread/INFO]: /list"));
+        // A plugin's entry with nothing after its name (spark on Paper).
+        assert!(hidden("[12:00:00 INFO]: /spark:"));
+        assert!(hidden("[12:00:00 INFO]: /paper:spark:"));
+        // Vanilla 26.x answers the console as system chat.
+        assert!(hidden("[12:00:00] [Server thread/INFO]: System chat: /advancement (grant|revoke)"));
         assert!(!hidden("[12:00:00] [Server thread/INFO]: Steve joined the game"));
         assert!(!hidden("[12:00:00] [Server thread/INFO]: <Steve> /help me"));
     }

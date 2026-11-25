@@ -1,15 +1,26 @@
 /** Number and time formatting, in the units a person reads. */
 
+/** A number with one decimal at most, in the interface's language ("2,5" in
+ *  Spanish). The language is the page's, which the i18n provider sets. */
+export function formatDecimal(value: number, digits = 1): string {
+  const lang = (typeof document !== "undefined" && document.documentElement.lang) || undefined;
+  try {
+    return new Intl.NumberFormat(lang, { maximumFractionDigits: digits, minimumFractionDigits: 0 }).format(value);
+  } catch {
+    return value.toFixed(digits);
+  }
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes <= 0) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"];
   const index = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
   const value = bytes / 1024 ** index;
-  return `${value >= 10 || index === 0 ? Math.round(value) : value.toFixed(1)} ${units[index]}`;
+  return `${value >= 10 || index === 0 ? formatDecimal(Math.round(value), 0) : formatDecimal(value)} ${units[index]}`;
 }
 
 export function formatMegabytes(mb: number): string {
-  return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb)} MB`;
+  return mb >= 1024 ? `${formatDecimal(mb / 1024)} GB` : `${Math.round(mb)} MB`;
 }
 
 /** Uptime as `4h 12m`, never as `15120 seconds`. */

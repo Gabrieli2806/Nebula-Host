@@ -30,7 +30,20 @@ import "./settings/settings-cards.css";
 
 const SAVED_TICK_MS = 1200;
 
+/** Game settings a running server takes at once, without a restart. */
+const APPLIED_LIVE = new Set(["difficulty", "white-list"]);
+
 export function ServerSettingsPanel({ instance }: { instance: InstanceView }) {
+  // `?focus=port` (from "Change the port" after a crash): go to that field.
+  useEffect(() => {
+    if (!window.location.hash.includes("focus=port")) return;
+    const timer = window.setTimeout(() => {
+      const field = document.querySelector<HTMLInputElement>('[data-field="port"]');
+      field?.scrollIntoView({ behavior: "smooth", block: "center" });
+      field?.focus({ preventScroll: true });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, []);
   const { data: games } = useGames();
   const game = games?.find((candidate) => candidate.id === instance.game);
   const accent = game?.distributions.find((candidate) => candidate.id === instance.build.distribution)?.accent;
@@ -132,15 +145,23 @@ function PortField({
   id,
   port,
   saving,
+  refused,
   onSave,
 }: {
   id: string;
   port: number;
   saving: boolean;
+  /** The last change was refused: show the saved port again. */
+  refused: boolean;
   onSave: (port: number) => void;
 }) {
   const [draft, setDraft] = useState(String(port));
   const [shown, setShown] = useState(port);
+  const [wasRefused, setWasRefused] = useState(refused);
+  if (refused !== wasRefused) {
+    setWasRefused(refused);
+    if (refused) setDraft(String(port));
+  }
   // The saved port changed (a save went through, or elsewhere): show it.
   if (shown !== port) {
     setShown(port);
@@ -157,6 +178,7 @@ function PortField({
   return (
     <TextInput
       id={id}
+      data-field="port"
       type="number"
       inputMode="numeric"
       min={1024}
@@ -316,6 +338,7 @@ function AutomationSettings({ instance }: { instance: InstanceView }) {
               id={id}
               port={Object.values(instance.ports)[0] ?? 25565}
               saving={patch.isPending}
+              refused={patch.isError}
               onSave={(port) => patch.mutate({ port })}
             />
           )}
@@ -424,8 +447,9 @@ function GameSettings({ instance }: { instance: InstanceView }) {
         Object.fromEntries(Object.entries(current).filter(([key, value]) => values[key] !== value)),
       );
       flashSaved();
-      // A running server reads its settings when it starts.
-      if (running) setNeedsRestart(true);
+      // A running server reads most settings when it starts; these are
+      // applied to it at once (the backend sends the command).
+      if (running && Object.keys(values).some((key) => !APPLIED_LIVE.has(key))) setNeedsRestart(true);
       void client.invalidateQueries({ queryKey: keys.instanceSettings(instance.id) });
     },
   });
@@ -484,6 +508,7 @@ function GameSettings({ instance }: { instance: InstanceView }) {
                 setting={setting}
                 value={valueOf(setting)}
                 edited={setting.key in edits}
+                whitelistOn={(settings.data ?? []).some((s) => s.key === "white-list" && valueOf(s) === "true")}
                 onChange={(value) => change(setting.key, value)}
               />
             ))}
@@ -519,11 +544,13 @@ function SettingControl({
   setting,
   value,
   edited,
+  whitelistOn,
   onChange,
 }: {
   setting: SettingValue;
   value: string;
   edited: boolean;
+  whitelistOn: boolean;
   onChange: (value: string) => void;
 }) {
   const { t } = useI18n();
@@ -540,7 +567,7 @@ function SettingControl({
     setting.key === "online-mode" && value === "false" ? (
       <span className="pref-hint pref-warn">
         <Icon name="warning" size={12} />
-        {t("settings.offlineWarning")}
+        {whitelistOn ? t("settings.offlineWarningListed") : t("settings.offlineWarning")}
       </span>
     ) : undefined;
   const hint =

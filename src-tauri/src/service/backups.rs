@@ -200,6 +200,9 @@ pub async fn restore(
     let instance = service.store.get(instance_id).await?;
     let backup = find(instance_id, backup_id)?;
     let root = instance.path.clone();
+    // Settings changed since the backup must not be written back over the
+    // restored ones at the next start.
+    service.forget_settings_while_running(instance_id).await;
 
     tokio::task::spawn_blocking(move || extract_archive(&backup.path, &root))
         .await

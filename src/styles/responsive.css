@@ -69,8 +69,22 @@
     .server-card-addr,
     .agreement-link,
     .node-switcher-button,
-    .server-card-open {
+    .server-card-open,
+    .server-row-open,
+    .files-name,
+    .java-fold,
+    summary,
+    select.field,
+    .ram-number,
+    .titlebar-web-signout {
       min-height: 40px;
+    }
+
+    .files-name,
+    .server-row-open,
+    summary {
+      display: inline-flex;
+      align-items: center;
     }
 
     .rail-item,

@@ -57,7 +57,7 @@ function WebTitleBar({ sidebar }: { sidebar?: SidebarToggle }) {
       {session ? (
         <div className="flex flex-none items-center pr-2">
           <button type="button" className="titlebar-web-signout" onClick={signOutWeb}>
-            <Icon name="external" size={13} />
+            <Icon name="power" size={13} />
             <span>{t("web.signOut")}</span>
           </button>
         </div>

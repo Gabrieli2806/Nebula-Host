@@ -65,7 +65,13 @@ export function PlayersPanel({ instance }: { instance: InstanceView }) {
   const write = useMutation({
     mutationFn: ({ list, entries }: { list: string; entries: PlayerEntry[] }) =>
       api.players.writeList(instance.id, list, entries),
-    onSuccess: () => client.invalidateQueries({ queryKey: keys.players(instance.id) }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.players(instance.id) });
+      // A running server rewrites the file after the command: read it again.
+      timers.current.push(
+        window.setTimeout(() => void client.invalidateQueries({ queryKey: keys.players(instance.id) }), 1500),
+      );
+    },
   });
 
   // The server writes its list files a moment after it runs the command; read
@@ -205,14 +211,13 @@ export function PlayersPanel({ instance }: { instance: InstanceView }) {
             <span className="readout panel-count">{lists.data[active]?.length ?? 0}</span>
           </header>
           {/* The list only counts while the whitelist is on: say which. */}
-          {active === "allowed" ? <WhitelistSwitch instance={instance} running={isOnline} /> : null}
+          {active === "allowed" ? <WhitelistSwitch instance={instance} /> : null}
           <PlayerList
             key={active}
             list={active}
             title={tr(`players.${active}`)}
             entries={lists.data[active] ?? []}
             uuidOf={uuidOf}
-            running={isOnline}
             saving={write.isPending}
             onChange={(next) => write.mutate({ list: active, entries: next })}
           />
@@ -320,7 +325,7 @@ function ActionDialog({
  * Whether the whitelist is on, at the top of its own tab, with the switch.
  * On a running server the console command applies it at once too.
  */
-function WhitelistSwitch({ instance, running }: { instance: InstanceView; running: boolean }) {
+function WhitelistSwitch({ instance }: { instance: InstanceView }) {
   const { t } = useI18n();
   const client = useQueryClient();
   const settings = useQuery({
@@ -330,8 +335,7 @@ function WhitelistSwitch({ instance, running }: { instance: InstanceView; runnin
   const field = settings.data?.find((setting) => setting.key === "white-list");
   const toggle = useMutation({
     mutationFn: async (on: boolean) => {
-      // Running: the server switches it and writes the file itself.
-      if (running) await api.instances.command(instance.id, on ? "whitelist on" : "whitelist off");
+      // The backend tells a running server too.
       await api.settings.instanceSet(instance.id, { "white-list": String(on) });
     },
     onSettled: () => client.invalidateQueries({ queryKey: keys.instanceSettings(instance.id) }),
@@ -354,7 +358,6 @@ function PlayerList({
   title,
   entries,
   uuidOf,
-  running,
   saving,
   onChange,
 }: {
@@ -362,7 +365,6 @@ function PlayerList({
   title: string;
   entries: PlayerEntry[];
   uuidOf: (name: string, fallback?: string | null) => string | undefined | null;
-  running: boolean;
   saving: boolean;
   onChange: (entries: PlayerEntry[]) => void;
 }) {
@@ -468,8 +470,6 @@ function PlayerList({
           <p id="players-add-problem" className="players-add-problem" role="alert">
             {problem}
           </p>
-        ) : running ? (
-          <p className="players-add-note">{tr("players.runningListHint")}</p>
         ) : null}
       </form>
 

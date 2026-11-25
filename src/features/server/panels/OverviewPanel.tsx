@@ -27,6 +27,7 @@ import { isRemote } from "@/lib/connection";
 import { DESKTOP_FEATURES, IS_MOBILE, IS_WEB } from "@/lib/web";
 import {
   formatBytes,
+  formatDecimal,
   formatCount,
   formatDateTime,
   formatDuration,
@@ -82,13 +83,31 @@ const JVM_OVERHEAD = 1.3;
 /** A touch screen: "tap", not "click". */
 const TOUCH = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
 
-/** The phone's share sheet (WhatsApp, Messages…), else a copy. */
-async function shareAddress(name: string, address: string) {
-  try {
-    await navigator.share({ title: name, text: address });
-  } catch {
-    await copyText(address).catch(() => undefined);
-  }
+/** The phone's share sheet (WhatsApp, Messages…); where it is refused, a
+ *  copy, and the button says so. */
+function ShareButton({ name, address }: { name: string; address: string }) {
+  const { t } = useI18n();
+  const [copied, setCopied] = useState(false);
+  const share = async () => {
+    try {
+      await navigator.share({ title: name, text: address });
+    } catch (error) {
+      // Closing the share sheet is not a failure.
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      await copyText(address).then(
+        () => {
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1600);
+        },
+        () => undefined,
+      );
+    }
+  };
+  return (
+    <Button size="sm" icon={copied ? "check" : "send"} onClick={() => void share()}>
+      {copied ? t("common.copied") : t("overview.share")}
+    </Button>
+  );
 }
 
 export function OverviewPanel({ instance }: { instance: InstanceView }) {
@@ -264,7 +283,7 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
             {crashed ? (
               <span className="flex flex-wrap gap-2">
                 {cause === "port" ? (
-                  <Button size="sm" icon="sliders" onClick={() => navigate(`/servers/${instance.id}/settings`)}>
+                  <Button size="sm" icon="sliders" onClick={() => navigate(`/servers/${instance.id}/settings?focus=port`)}>
                     {t("overview.changePort")}
                   </Button>
                 ) : null}
@@ -312,11 +331,27 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
               {IS_MOBILE && !isRemote() ? null : <Link to="/settings?section=network">{t("overview.lanOnlyFix")}</Link>}
             </p>
             {TOUCH && typeof navigator.share === "function" ? (
-              <Button size="sm" icon="send" onClick={() => void shareAddress(instance.name, instance.address ?? "")}>
-                {t("overview.share")}
-              </Button>
+              <ShareButton name={instance.name} address={instance.address ?? ""} />
             ) : null}
           </div>
+        ) : null}
+        {/* When the router will not open it by itself: the steps, with this
+            server's own numbers in them. */}
+        {!olderCopy && instance.address && !instance.public_address && !(IS_MOBILE && !isRemote()) ? (
+          <details className="overview-forward">
+            <summary>{t("overview.forwardTitle")}</summary>
+            <ol>
+              <li>{t("overview.forwardStep1")}</li>
+              <li>{t("overview.forwardStep2")}</li>
+              <li>
+                {t("overview.forwardStep3", {
+                  port: instance.address.split(":").pop() ?? "",
+                  ip: instance.address.split(":")[0] ?? "",
+                })}
+              </li>
+              <li>{t("overview.forwardStep4", { port: instance.address.split(":").pop() ?? "" })}</li>
+            </ol>
+          </details>
         ) : null}
         {/* The sentence about UPnP sits under the well: as the well's hint it
             pushed the address itself out of view. */}
@@ -329,9 +364,7 @@ export function OverviewPanel({ instance }: { instance: InstanceView }) {
             />
             <p className="overview-public-address-note">{t("overview.publicAddressHint")}</p>
             {TOUCH && typeof navigator.share === "function" ? (
-              <Button size="sm" icon="send" onClick={() => void shareAddress(instance.name, instance.public_address ?? "")}>
-                {t("overview.share")}
-              </Button>
+              <ShareButton name={instance.name} address={instance.public_address ?? ""} />
             ) : null}
           </div>
         ) : null}
@@ -463,7 +496,7 @@ function Resources({ instance }: { instance: InstanceView }) {
       <dl className="resources">
         <Resource
           label={t("overview.cpu")}
-          value={cpu === null ? null : `${cpu < 10 ? cpu.toFixed(1) : Math.round(cpu)} %`}
+          value={cpu === null ? null : `${cpu < 10 ? formatDecimal(cpu) : Math.round(cpu)} %`}
           detail={t("overview.cpuOfMachine")}
           bar={cpu}
           warn={cpu !== null && cpu >= LOAD_WARN}
@@ -494,7 +527,7 @@ function Resources({ instance }: { instance: InstanceView }) {
         />
         <Resource
           label={t("overview.tickRate")}
-          value={ticks === null ? null : ticks.toFixed(1)}
+          value={ticks === null ? null : formatDecimal(ticks)}
           detail={slowTicks ? t("overview.tickRateSlow") : t("overview.tickRateTarget")}
           bar={ticks === null ? null : (ticks / TICK_RATE_TARGET) * 100}
           warn={slowTicks}

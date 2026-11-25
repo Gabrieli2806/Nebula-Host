@@ -27,7 +27,11 @@ errorActions.java_not_found = (error) =>
 // A taken port names a free one: move there and start.
 errorActions.port_in_use = (error) =>
   error.params.instance && error.params.suggested ? (
-    <UseFreePortButton instanceId={error.params.instance} port={Number(error.params.suggested)} />
+    <UseFreePortButton
+      instanceId={error.params.instance}
+      port={Number(error.params.suggested)}
+      start={error.params.move !== "true"}
+    />
   ) : null;
 
 const client = new QueryClient({

@@ -100,6 +100,9 @@ function mergeSummaries(a: ImportSummary | null, b: ImportSummary): ImportSummar
   };
 }
 
+/** No dragging files in from a phone. */
+const TOUCH = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+
 export function FilesPanel({ instance }: { instance: InstanceView }) {
   const { t, language } = useI18n();
   const client = useQueryClient();
@@ -471,7 +474,7 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
       ) : null}
 
       {!searching && listing.data?.length === 0 ? (
-        <EmptyState icon="folder" title={t("files.empty")} hint={t("files.dropHint")} />
+        <EmptyState icon="folder" title={t("files.empty")} hint={TOUCH ? undefined : t("files.dropHint")} />
       ) : null}
 
       {(searching ? results.data : listing.data)?.length ? (
@@ -547,7 +550,7 @@ export function FilesPanel({ instance }: { instance: InstanceView }) {
             })}
           </div>
           {searching && (results.data?.length ?? 0) >= 200 ? <p className="files-foot">{t("files.searchMore", { count: 200 })}</p> : null}
-          <p className="files-foot">{t("files.dropHint")}</p>
+          {TOUCH ? null : <p className="files-foot">{t("files.dropHint")}</p>}
         </>
       ) : null}
 

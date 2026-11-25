@@ -14,7 +14,7 @@ import { useI18n } from "@/i18n";
 import { api } from "@/lib/ipc";
 import { formatBytes, formatDateTime } from "@/lib/format";
 import type { Backup, InstanceView } from "@/types/api";
-import { Button, Dialog, EmptyState, ErrorNotice, Panel, Skeleton } from "@/ui";
+import { Button, Dialog, EmptyState, ErrorNotice, Icon, Panel, Skeleton } from "@/ui";
 
 export function BackupsPanel({ instance }: { instance: InstanceView }) {
   const { t, language } = useI18n();
@@ -51,10 +51,25 @@ export function BackupsPanel({ instance }: { instance: InstanceView }) {
       return invalidate();
     },
   });
+  const running = instance.status === "online" || instance.status === "starting" || instance.status === "stopping";
+  const [restored, setRestored] = useState(false);
   const restore = useMutation({
-    mutationFn: (backupId: string) => api.backups.restore(instance.id, backupId),
+    mutationFn: async (backupId: string) => {
+      // A running server holds its world open: stop it first, and wait.
+      if (running) {
+        if (instance.status !== "stopping") await api.instances.stop(instance.id);
+        for (let tries = 0; tries < 90; tries += 1) {
+          const now = await api.instances.get(instance.id);
+          if (now.status === "offline" || now.status === "crashed") break;
+          await new Promise((resolve) => window.setTimeout(resolve, 1000));
+        }
+      }
+      await api.backups.restore(instance.id, backupId);
+    },
     onSuccess: () => {
       setRestoring(null);
+      setRestored(true);
+      window.setTimeout(() => setRestored(false), 4000);
       // The folder is now the backup's: its size, its files and its addons.
       void client.invalidateQueries({ queryKey: keys.diskUsage(instance.id) });
       void client.invalidateQueries({ queryKey: ["files", instance.id] });
@@ -84,6 +99,13 @@ export function BackupsPanel({ instance }: { instance: InstanceView }) {
         </Button>
       }
     >
+      {restored ? (
+        <p className="backups-restored" role="status">
+          <Icon name="check" size={14} />
+          {t("backups.restored")}
+        </p>
+      ) : null}
+
       {create.error ? (
         <div className="p-4">
           <ErrorNotice error={create.error} />
@@ -182,7 +204,7 @@ export function BackupsPanel({ instance }: { instance: InstanceView }) {
               disabled={restore.isPending}
               onClick={() => restoring && restore.mutate(restoring.id)}
             >
-              {t("backups.restore")}
+              {restore.isPending ? t("backups.restoring") : running ? t("backups.stopAndRestore") : t("backups.restore")}
             </Button>
           </>
         }

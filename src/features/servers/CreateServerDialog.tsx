@@ -16,7 +16,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { InstallProgressPanel } from "./InstallProgressPanel";
 import { AgreementConsent } from "@/features/server/agreement/Agreement";
-import { keys, useAppSettings, useGames, useInstallProgress, useInstanceActions } from "@/hooks/useBackend";
+import { keys, useAppSettings, useGames, useInstallProgress, useInstance, useInstanceActions } from "@/hooks/useBackend";
 import { useI18n } from "@/i18n";
 import { api } from "@/lib/ipc";
 import type { Distribution } from "@/types/api";
@@ -36,6 +36,7 @@ import { RamSlider, useRamPlan } from "@/ui/RamSlider";
 import { PhoneHostingNotice } from "@/features/onboarding/PhoneWelcome";
 import { isRemote } from "@/lib/connection";
 import { IS_MOBILE, IS_WEB } from "@/lib/web";
+import { useBackDismiss } from "@/lib/backDismiss";
 
 type Step = "build" | "details" | "installing";
 
@@ -159,6 +160,10 @@ export function CreateServerDialog({
     onSuccess: () => client.invalidateQueries({ queryKey: keys.instances }),
   });
 
+  // On the details step, back returns to the version step (the dialog's own
+  // entry, under this one, closes it from there).
+  useBackDismiss(open && step === "details", () => setStep("build"), !create.isPending);
+
   const reset = () => {
     setStep("build");
     setInstanceId(null);
@@ -180,6 +185,9 @@ export function CreateServerDialog({
 
   const canCreate = Boolean(version) && (!agreement || agreed) && !create.isPending;
   const ready = progress?.phase === "ready";
+  // Started after all (the free-port button): the old refusal is moot.
+  const created = useInstance(instanceId ?? "");
+  const createdRunning = created?.status === "online" || created?.status === "starting";
 
   const footer =
     step === "build" ? (
@@ -418,7 +426,7 @@ export function CreateServerDialog({
             error={create.error}
             withLoader={distribution?.addon_project_type === "mod"}
           />
-          {actions.start.error ? <ErrorNotice error={actions.start.error} /> : null}
+          {actions.start.error && !createdRunning ? <ErrorNotice error={actions.start.error} /> : null}
         </div>
       )}
     </Dialog>

@@ -105,20 +105,34 @@ pub enum AppEvent {
     },
 }
 
-/// A player's account UUID, from Mojang. None when the name has no account
-/// or Mojang does not answer.
-async fn mojang_uuid(name: &str) -> Option<String> {
+enum Lookup {
+    Found(String),
+    /// Mojang answered: no account has this name.
+    NoAccount,
+    /// Mojang did not answer (offline, rate limited…).
+    Unknown,
+}
+
+/// A player's account UUID, from Mojang.
+async fn mojang_uuid(name: &str) -> Lookup {
     let response = crate::game::http_client()
         .get(format!("https://api.mojang.com/users/profiles/minecraft/{name}"))
         .timeout(std::time::Duration::from_secs(6))
         .send()
-        .await
-        .ok()?;
-    if !response.status().is_success() {
-        return None;
+        .await;
+    let Ok(response) = response else { return Lookup::Unknown };
+    let status = response.status().as_u16();
+    if status == 204 || status == 404 {
+        return Lookup::NoAccount;
     }
-    let body: serde_json::Value = response.json().await.ok()?;
-    crate::service::players::hyphenate(body.get("id")?.as_str()?)
+    if !response.status().is_success() {
+        return Lookup::Unknown;
+    }
+    let Ok(body) = response.json::<serde_json::Value>().await else { return Lookup::Unknown };
+    match body.get("id").and_then(|id| id.as_str()).and_then(crate::service::players::hyphenate) {
+        Some(uuid) => Lookup::Found(uuid),
+        None => Lookup::NoAccount,
+    }
 }
 
 /// What the UI sends when the user creates a server.
@@ -169,6 +183,9 @@ pub struct InstanceService {
     /// own copy in memory and writes it back over the file (a `whitelist on`
     /// does), so these are written again before its next start.
     settings_while_running: Mutex<HashMap<String, std::collections::BTreeMap<String, String>>>,
+    /// Per instance: the difficulty last set by command, so a start does not
+    /// send it again (and print "did not change") when nothing changed.
+    difficulty_applied: Mutex<HashMap<String, String>>,
     /// Per instance: where its install is, until it is ready. A failed
     /// install stays here so the server's card can say so.
     installs: Arc<std::sync::RwLock<HashMap<String, InstallProgress>>>,
@@ -220,6 +237,7 @@ impl InstanceService {
             completion_fetch: Mutex::new(HashMap::new()),
             disk_usage: RwLock::new(HashMap::new()),
             settings_while_running: Mutex::new(HashMap::new()),
+            difficulty_applied: Mutex::new(HashMap::new()),
             installs: Arc::new(std::sync::RwLock::new(HashMap::new())),
             addon_index: RwLock::new(HashMap::new()),
             events,
@@ -320,6 +338,13 @@ impl InstanceService {
             .collect())
     }
 
+    /// Drop the settings kept to be written again at the next start (a
+    /// backup was restored: its own settings are the ones that count).
+    pub async fn forget_settings_while_running(&self, instance_id: &str) {
+        self.settings_while_running.lock().await.remove(instance_id);
+        self.difficulty_applied.lock().await.remove(instance_id);
+    }
+
     /// Change the game's own settings (server.properties). On a running
     /// server they are also kept, to be written again before the next start:
     /// the game would otherwise put its old values back.
@@ -332,9 +357,17 @@ impl InstanceService {
         let instance = self.store.get(instance_id).await?;
         let manifest = self.registry.manifest(&instance.game)?;
         crate::service::properties::write(&instance.path, &manifest, values)?;
-        // Difficulty can change right now, without a restart.
-        if values.contains_key("difficulty") && self.processes.is_running(instance_id).await {
-            self.sync_difficulty(instance_id).await;
+        // These change right now, without a restart.
+        if self.processes.is_running(instance_id).await && instance.game == crate::game::MINECRAFT {
+            if values.contains_key("difficulty") {
+                self.sync_difficulty(instance_id, true).await;
+            }
+            if let Some(on) = values.get("white-list") {
+                let command = if on.trim() == "true" { "whitelist on" } else { "whitelist off" };
+                if let Err(error) = self.send_command(instance_id, command).await {
+                    warn!(instance_id, %error, "whitelist switch not sent to the running server");
+                }
+            }
         }
         if self.processes.is_running(instance_id).await {
             self.settings_while_running
@@ -381,7 +414,20 @@ impl InstanceService {
                 } else if let Some(uuid) = known.iter().find(|(name, _)| name.eq_ignore_ascii_case(&entry.name)).map(|(_, uuid)| uuid.clone()) {
                     Some(uuid)
                 } else {
-                    mojang_uuid(&entry.name).await
+                    match mojang_uuid(&entry.name).await {
+                        Lookup::Found(uuid) => Some(uuid),
+                        // In online mode the game lets in accounts only: a
+                        // name with none would be listed here and never
+                        // let in. Say so instead.
+                        Lookup::NoAccount => {
+                            return Err(AppError::new(ErrorCode::NotFound)
+                                .with("reason", "no_account")
+                                .with("name", &entry.name));
+                        }
+                        // Mojang not answering: keep the name; the game
+                        // looks it up itself at its next start.
+                        Lookup::Unknown => None,
+                    }
                 };
             }
         }
@@ -1339,14 +1385,15 @@ impl InstanceService {
             self.emit(AppEvent::Status { instance_id: instance_id.to_string(), status });
         }
         if came_online {
-            self.sync_difficulty(instance_id).await;
+            self.sync_difficulty(instance_id, false).await;
         }
     }
 
     /// Minecraft keeps a world's difficulty in the world itself and only
     /// reads server.properties for a new one: a difficulty chosen later
     /// never applies. Set it by command, as the game's own admins do.
-    async fn sync_difficulty(&self, instance_id: &str) {
+    /// `force`: the user just chose it, send it even if it was sent before.
+    async fn sync_difficulty(&self, instance_id: &str, force: bool) {
         let Ok(instance) = self.store.get(instance_id).await else { return };
         if instance.game != crate::game::MINECRAFT {
             return;
@@ -1357,8 +1404,14 @@ impl InstanceService {
         }) else {
             return;
         };
-        if let Err(error) = self.send_command(instance_id, &format!("difficulty {wanted}")).await {
-            warn!(instance_id, %error, "difficulty not applied to the running server");
+        if !force && self.difficulty_applied.lock().await.get(instance_id) == Some(&wanted) {
+            return;
+        }
+        match self.send_command(instance_id, &format!("difficulty {wanted}")).await {
+            Ok(()) => {
+                self.difficulty_applied.lock().await.insert(instance_id.to_string(), wanted);
+            }
+            Err(error) => warn!(instance_id, %error, "difficulty not applied to the running server"),
         }
     }
 
@@ -1509,7 +1562,16 @@ impl InstanceService {
     // Validate before touching the stored record: a rejected port must not
     // leave a half-applied edit behind.
     if let Some(port) = patch.port {
-        crate::net::ports::validate(port)?;
+        crate::net::ports::validate(port).map_err(|error| {
+            if error.code != ErrorCode::PortInUse {
+                return error;
+            }
+            let mut error = error.with("instance", instance_id).with("move", "true");
+            if let Some(free) = crate::net::ports::first_free_from(port.saturating_add(1)) {
+                error = error.with("suggested", free);
+            }
+            error
+        })?;
     }
 
     let manifest = {

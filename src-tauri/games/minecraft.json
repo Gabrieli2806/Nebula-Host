@@ -127,7 +127,7 @@
       "help_command": "help",
       "page_command": "help {page}",
       "page_pattern": "Help: Index \\((?P<page>\\d+)/(?P<pages>\\d+)\\)",
-      "entry_pattern": "(?:^|\\]: )/(?P<command>/?[A-Za-z0-9_.\\-]+(?::[A-Za-z0-9_.\\-]+)?)(?:: (?P<description>.+)| (?P<usage>.+))?$",
+      "entry_pattern": "(?:^|\\]: )(?:System chat: )?/(?P<command>/?[A-Za-z0-9_.\\-]+(?::[A-Za-z0-9_.\\-]+)?)(?:: ?(?P<description>.*)| (?P<usage>.+))?$",
       "noise_patterns": [
         "\\]: Use /help \\[n\\] to get page n of help",
         "\\]: [A-Za-z0-9 _.\\-]+: All commands for ",
